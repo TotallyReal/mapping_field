@@ -1,15 +1,8 @@
-import cmath
-import random
 from abc import abstractmethod
-import operator
 import inspect
-from typing import Callable, Any, Dict, Optional, Union, List, Tuple
-from field import FieldElement, ExtElement, getElement
+from typing import Callable, Dict, List
+from field import FieldElement, ExtElement
 
-from typing import TypeVar
-
-Source = TypeVar('Source')
-Target = TypeVar('Target')
 
 
 # def _to_constant(elem):
@@ -20,7 +13,6 @@ Target = TypeVar('Target')
 #     if isinstance(elem, FieldElement):
 #         return elem
 #     return None
-
 
 def convert_to_map(elem):
 
@@ -46,9 +38,7 @@ def params_to_maps(f):
 
     def wrapper(self, element):
         value = convert_to_map(element)
-        if value == NotImplemented:
-            return NotImplemented
-        return f(self, value)
+        return NotImplemented if value == NotImplemented else f(self, value)
 
     return wrapper
 
@@ -140,45 +130,6 @@ class MapElement:
         """
         pass
 
-    # <editor-fold desc="-------------- arithmetic operations --------------">
-
-    @params_to_maps
-    def __add__(self, other):
-        return Add(self, other)
-
-    @params_to_maps
-    def __radd__(self, other):
-        return Add(other, self)
-
-    @params_to_maps
-    def __mul__(self, other):
-        return Mult(self, other)
-
-    @params_to_maps
-    def __rmul__(self, other):
-        return Mult(other, self)
-
-    @params_to_maps
-    def __sub__(self, other):
-        return Sub(self, other)
-
-    @params_to_maps
-    def __rsub__(self, other):
-        # After convert, other must be a MapElement
-        return Sub(other,self)
-
-    @params_to_maps
-    def __truediv__(self, other):
-        return Div(self, other)
-
-    @params_to_maps
-    def __rtruediv__(self, other):
-        return Div(other, self)
-    #
-    # def __pow__(self, power: int):
-    #     return UniMapping(pow_map(power), self)
-
-    # </editor-fold>
 
 
 class Var(MapElement):
@@ -295,8 +246,15 @@ class CompositionFunction(MapElement):
             seen.update(entry.vars)
 
         super().__init__(variables)
-        self.function = function
-        self.entries = entries
+        if isinstance(function, CompositionFunction):
+            top_function = function.function
+            var_dict = {var: entry for var,entry in zip(function.vars, entries)}
+            top_entries = [entry._call_with_dict(var_dict, {}) for entry in function.entries]
+            self.function = top_function
+            self.entries = top_entries
+        else:
+            self.function = function
+            self.entries = entries
 
     def _call_with_dict(self, var_dict: Dict['Var', 'MapElement'], func_dict: Dict['NamedFunc', 'MapElement']) -> 'MapElement':
         eval_function = self.function._call_with_dict({}, func_dict)
@@ -304,10 +262,6 @@ class CompositionFunction(MapElement):
 
         return CompositionFunction(function=eval_function, entries=eval_entries)
 
-    #
-    # def __str__(self):
-    #     vars_str_list = [var.name for var in self.vars]
-    #     return self.to_string(vars_str_list)
 
     def to_string(self, vars_str_list: List[str]):
         entries_str_list = [entry.to_string(vars_str_list) for entry in self.entries]
@@ -330,34 +284,15 @@ class MapElementConstant(MapElement):
     def _simplify_with_entries(self, simplified_entries: List['MapElement']) -> 'MapElement':
         return self
 
-    # def __call__(self, variables: Dict) -> MapElement:
-    #     return self
-
-    # def evaluate(self) -> ExtElement:
-    #     return self.elem
-
-    # def __add__(self, other):
-    #     if isinstance(other, MapElementConstant):
-    #         return MapElementConstant(self.evaluate() + other.evaluate())
-    #     return super().__add__(other)
-    #
-    # def __sub__(self, other):
-    #     if isinstance(other, MapElementConstant):
-    #         return MapElementConstant(self.evaluate() - other.evaluate())
-    #     return super().__sub__(other)
-    #
-    # def __mul__(self, other):
-    #     if isinstance(other, MapElementConstant):
-    #         return MapElementConstant(self.evaluate() * other.evaluate())
-    #     return super().__mul__(other)
-    #
-    # def __truediv__(self, other):
-    #     if isinstance(other, MapElementConstant):
-    #         return MapElementConstant(self.evaluate() / other.evaluate())
-    #     return super().__truediv__(other)
-
     def to_string(self, vars_str_list: List[str]):
         return str(self.elem)
+
+    def __eq__(self, other):
+        if isinstance(other, int) or isinstance(other, FieldElement):
+            return self.elem == other
+        if isinstance(other, MapElementConstant):
+            return self.elem == other.elem
+        return super().__eq__(other)
 
 
 class MapElementFromFunction(MapElement):
@@ -376,7 +311,18 @@ class MapElementFromFunction(MapElement):
 
     def _call_with_dict(self, var_dict: Dict['Var', 'MapElement'],
                         func_dict: Dict['NamedFunc', 'MapElement']) -> 'MapElement':
-        eval_entries = [var._call_with_dict(var_dict, func_dict) for var in self.vars]
+        if len(var_dict) == 0:
+            return self
+        eval_entries = []
+        compose = False
+        for var in self.vars:
+            eval_var = var._call_with_dict(var_dict, func_dict)
+            eval_entries.append(eval_var)
+            if eval_var != var:
+                compose = True
+
+        if not compose:
+            return self
 
         return CompositionFunction(function=self, entries=eval_entries)
 
@@ -389,196 +335,3 @@ class MapElementFromFunction(MapElement):
 
     def _simplify_partial_constant(self, simplified_entries: List['MapElement']) -> 'MapElement':
         return CompositionFunction(self, simplified_entries)
-
-
-class _Negative(MapElementFromFunction):
-
-    def __init__(self):
-        super().__init__('Neg', lambda a: -a)
-
-    def to_string(self, entries: List[str]):
-        return f'(-{entries[0]})'
-
-
-Neg = _Negative()
-
-
-class _Add(MapElementFromFunction):
-
-    def __init__(self):
-        super().__init__('Add', lambda a, b: a + b)
-
-    def _simplify_partial_constant(self, entries: List['MapElement']) -> 'MapElement':
-        if isinstance(entries[0], MapElementConstant) and (entries[0].elem == 0):
-            return entries[1]
-        if isinstance(entries[1], MapElementConstant) and (entries[1].elem == 0):
-            return entries[0]
-        # TODO: automatic equality with constants
-        return super()._simplify_partial_constant(entries)
-
-    def to_string(self, entries: List[str]):
-        return f'({entries[0]}+{entries[1]})'
-
-
-Add = _Add()
-
-
-class _Sub(MapElementFromFunction):
-
-    def __init__(self):
-        super().__init__('Sub', lambda a, b: a + b)
-
-    def _simplify_partial_constant(self, entries: List['MapElement']) -> 'MapElement':
-        if isinstance(entries[0], MapElementConstant) and (entries[0].elem == 0):
-            return Neg(entries[1])
-        if isinstance(entries[1], MapElementConstant) and (entries[1].elem == 0):
-            return entries[0]
-        # TODO: automatic equality with constants
-        return super()._simplify_partial_constant(entries)
-
-    def to_string(self, entries: List[str]):
-        return f'({entries[0]}-{entries[1]})'
-
-
-Sub = _Sub()
-
-
-class _Mult(MapElementFromFunction):
-
-    def __init__(self):
-        super().__init__('Mult', lambda a, b: a+b)
-
-    def _simplify_partial_constant(self, entries: List['MapElement']) -> 'MapElement':
-        if isinstance(entries[0], MapElementConstant) and (entries[0].elem == 0):
-            return entries[0]
-        if isinstance(entries[0], MapElementConstant) and (entries[0].elem == 1):
-            return entries[1]
-
-        if isinstance(entries[1], MapElementConstant) and (entries[1].elem == 0):
-            return entries[1]
-        if isinstance(entries[1], MapElementConstant) and (entries[1].elem == 1):
-            return entries[0]
-
-        return super()._simplify_partial_constant(entries)
-
-    def to_string(self, entries: List[str]):
-        return f'({entries[0]}*{entries[1]})'
-
-
-Mult = _Mult()
-
-
-class _Div(MapElementFromFunction):
-
-    def __init__(self):
-        super().__init__('Div', lambda a, b: a+b)
-
-    def _simplify_partial_constant(self, entries: List['MapElement']) -> 'MapElement':
-        if isinstance(entries[1], MapElementConstant):
-            if entries[1].elem == 0:
-                raise Exception('Cannot divide by zero')
-            if entries[1].elem == 1:
-                return entries[0]
-
-        if isinstance(entries[0], MapElementConstant) and (entries[0].elem == 0):
-            return entries[0]
-
-        return super()._simplify_partial_constant(entries)
-
-    def to_string(self, entries: List[str]):
-        return f'({entries[0]}/{entries[1]})'
-
-
-Div = _Div()
-
-#
-#
-#
-#
-# SimpleUniMap = Callable[[ExtElement], ExtElement]
-#
-#
-# def pow_map(power: int):
-#     def specific_pow_map(elem: ExtElement):
-#         return elem**power
-#     return specific_pow_map
-#
-#
-# class UniMapping(MapElement):
-#
-#     _counter = 0
-#
-#     def __init__(self, uni_map: Union[str, SimpleUniMap], inside: Optional[MapElement] = None):
-#         self.uni_map = uni_map
-#         if inside is None:
-#             self.inside: MapElement = Var(f'__UniMappingVar_{UniMapping._counter}__')
-#             UniMapping._counter += 1
-#         else:
-#             self.inside = inside
-#
-#     def __call__(self, variables) -> MapElement:
-#         if isinstance(variables, dict):
-#             uni_map = self.uni_map
-#             if isinstance(self.uni_map, str):
-#                 uni_map = variables.get(self.uni_map, uni_map)
-#             inside = self.inside(variables)
-#             return UniMapping(uni_map, inside)
-#         if isinstance(self.inside, Var):
-#             wrapped = convert_to_map(variables)
-#             if isinstance(wrapped, MapElement):
-#                 return UniMapping(self.uni_map, wrapped)
-#         return NotImplemented
-#
-#     def simplify(self) -> MapElement:
-#         inside = self.inside.simplify()
-#         if isinstance(inside, MapElementConstant) and not isinstance(self.uni_map, str):
-#             return MapElementConstant(self.uni_map(inside.evaluate()))
-#         return UniMapping(self.uni_map, inside)
-#
-#     def __str__(self):
-#         if isinstance(self.uni_map, str):
-#             return f'{self.uni_map}({self.inside})'
-#         else:
-#             return f'{self.uni_map.__name__}({self.inside})'
-#
-#
-#
-#
-# op_sign = {operator.add: '+', operator.sub: '-', operator.mul: '*', operator.truediv: '/'}
-#
-#
-# class _MapElementOp(MapElement):
-#     """
-#     The extension of a binary operation on elements to a binary operation on functions
-#     """
-#
-#     def __init__(
-#             self, map_elem_1: MapElement, map_elem_2: MapElement,
-#             op: Callable[[Any, Any], Any]):
-#         self.map_elem_1 = map_elem_1
-#         self.map_elem_2 = map_elem_2
-#         self.op = op
-#
-#     def simplify(self):
-#         self.map_elem_1 = self.map_elem_1.simplify()
-#         self.map_elem_2 = self.map_elem_2.simplify()
-#         return self.op(self.map_elem_1, self.map_elem_2)
-#
-#     def __call__(self, variables: Dict) -> MapElement:
-#         return self.op(self.map_elem_1(variables), self.map_elem_2(variables))
-#
-#     def __str__(self):
-#         return f'{self.map_elem_1} {op_sign[self.op]} {self.map_elem_2}'
-#
-# AddMap = _MapElementOp
-#
-#
-# class ElemFunctionExtension(MapElement):
-#
-#     def __init__(self, name: str, function: Callable[[List[ExtElement]], ExtElement]):
-#         self.name = name
-#         self.function = function
-
-
-
-

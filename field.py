@@ -119,7 +119,7 @@ class FieldElement:
     # -------------------- extra arithmetics -----------------------
 
     def inv(self):
-        if (self.n == 0):
+        if self.n == 0:
             raise ZeroDivisionError
         _, m, _ = gcd(self.n, self._p)
         return FieldElement(m)
