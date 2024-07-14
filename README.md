@@ -10,7 +10,9 @@ Given any field $\mathbb{F}$ we can consider the ring (almost a field) of all fu
 The field operations from $\mathbb{F}$ are extended to these functions. Here too we would want to have
 equations with "function variables" which we can fill in later. For example, we can write 
 
-$$f(f(x,y),z) = f(x,f(y,z)),$$
+```math
+f(f(x,y),z) = f(x,f(y,z)),
+```
 
 and then later choose $f$ to be addition or multiplication.
 
@@ -18,14 +20,18 @@ This library emerged from this type of problem which comes up naturally in mathe
 
 Another application is to help solve functional equations. For example, for 
 
-$$y*f(x) = y*x - f(1/x)$$
+```math
+y\cdot f(x) = y\cdot x - f(1/x)
+```
 
 we might note that we can write $f(x) = x - f(1/x)/y$, then substitute $x$ with $1/x$ to obtain
 
-$$y*f(x) = y*x - 1/x + f(x)/y$$
+```math
+y\cdot f(x) = y\cdot x - 1/x + f(x)/y
+```
 
 from which we can find out $f(x)$.  While it is already possible to do it with the current code, it is hard 
-follow it visually, since it will look something like "(x-( (( 1/x )-( f(x)/y ))/y ))". More over, it will 
-require a simple interface that us mere humans can use, for example, moving element from both sides of the
-equation to the other side, isolating function, automatically adding in exercises like the one above
+follow it visually, since it will look something like "(x-( (( 1/x )-( f(x)/y ))/y ))" and it is not always easy to decide how to "simplify" the formula. 
+More over, it will require a simple interface that us mere humans can use, for example, moving element from both sides of the
+equation to the other side (and thus simplifying the formula manually), isolating functions, automatically adding in exercises like the one above
 that $f(x)$ is actually a function of both $x,y$ (though we think of $y$ as "fixed" and then find $f$), etc.
