@@ -2,7 +2,7 @@ from abc import abstractmethod
 import collections
 import inspect
 from typing import Callable, Dict, List, Optional
-from field import FieldElement, ExtElement
+from mapping_field.field import FieldElement, ExtElement
 
 
 # def _to_constant(elem):
@@ -151,31 +151,31 @@ class MapElement:
     # Overriding the following functions in the arithmetics.py file.
     # Adding them here to help the compiler know that they exist.
 
-    def __add__(self, other):
+    def __add__(self, other) -> 'MapElement':
         return NotImplemented
 
-    def __radd__(self, other):
+    def __radd__(self, other) -> 'MapElement':
         return NotImplemented
 
-    def __neg__(self):
+    def __neg__(self) -> 'MapElement':
         return NotImplemented
 
-    def __sub__(self, other):
+    def __sub__(self, other) -> 'MapElement':
         return NotImplemented
 
-    def __rsub__(self, other):
+    def __rsub__(self, other) -> 'MapElement':
         return NotImplemented
 
-    def __mul__(self, other):
+    def __mul__(self, other) -> 'MapElement':
         return NotImplemented
 
-    def __rmul__(self, other):
+    def __rmul__(self, other) -> 'MapElement':
         return NotImplemented
 
-    def __truediv__(self, other):
+    def __truediv__(self, other) -> 'MapElement':
         return NotImplemented
 
-    def __rtruediv__(self, other):
+    def __rtruediv__(self, other) -> 'MapElement':
         return NotImplemented
 
 
