@@ -1,7 +1,7 @@
 from abc import abstractmethod
 import collections
 import inspect
-from typing import Callable, Dict, List
+from typing import Callable, Dict, List, Optional
 from field import FieldElement, ExtElement
 
 
@@ -87,6 +87,7 @@ class MapElement:
         if len(args) != 0:
             raise Exception(f'When calling a function use just args or just kwargs, not both.')
 
+        # Split assignments into variables and functions
         for key, value in kwargs.items():
             v = Var.try_get(key)
             if v is not None:
@@ -95,7 +96,12 @@ class MapElement:
 
             f = NamedFunc.try_get(key)
             if f is not None:
-                func_dict[f] = convert_to_map(value)
+                assigned_function = convert_to_map(value)
+                if f.num_vars != assigned_function.num_vars:
+                    raise Exception(
+                        f'Cannot assign function {f} with {f.num_vars} variables to '
+                        f'{assigned_function} with {assigned_function.num_vars} variables')
+                func_dict[f] = assigned_function
                 continue
 
             raise Exception(f'Cannot assign new value to element which is not a variable of a named function : {key}')
@@ -180,10 +186,10 @@ class Var(MapElement):
 
     Cannot generate two variables with the same name. Trying to do so, will return the same variable.
     """
-    _instances = {}
+    _instances: Dict[str, 'Var'] = {}
 
     @classmethod
-    def try_get(cls, var_name: str):
+    def try_get(cls, var_name: str) -> Optional['Var']:
         """
         Checks if there is a variable with the given name. Return it if exists, and otherwise None.
         """
@@ -222,10 +228,10 @@ class NamedFunc(MapElement):
 
     Cannot generate two functions with the same name. Trying to do so, will raise an exception.
     """
-    _instances = {}
+    _instances: Dict[str, 'NamedFunc'] = {}
 
     @classmethod
-    def try_get(cls, func_name: str):
+    def try_get(cls, func_name: str) -> Optional['NamedFunc']:
         return cls._instances.get(func_name, None)
 
     def __new__(cls, func_name: str, variables: List[Var]):
@@ -242,9 +248,21 @@ class NamedFunc(MapElement):
         self.name = func_name
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
-        return func_dict.get(self, self)
+        if len(func_dict) == 0:
+            eval_entries = []
+            compose = False
+            for var in self.vars:
+                eval_var = var_dict.get(var, var)
+                eval_entries.append(eval_var)
+                if eval_var != var:
+                    compose = True
+            return CompositionFunction(function=self, entries=eval_entries) if compose else self
+
+        return func_dict.get(self, self)._call_with_dict(var_dict, {})
 
     def _simplify_with_entries(self, simplified_entries: List['MapElement']) -> 'MapElement':
+        if all(var == entry for var, entry in zip(self.vars, simplified_entries)):
+            return self
         return CompositionFunction(self, simplified_entries)
 
     def to_string(self, vars_str_list: List[str]):
@@ -300,6 +318,8 @@ class CompositionFunction(MapElement):
             self.entries = entries
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
+        if len(var_dict) == 0 and len(func_dict) == 0:
+            return self
         eval_function = self.function._call_with_dict({}, func_dict)
         eval_entries = [entry._call_with_dict(var_dict, func_dict) for entry in self.entries]
 
@@ -367,7 +387,7 @@ class MapElementFromFunction(MapElement):
         eval_entries = []
         compose = False
         for var in self.vars:
-            eval_var = var._call_with_dict(var_dict, func_dict)
+            eval_var = var_dict.get(var, var)
             eval_entries.append(eval_var)
             if eval_var != var:
                 compose = True
