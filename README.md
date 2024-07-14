@@ -14,8 +14,9 @@ $$f(f(x,y),z) = f(x,f(y,z)),$$
 
 and then later choose $f$ to be addition or multiplication.
 
-This library emerged from this type of problem which comes up naturally in mathematics. Another application is
-as follows. If I want to solve functional equations like 
+This library emerged from this type of problem which comes up naturally in mathematics. 
+
+Another application is to help solve functional equations. For example, for 
 
 $$y*f(x) = y*x - f(1/x)$$
 
@@ -23,4 +24,8 @@ we might note that we can write $f(x) = x - f(1/x)/y$, then substitute $x$ with 
 
 $$y*f(x) = y*x - 1/x + f(x)/y$$
 
-from which we can find out $f(x)$. 
+from which we can find out $f(x)$.  While it is already possible to do it with the current code, it is hard 
+follow it visually, since it will look something like "(x-( (( 1/x )-( f(x)/y ))/y ))". More over, it will 
+require a simple interface that us mere humans can use, for example, moving element from both sides of the
+equation to the other side, isolating function, automatically adding in exercises like the one above
+that $f(x)$ is actually a function of both $x,y$ (though we think of $y$ as "fixed" and then find $f$), etc.
