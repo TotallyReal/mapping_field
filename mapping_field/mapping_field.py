@@ -1,8 +1,8 @@
 from abc import abstractmethod
+import collections
 import inspect
 from typing import Callable, Dict, List
 from field import FieldElement, ExtElement
-
 
 
 # def _to_constant(elem):
@@ -23,24 +23,19 @@ def convert_to_map(elem):
         return MapElementConstant(elem)
 
     if isinstance(elem, str):
-        mapElement = Var.try_get(elem)
-        if mapElement is not None:
-            return mapElement
+        map_element = Var.try_get(elem)
+        if map_element is not None:
+            return map_element
 
-        mapElement = NamedFunc.try_get(elem)
-        if mapElement is not None:
-            return mapElement
+        map_element = NamedFunc.try_get(elem)
+        if map_element is not None:
+            return map_element
 
     return NotImplemented
 
 
-def params_to_maps(f):
-
-    def wrapper(self, element):
-        value = convert_to_map(element)
-        return NotImplemented if value == NotImplemented else f(self, value)
-
-    return wrapper
+VarDict = Dict['Var', 'MapElement']
+FuncDict = Dict['NamedFunc', 'MapElement']
 
 
 class MapElement:
@@ -64,17 +59,33 @@ class MapElement:
         self.vars = variables
         self.num_vars = len(variables)
 
+    def set_var_order(self, variables: List['Var']):
+        if len(variables) > len(set(variables)):
+            raise Exception(f'Function must have distinct variables')
+
+        if collections.Counter(variables) != collections.Counter(self.vars):
+            raise Exception(f'New variables order {variables} have to be on the function\'s variables {self.vars}')
+
+        self.vars = variables
+
     def __call__(self, *args, **kwargs) -> 'MapElement':
+        simplify = True
+        if 'simplify' in kwargs:
+            simplify = kwargs['simplify']
+            if not isinstance(simplify, bool):
+                raise Exception(f'The "simplify" flag must be a boolean, instead got {simplify}')
+            del kwargs['simplify']
+
         var_dict = {}
         func_dict = {}
         if len(kwargs) == 0:
             if len(args) != self.num_vars:
-                raise Exception(f'Function {self.name} need to get {self.num_vars} values, and instead got {len(args)}.')
+                raise Exception(f'Function needs to get {self.num_vars} values, and instead got {len(args)}.')
             var_dict = {v: convert_to_map(value) for v, value in zip(self.vars, args)}
             args = []
 
         if len(args) != 0:
-            raise Exception(f'When calling {self.name} use just args or just kwargs, not both.')
+            raise Exception(f'When calling a function use just args or just kwargs, not both.')
 
         for key, value in kwargs.items():
             v = Var.try_get(key)
@@ -90,10 +101,10 @@ class MapElement:
             raise Exception(f'Cannot assign new value to element which is not a variable of a named function : {key}')
 
         result = self._call_with_dict(var_dict, func_dict)
-        return result.simplify()
+        return result.simplify() if simplify else result
 
     # Override when needed
-    def _call_with_dict(self, var_dict: Dict['Var', 'MapElement'], func_dict: Dict['NamedFunc', 'MapElement']) -> 'MapElement':
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
         return self
 
     def evaluate(self) -> ExtElement:
@@ -103,7 +114,7 @@ class MapElement:
 
     def simplify(self) -> 'MapElement':
         """
-        Try to simplified the given function (e.g. 1+x*0+y -> 1+y)
+        Try to simplify the given function (e.g. 1+x*0+y -> 1+y)
         """
         return self._simplify_with_entries(self.vars)
 
@@ -119,6 +130,7 @@ class MapElement:
         return str(self)
 
     def __str__(self):
+        # return 'empty'
         vars_str_list = [var.name for var in self.vars]
         return self.to_string(vars_str_list)
 
@@ -130,6 +142,35 @@ class MapElement:
         """
         pass
 
+    # Overriding the following functions in the arithmetics.py file.
+    # Adding them here to help the compiler know that they exist.
+
+    def __add__(self, other):
+        return NotImplemented
+
+    def __radd__(self, other):
+        return NotImplemented
+
+    def __neg__(self):
+        return NotImplemented
+
+    def __sub__(self, other):
+        return NotImplemented
+
+    def __rsub__(self, other):
+        return NotImplemented
+
+    def __mul__(self, other):
+        return NotImplemented
+
+    def __rmul__(self, other):
+        return NotImplemented
+
+    def __truediv__(self, other):
+        return NotImplemented
+
+    def __rtruediv__(self, other):
+        return NotImplemented
 
 
 class Var(MapElement):
@@ -141,12 +182,12 @@ class Var(MapElement):
     """
     _instances = {}
 
-    @staticmethod
-    def try_get(var_name: str):
+    @classmethod
+    def try_get(cls, var_name: str):
         """
         Checks if there is a variable with the given name. Return it if exists, and otherwise None.
         """
-        return Var._instances.get(var_name, None)
+        return cls._instances.get(var_name, None)
 
     def __new__(cls, name: str):
         if name in cls._instances:
@@ -170,7 +211,7 @@ class Var(MapElement):
     def to_string(self, vars_str_list: List[str]):
         return self.name
 
-    def _call_with_dict(self, var_dict: Dict['Var', MapElement], func_dict: Dict['NamedFunc', MapElement]) -> MapElement:
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
         # Try to look both for the variable itself, and its name
         return var_dict.get(self, self)
 
@@ -183,12 +224,13 @@ class NamedFunc(MapElement):
     """
     _instances = {}
 
-    @staticmethod
-    def try_get(func_name: str):
-        return NamedFunc._instances.get(func_name, None)
+    @classmethod
+    def try_get(cls, func_name: str):
+        return cls._instances.get(func_name, None)
 
     def __new__(cls, func_name: str, variables: List[Var]):
         if func_name in cls._instances:
+            # TODO: Consider creating a specified exception
             raise Exception(f'Cannot create two functions with the same name {func_name}')
 
         instance = super(NamedFunc, cls).__new__(cls)
@@ -196,10 +238,10 @@ class NamedFunc(MapElement):
         return instance
 
     def __init__(self, func_name: str, variables: List[Var]):
+        super().__init__(variables)
         self.name = func_name
-        self.vars = variables
 
-    def _call_with_dict(self, var_dict: Dict['Var', MapElement], func_dict: Dict['NamedFunc', MapElement]) -> MapElement:
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
         return func_dict.get(self, self)
 
     def _simplify_with_entries(self, simplified_entries: List['MapElement']) -> 'MapElement':
@@ -231,7 +273,8 @@ class Func:
                 continue
             raise Exception(f'Could not define the function {self.name}: Variable {v} is not well defined.')
 
-        self.assigned = CompositionFunction(NamedFunc(self.name, actual_vars), actual_vars)
+        # TODO: why composition
+        self.assigned = NamedFunc(self.name, actual_vars)
         return self.assigned
 
 
@@ -248,7 +291,7 @@ class CompositionFunction(MapElement):
         super().__init__(variables)
         if isinstance(function, CompositionFunction):
             top_function = function.function
-            var_dict = {var: entry for var,entry in zip(function.vars, entries)}
+            var_dict = {var: entry for var, entry in zip(function.vars, entries)}
             top_entries = [entry._call_with_dict(var_dict, {}) for entry in function.entries]
             self.function = top_function
             self.entries = top_entries
@@ -256,19 +299,28 @@ class CompositionFunction(MapElement):
             self.function = function
             self.entries = entries
 
-    def _call_with_dict(self, var_dict: Dict['Var', 'MapElement'], func_dict: Dict['NamedFunc', 'MapElement']) -> 'MapElement':
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
         eval_function = self.function._call_with_dict({}, func_dict)
         eval_entries = [entry._call_with_dict(var_dict, func_dict) for entry in self.entries]
 
         return CompositionFunction(function=eval_function, entries=eval_entries)
 
-
     def to_string(self, vars_str_list: List[str]):
-        entries_str_list = [entry.to_string(vars_str_list) for entry in self.entries]
+        # Compute the str representation for each entry, by supplying it the str
+        # representations of its variables
+        var_str_dict = {var: var_str for var, var_str in zip(self.vars, vars_str_list)}
+        entries_str_list = [
+            entry.to_string([var_str_dict[var] for var in entry.vars])
+            for entry in self.entries]
         return self.function.to_string(entries_str_list)
 
     def _simplify_with_entries(self, simplified_entries: List['MapElement']) -> 'MapElement':
-        simplified_entries = [entry._simplify_with_entries(simplified_entries) for entry in self.entries]
+        # Compute the simplified entries, by supplying each with the simplified version
+        # of its variables
+        simplified_var_dict = {var: simplified_var for var, simplified_var in zip(self.vars, simplified_entries)}
+        simplified_entries = [
+            entry._simplify_with_entries([simplified_var_dict[var] for var in entry.vars])
+            for entry in self.entries]
         return self.function._simplify_with_entries(simplified_entries)
 
 
@@ -309,8 +361,7 @@ class MapElementFromFunction(MapElement):
         entries_str = ','.join(entries)
         return f'{self.name}({entries_str})'
 
-    def _call_with_dict(self, var_dict: Dict['Var', 'MapElement'],
-                        func_dict: Dict['NamedFunc', 'MapElement']) -> 'MapElement':
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
         if len(var_dict) == 0:
             return self
         eval_entries = []

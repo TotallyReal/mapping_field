@@ -1,4 +1,4 @@
-from mapping_field import MapElement, MapElementFromFunction, MapElementConstant, CompositionFunction, params_to_maps
+from mapping_field import MapElement, MapElementFromFunction, MapElementConstant, CompositionFunction, convert_to_map
 from typing import Callable, Any, Dict, Optional, Union, List, Tuple
 
 """
@@ -88,7 +88,7 @@ class _Add(MapElementFromFunction):
 class _Sub(MapElementFromFunction):
 
     def __init__(self):
-        super().__init__('Sub', lambda a, b: a + b)
+        super().__init__('Sub', lambda a, b: a - b)
 
     def _simplify_partial_constant(self, entries: List[MapElement]) -> MapElement:
         if entries[0] == 0:
@@ -137,7 +137,7 @@ def _as_rational(map_elem: MapElement) -> (int, MapElement, MapElement):
 class _Mult(MapElementFromFunction):
 
     def __init__(self):
-        super().__init__('Mult', lambda a, b: a+b)
+        super().__init__('Mult', lambda a, b: a * b)
 
     def _simplify_partial_constant(self, entries: List[MapElement]) -> MapElement:
         # Multiplication by 0 and 1
@@ -156,7 +156,9 @@ class _Mult(MapElementFromFunction):
         if entries[0] == numerator0 and entries[1] == numerator1:
             return super()._simplify_partial_constant(entries)
 
-        abs_value = ((numerator0 * numerator1) / (denominator0 * denominator1))
+        numerator = numerator0 * numerator1
+        denominator = denominator0 * denominator1
+        abs_value = numerator / denominator
         return abs_value if sign0 * sign1 == 1 else -abs_value
 
     def to_string(self, entries: List[str]):
@@ -166,7 +168,7 @@ class _Mult(MapElementFromFunction):
 class _Div(MapElementFromFunction):
 
     def __init__(self):
-        super().__init__('Div', lambda a, b: a+b)
+        super().__init__('Div', lambda a, b: a / b)
 
     def _simplify_partial_constant(self, entries: List[MapElement]) -> MapElement:
         if entries[1] == 0:
@@ -190,6 +192,15 @@ class _Div(MapElementFromFunction):
 
 
 # --------------------- Override arithmetic operators for MapElement ---------------------
+
+def params_to_maps(f):
+
+    def wrapper(self, element):
+        value = convert_to_map(element)
+        return NotImplemented if value == NotImplemented else f(self, value)
+
+    return wrapper
+
 
 Neg = _Negative()
 MapElement.__neg__ = lambda self: Neg(self)
