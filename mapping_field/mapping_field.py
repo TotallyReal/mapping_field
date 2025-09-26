@@ -40,26 +40,30 @@ FuncDict = Dict['NamedFunc', 'MapElement']
 
 class MapElement:
     """
-    The main class representing a function f: (x_1,...,x_n) -> y.
+    The main class representing a "formula" which both has variables, and function variables.
 
-    There are two ways to apply this function:
-    1. Positional: Call f(a_1, ..., a_n), where the a_i are either elements or maps.
-    2. Dictionary: Call f(x_1 = a_1, ..., x_n = a_n). This dictionary access can be much more general:
-            a. The variables don't have to be ordered (e.g. {x_2 = a_2, x_5 = a_5, ... }),
-            b. Not all variables must appear (e.g. {x_1 = a_1, x_7 = a_7}),
-            c. Extra variables can appear (e.g. {x_1 = a_1 , y_2 = b_2}),
-            d. Can add assignments for functions (e.g. {g=Add, x_1=3})
+    For exmaple:
+            PHI(x, y, f) := sin(x*y) + f(x - y)
+    This function has two standard variables x, y and one function variable f
 
-    To implement this class, you must implement the function __call__ which defines the map
+    As the standard variables are more common, for ease of use they must be set in the __init__ function.
+    This order is used when calling the function in __call__. You can override it in subclasses, but better to override
+    the _call_with_dict(var_dict, func_dict) method instead. (see description below)
     """
 
     def __init__(self, variables: List['Var']):
+        """
+        The 'variables' are the ordered list used when calling the function, as in f(a_1,...,a_n).
+        """
         if len(variables) > len(set(variables)):
             raise Exception(f'Function must have distinct variables')
         self.vars = variables
         self.num_vars = len(variables)
 
     def set_var_order(self, variables: List['Var']):
+        """
+        Reset the order of the standard variables
+        """
         if len(variables) > len(set(variables)):
             raise Exception(f'Function must have distinct variables')
 
@@ -69,6 +73,21 @@ class MapElement:
         self.vars = variables
 
     def __call__(self, *args, **kwargs) -> 'MapElement':
+        """
+        There are three ways to apply this function:
+        1. Positional: Call f(a_1, ..., a_n), where the a_i are either elements or maps.
+        2. Dictionary: Call f({x_1: a_1, ..., x_n: a_n, f_1: F_1, ..., f_k: F_k}).
+           This dictionary must be a single argument, and provides a more general approach than the positional :
+                a. The variables don't have to be ordered (e.g. {x_2 = a_2, x_5 = a_5, ... }),
+                b. Not all variables must appear (e.g. {x_1 = a_1, x_7 = a_7}),
+                c. Extra variables can appear (e.g. {x_1 = a_1 , y_2 = b_2}),
+                d. Can add assignments for function variables (e.g. {g=Add, x_1=3})
+        3. Keywords: Call f(x_1 = a_1, ..., x_n = a_n, f_1 = F_1, ..., f_k = F_k)
+           Use only keywords - same process as in the Dictionary.
+
+        To implement this method in a subclass, you must implement the function _call_with_dict below.
+        """
+        # Extract simplify flag
         simplify = True
         if 'simplify' in kwargs:
             simplify = kwargs['simplify']
@@ -111,9 +130,15 @@ class MapElement:
 
     # Override when needed
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
+        """
+        Apply the map with the given values of the standard and function variables
+        """
         return self
 
     def evaluate(self) -> ExtElement:
+        """
+        Returns the constant this map defines. If it is not constant, raises an error.
+        """
         map_elem = self.simplify()
         assert isinstance(map_elem, MapElementConstant)
         return map_elem.evaluate()
@@ -124,19 +149,21 @@ class MapElement:
         """
         return self._simplify_with_entries(self.vars)
 
+    # Override when needed
     def _simplify_with_entries(self, simplified_entries: List['MapElement']) -> 'MapElement':
         """
         --------------- Override when needed ---------------
-        Try to simplified the given function, given the simplified entries (which can assumed to have
+        Try to simplify the given function, given the simplified entries (which can assumed to have
         the number of entries this function needs).
         """
         return self
+
+    # <editor-fold desc=" ------------------------ String represnetation ------------------------">
 
     def __repr__(self):
         return str(self)
 
     def __str__(self):
-        # return 'empty'
         vars_str_list = [var.name for var in self.vars]
         return self.to_string(vars_str_list)
 
@@ -148,8 +175,12 @@ class MapElement:
         """
         pass
 
+    # </editor-fold>
+
     # Overriding the following functions in the arithmetics.py file.
     # Adding them here to help the compiler know that they exist.
+
+    # <editor-fold desc=" ------------------------ Arithmetic functions ------------------------">
 
     def __add__(self, other) -> 'MapElement':
         return NotImplemented
@@ -178,10 +209,12 @@ class MapElement:
     def __rtruediv__(self, other) -> 'MapElement':
         return NotImplemented
 
+    # </editor-fold>
+
 
 class Var(MapElement):
     """
-    A single variable. Can be thought of as the projection map on a variable, namely (x_1,...,x_i,...,x_n) -> x_n.
+    A single variable. Can be thought of as the projection map on a variable, namely (x_1,...,x_i,...,x_n) -> x_i.
     The variable projected on is given by the name in the constructor.
 
     Cannot generate two variables with the same name. Trying to do so, will return the same variable.
@@ -218,7 +251,6 @@ class Var(MapElement):
         return self.name
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
-        # Try to look both for the variable itself, and its name
         return var_dict.get(self, self)
 
 
@@ -271,6 +303,13 @@ class NamedFunc(MapElement):
 
 
 class Func:
+    """
+    A helper class used to create a Named Function map.
+    Instead of
+        NamedFunc('f',[X_1, ..., X_n])
+    you can use
+        Func('f')(X_1,...,X_n)
+    """
 
     def __init__(self, name: str):
         self.name = name
@@ -299,6 +338,11 @@ class Func:
 class CompositionFunction(MapElement):
 
     def __init__(self, function: MapElement, entries: List[MapElement]):
+        """
+        The composition of the given function with the entries of that function.
+        The number of entries should be the number of standard variables of the function, and in
+        the same order.
+        """
         seen = set()
         variables = []
 
@@ -370,6 +414,11 @@ class MapElementConstant(MapElement):
 class MapElementFromFunction(MapElement):
 
     def __init__(self, name: str, function: Callable[[List[ExtElement]], ExtElement]):
+        """
+        A map defined by a callable python function.
+        The number of parameters to this function is the number of standard variables for this MapElement,
+        and with the same order.
+        """
         self.name = name
         self.function = function
         self.num_parameters = len(inspect.signature(function).parameters)
