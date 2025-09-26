@@ -1,11 +1,22 @@
+from typing import List
+
 import pytest
-from mapping_field.mapping_field import Var, NamedFunc, Func, CompositionFunction, MapElementFromFunction
+from mapping_field.mapping_field import Var, NamedFunc, Func, CompositionFunction, MapElementFromFunction, MapElement
 
 
 @pytest.fixture(autouse=True)
 def reset_static_variables():
     Var._instances = {}
     NamedFunc._instances = {}
+
+class DummyMap(MapElement):
+
+    def __init__(self, value: int):
+        super().__init__([])
+        self.value = value
+
+    def to_string(self, vars_str_list: List[str]):
+        return f'DummyMap({self.value})'
 
 
 # ----------------- var tests -----------------
@@ -29,7 +40,9 @@ def test_var_string():
 
 
 def test_var_assignment():
-    pass
+    dummy = DummyMap(0)
+    x = Var('x')
+    assert x(dummy) == dummy
 
 
 # ----------------- named function tests -----------------
@@ -91,15 +104,4 @@ def test_simplify():
 
 
 
-
-# def test_associativity():
-#     x = Var('x')
-#     y = Var('y')
-#     z = Var('z')
-#
-#     f = Func('f')(x)
-#
-#     # lhs = y*f(x)
-#     # rhs = y*x - f(1/x)
-#     assert False
 

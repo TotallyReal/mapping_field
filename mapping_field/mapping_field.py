@@ -95,16 +95,15 @@ class MapElement:
                 raise Exception(f'The "simplify" flag must be a boolean, instead got {simplify}')
             del kwargs['simplify']
 
+        if len(args) != 0 and len(kwargs) != 0:
+            raise Exception(f'When calling a function use just args or just kwargs, not both.')
+
         var_dict = {}
         func_dict = {}
         if len(kwargs) == 0:
             if len(args) != self.num_vars:
                 raise Exception(f'Function needs to get {self.num_vars} values, and instead got {len(args)}.')
             var_dict = {v: convert_to_map(value) for v, value in zip(self.vars, args)}
-            args = []
-
-        if len(args) != 0:
-            raise Exception(f'When calling a function use just args or just kwargs, not both.')
 
         # Split assignments into variables and functions
         for key, value in kwargs.items():
@@ -280,17 +279,19 @@ class NamedFunc(MapElement):
         self.name = func_name
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
-        if len(func_dict) == 0:
-            eval_entries = []
-            compose = False
-            for var in self.vars:
-                eval_var = var_dict.get(var, var)
-                eval_entries.append(eval_var)
-                if eval_var != var:
-                    compose = True
-            return CompositionFunction(function=self, entries=eval_entries) if compose else self
 
-        return func_dict.get(self, self)._call_with_dict(var_dict, {})
+        func = func_dict.get(self, self)
+        if func != self:
+            return func._call_with_dict(var_dict, {})
+
+        eval_entries = []
+        compose = False
+        for var in self.vars:
+            eval_var = var_dict.get(var, var)
+            eval_entries.append(eval_var)
+            if eval_var != var:
+                compose = True
+        return CompositionFunction(function=self, entries=eval_entries) if compose else self
 
     def _simplify_with_entries(self, simplified_entries: List['MapElement']) -> 'MapElement':
         if all(var == entry for var, entry in zip(self.vars, simplified_entries)):
@@ -396,9 +397,6 @@ class MapElementConstant(MapElement):
     def __init__(self, elem: ExtElement):
         super().__init__([])
         self.elem = elem
-
-    def _simplify_with_entries(self, simplified_entries: List['MapElement']) -> 'MapElement':
-        return self
 
     def to_string(self, vars_str_list: List[str]):
         return str(self.elem)
