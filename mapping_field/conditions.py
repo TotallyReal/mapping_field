@@ -201,7 +201,7 @@ class RangeCondition(Condition):
 class RangeTransformer:
 
     @abstractmethod
-    def transform_range(self, range_values: Range) -> Union[RangeCondition , AssignmentCondition]:
+    def transform_range(self, range_values: Range) -> Condition:
         pass
 
 # ========================================================================= #

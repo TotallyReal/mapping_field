@@ -2,7 +2,8 @@ import math
 from typing import List, Optional, Dict, Tuple
 
 from mapping_field import MapElement, Var, VarDict, FuncDict, MapElementConstant
-from mapping_field.conditions import RangeCondition, RangeTransformer, AssignmentCondition
+from mapping_field.conditions import (
+    RangeCondition, RangeTransformer, AssignmentCondition, Condition, TrueCondition, FalseCondition)
 
 
 class Linear(MapElement, RangeTransformer):
@@ -88,9 +89,14 @@ class Linear(MapElement, RangeTransformer):
 
         return (self.a == other.a) and (self.b == other.b) and (self.elem == other.elem)
 
-    def transform_range(self, f_range:Tuple[float, float]) -> RangeCondition:
+    def transform_range(self, f_range:Tuple[float, float]) -> Condition:
         l, h = f_range
+        if self.a == 0:
+            return TrueCondition if l<= self.b < h else FalseCondition
+
         f_range = ((l-self.b)/self.a, (h-self.b)/self.a)
+        if self.a < 0:
+            f_range = (f_range[1], f_range[0])
         if isinstance(self.elem, Linear):
             return self.elem.transform_range(f_range)
         else:

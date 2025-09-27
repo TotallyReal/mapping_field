@@ -2,7 +2,7 @@ import pytest
 from typing import List
 
 from mapping_field.linear import Linear, IntVar
-from mapping_field.conditions import RangeCondition, ConditionalFunction, ReLU, AssignmentCondition, FalseCondition
+from mapping_field.conditions import RangeCondition, AssignmentCondition, FalseCondition, TrueCondition, Condition
 from mapping_field.mapping_field import MapElementConstant, MapElement, Var
 
 @pytest.fixture(autouse=True)
@@ -59,12 +59,31 @@ def test_linear_arithmetic():
 
 def test_linear_ranged_condition():
     dummy = DummyMap(0)
-    func = 2*Linear.of(dummy) + 3
-    condition = RangeCondition(func, (5,15))
+    linear_dummy = Linear.of(dummy)
 
-    condition = condition.simplify()
+    def ranged_condition(a, b, low, high) -> Condition:
+        func = a*linear_dummy + b
+        condition = RangeCondition(func, (low, high))
+        condition = condition.simplify()
+        return condition
+
+    condition = ranged_condition(a=2, b=3, low=5, high=15)
     result = RangeCondition(dummy, (1,6))
+    assert condition == result
 
+    # test negative coefficient
+    condition = ranged_condition(a=-2, b=3, low=5, high=15)
+    result = RangeCondition(dummy, (-6,-1))
+    assert condition == result
+
+    # test zero coefficient - False
+    condition = ranged_condition(a=0, b=3, low=5, high=15)
+    result = FalseCondition
+    assert condition == result
+
+    # test zero coefficient - True
+    condition = ranged_condition(a=0, b=7, low=5, high=15)
+    result = TrueCondition
     assert condition == result
 
 
