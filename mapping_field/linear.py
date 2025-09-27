@@ -1,9 +1,11 @@
+import math
 from typing import List, Optional, Dict, Tuple
 
-from mapping_field import MapElement, Var, VarDict, FuncDict, MapElementFromFunction, MapElementConstant
-from mapping_field.conditions import RangeCondition
+from mapping_field import MapElement, Var, VarDict, FuncDict, MapElementConstant
+from mapping_field.conditions import RangeCondition, RangeTransformer, AssignmentCondition
 
-class Linear(MapElement):
+
+class Linear(MapElement, RangeTransformer):
 
     @staticmethod
     def of(elem: MapElement):
@@ -94,6 +96,32 @@ class Linear(MapElement):
         else:
             return RangeCondition(self.elem, f_range)
 
+
+class BoolVar(Var):
+
+    def __new__(cls, var_name: str):
+        return super(BoolVar, cls).__new__(cls, var_name)
+
+    def __init__(self, var_name: str):
+        super().__init__(var_name)
+
+
+class IntVar(Var, RangeTransformer):
+
+    def __new__(cls, var_name: str):
+        return super(IntVar, cls).__new__(cls, var_name)
+
+    def __init__(self, var_name: str):
+        super().__init__(var_name)
+
+    def transform_range(self, f_range:Tuple[float, float]) -> RangeCondition:
+
+        l, h = f_range
+        k = math.ceil(l)
+        if k < h <= k+1:
+            return AssignmentCondition({self: k})
+
+        return RangeCondition(self, f_range)
 
 # '''
 # A ranged function f(x) with range I is defined as f(x) if this value is in I and 0 otherwise, namely:

@@ -1,6 +1,5 @@
-from typing import List, Optional, Dict, Tuple
-import math
-import copy
+from abc import abstractmethod
+from typing import List, Optional, Dict, Tuple, Union
 import operator
 
 from mapping_field import MapElement, Var, VarDict, FuncDict, MapElementFromFunction, MapElementConstant
@@ -138,6 +137,31 @@ class ConditionIntersection(Condition):
         return True
 
 
+class AssignmentCondition(Condition):
+
+    def __init__(self, var_dict: VarDict):
+        super().__init__(list(var_dict.keys()))
+        self.var_dict = var_dict
+
+    def __repr__(self):
+        return repr(self.var_dict)
+
+    def _eq_simplified(self, condition: 'Condition') -> bool:
+        if isinstance(condition, AssignmentCondition):
+            return self.var_dict == condition.var_dict
+        return super()._eq_simplified(condition)
+
+    def __mul__(self, condition: 'Condition'):
+        if isinstance(condition, AssignmentCondition):
+            # Combine the dictionaries, if there are no different assignments for the same variables
+            for key, value in self.var_dict.items():
+                if condition.var_dict.get(key, value) != value:
+                    return FalseCondition
+            return AssignmentCondition({**self.var_dict, **condition.var_dict})
+
+        return super().__mul__(condition)
+
+
 class RangeCondition(Condition):
 
     def __init__(self, function: MapElement, f_range: Range):
@@ -167,11 +191,20 @@ class RangeCondition(Condition):
         if self.range[0] >= self.range[1]:
             return FalseCondition
 
-        if callable(getattr(self.function, "transform_range", None)):
-            return self.function.transform_range(self.range)
+        condition = self
+        while isinstance(condition, RangeCondition) and  isinstance(condition.function, RangeTransformer):
+            condition = condition.function.transform_range(condition.range)
 
-        return self
+        return condition
 
+
+class RangeTransformer:
+
+    @abstractmethod
+    def transform_range(self, range_values: Range) -> Union[RangeCondition , AssignmentCondition]:
+        pass
+
+# ========================================================================= #
 
 class ConditionalFunction(MapElement):
     """

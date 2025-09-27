@@ -1,8 +1,13 @@
+import pytest
 from typing import List
 
-from mapping_field.linear import Linear
-from mapping_field.conditions import RangeCondition, ConditionalFunction, ReLU
-from mapping_field.mapping_field import MapElementConstant, MapElement
+from mapping_field.linear import Linear, IntVar
+from mapping_field.conditions import RangeCondition, ConditionalFunction, ReLU, AssignmentCondition, FalseCondition
+from mapping_field.mapping_field import MapElementConstant, MapElement, Var
+
+@pytest.fixture(autouse=True)
+def reset_static_variables():
+    Var.clear_vars()
 
 class DummyMap(MapElement):
     def __init__(self, value=0):
@@ -61,3 +66,44 @@ def test_linear_ranged_condition():
     result = RangeCondition(dummy, (1,6))
 
     assert condition == result
+
+
+def test_assignment_condition():
+    Var.clear_vars()
+    x, y, z = Var('x'), Var('y'), Var('z')
+
+    # disjoint
+    cond1 = AssignmentCondition({x:1, y:2})
+    cond2 = AssignmentCondition({z:3})
+    prod = cond1 * cond2
+    result = AssignmentCondition({x:1, y:2, z:3})
+    assert prod == result
+
+    # valid intersection
+    cond1 = AssignmentCondition({x:1, y:2})
+    cond2 = AssignmentCondition({y:2, z:3})
+    prod = cond1 * cond2
+    result = AssignmentCondition({x:1, y:2, z:3})
+    assert prod == result
+
+    # invalid intersection
+    cond1 = AssignmentCondition({x:1, y:2})
+    cond2 = AssignmentCondition({y:5, z:3})
+    prod = cond1 * cond2
+    result = FalseCondition
+    assert prod == result
+
+def test_assignment_from_range():
+    x = IntVar('x')
+
+    condition = RangeCondition(x, (5,6))
+    condition = condition.simplify()
+    result = AssignmentCondition({x: 5})
+    assert condition == result
+
+    linear_func = Linear(5, x, 2)
+    condition = RangeCondition(linear_func, (7,12))
+    condition = condition.simplify()
+    result = AssignmentCondition({x: 1})
+    assert condition == result
+
