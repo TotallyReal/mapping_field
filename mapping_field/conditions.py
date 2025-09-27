@@ -250,7 +250,7 @@ class ConditionalFunction(MapElement):
             for (cond2, elem2) in other.regions:
                 cond_prod = cond1 * cond2
                 if cond_prod != FalseCondition:
-                    regions.append(( cond1 * cond2, op_func(elem1, elem2)))
+                    regions.append(( cond_prod, op_func(elem1, elem2)))
         return ConditionalFunction(regions)
 
     def __add__(self, other: MapElement) -> 'ConditionalFunction':
@@ -290,7 +290,9 @@ class ConditionalFunction(MapElement):
         return ConditionalFunction(regions)
 
     def _simplify_with_entries(self, simplified_entries: List['MapElement']) -> 'MapElement':
-        return self # TODO: implement
+        regions = [(region[0].simplify(), region[1].simplify())
+                   for region in self.regions]
+        return ConditionalFunction(regions)
 
 def ReLU(map_elem: MapElement):
     return ConditionalFunction([

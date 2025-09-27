@@ -114,6 +114,9 @@ class _Sub(MapElementFromFunction):
 
 
 def _as_rational(map_elem: MapElement) -> (int, MapElement, MapElement):
+    """
+    :return: sign, numerator, denominator
+    """
     if not isinstance(map_elem, CompositionFunction):
         return 1, map_elem, MapElementConstant(1)
 

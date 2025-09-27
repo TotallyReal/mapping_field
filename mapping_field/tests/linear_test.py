@@ -93,6 +93,7 @@ def test_assignment_condition():
     result = FalseCondition
     assert prod == result
 
+
 def test_assignment_from_range():
     x = IntVar('x')
 
