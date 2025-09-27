@@ -1,9 +1,8 @@
 from abc import abstractmethod
-from typing import List, Optional, Dict, Tuple, Union
+from typing import List, Tuple
 import operator
 
-from mapping_field import MapElement, Var, VarDict, FuncDict, MapElementFromFunction, MapElementConstant
-from mapping_field.arithmetics import _Add
+from mapping_field import MapElement, Var, VarDict, FuncDict, MapElementConstant
 
 Range = Tuple[float, float]
 
@@ -45,8 +44,11 @@ class Condition:
     def __mul__(self, condition: 'Condition'):
         if isinstance(condition, BinaryCondition) or isinstance(condition, ConditionIntersection):
             return condition * self
-        else:
-            return ConditionIntersection([self, condition])
+
+        if self == condition:
+            return self
+
+        return ConditionIntersection([self, condition])
 
     def simplify(self) -> 'Condition':
         return self
@@ -95,7 +97,13 @@ class ConditionIntersection(Condition):
         if isinstance(condition, BinaryCondition):
             return condition * self
 
-        return ConditionIntersection([*self.conditions, condition])
+        if isinstance(condition, ConditionIntersection):
+            return ConditionIntersection([*self.conditions, *condition.conditions]).simplify()
+
+        return ConditionIntersection([*self.conditions, condition]).simplify()
+
+    def __rmul__(self, condition: 'Condition') -> Condition:
+        return self * condition
 
     def simplify(self):
         if self._simplified:
@@ -109,8 +117,21 @@ class ConditionIntersection(Condition):
             condition = condition.simplify()
             if condition == TrueCondition:
                 continue
-            if condition not in conditions:
-                conditions.append(condition)
+
+            while (True):
+                # Check if this new condition intersects in a special way with an existing condition.
+                # Each time this loop repeats itself, the conditions array's size must decrease by 1, so it cannot
+                # continue for ever.
+                for existing_condition in conditions:
+                    prod_cond = existing_condition * condition
+                    if not isinstance(prod_cond, ConditionIntersection):
+                        conditions = [cond for cond in conditions if cond != prod_cond]
+                        condition = prod_cond
+                        break
+                else:
+                    # new condition cannot be intersected in a special way
+                    conditions.append(condition)
+                    break
 
         if len(conditions) == 0:
             return TrueCondition
@@ -224,7 +245,8 @@ class ConditionalFunction(MapElement):
 
         super().__init__(list(set(variables)))
 
-    def __repr__(self):
+    def to_string(self, vars_str_list: List[str]):
+        # TODO: fix this printing function
         return ' , '.join([f'( {repr(condition)} -> {repr(map)} )' for (condition, map) in self.regions])
 
     def __eq__(self, other: 'Condition') -> bool:
@@ -248,7 +270,7 @@ class ConditionalFunction(MapElement):
         regions: List[Tuple[Condition, MapElement]] = []
         for (cond1, elem1) in self.regions:
             for (cond2, elem2) in other.regions:
-                cond_prod = cond1 * cond2
+                cond_prod = (cond1 * cond2).simplify()
                 if cond_prod != FalseCondition:
                     regions.append(( cond_prod, op_func(elem1, elem2)))
         return ConditionalFunction(regions)

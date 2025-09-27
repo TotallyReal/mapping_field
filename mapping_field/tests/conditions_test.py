@@ -53,6 +53,21 @@ def test_simplify_intersection():
     cond2 = dummies[0]
     assert cond1 == cond2
 
+def test_improved_simplify_intersection():
+    dummies = [DummyCondition(i) for i in range(5)]
+
+    assert dummies[0] * dummies[0] == dummies[0]
+
+    cond1 = ConditionIntersection([dummies[0], dummies[1], dummies[2]])
+    cond2 = ConditionIntersection([dummies[0], dummies[1], dummies[3]])
+    prod = cond1 * cond2
+    result = ConditionIntersection([dummies[0], dummies[1], dummies[2], dummies[3]])
+    assert prod == result
+
+    prod = (dummies[0] * dummies[1] * dummies[2]) * (dummies[0] * dummies[1] * dummies[3])
+    result = (dummies[0] * dummies[1] * dummies[2] * dummies[3])
+    assert prod == result
+
 def test_range_condition():
     dummy_map = DummyMap(0)
 
@@ -89,7 +104,7 @@ def test_op_conditional_functions():
         (dummies[1] * dummies[0], MapElementConstant(110))
     ])
 
-    assert  result == cond_add
+    assert result == cond_add, f'could not match:\n{result}\n{cond_add}'
 
 def test_op_conditional_functions_ranges():
     dummy_map = DummyMap(0)
