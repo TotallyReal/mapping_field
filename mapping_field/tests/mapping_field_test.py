@@ -6,8 +6,8 @@ from mapping_field.mapping_field import Var, NamedFunc, Func, CompositionFunctio
 
 @pytest.fixture(autouse=True)
 def reset_static_variables():
-    Var._instances = {}
-    NamedFunc._instances = {}
+    Var.clear_vars()
+    NamedFunc.clear_vars()
 
 class DummyMap(MapElement):
 

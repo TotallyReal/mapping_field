@@ -227,6 +227,10 @@ class Var(MapElement):
         """
         return cls._instances.get(var_name, None)
 
+    @classmethod
+    def clear_vars(cls):
+        cls._instances = {}
+
     def __new__(cls, name: str):
         if name in cls._instances:
             return cls._instances[name]
@@ -264,6 +268,10 @@ class NamedFunc(MapElement):
     @classmethod
     def try_get(cls, func_name: str) -> Optional['NamedFunc']:
         return cls._instances.get(func_name, None)
+
+    @classmethod
+    def clear_vars(cls):
+        cls._instances = {}
 
     def __new__(cls, func_name: str, variables: List[Var]):
         if func_name in cls._instances:
