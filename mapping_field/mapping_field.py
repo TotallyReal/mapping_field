@@ -37,6 +37,23 @@ def convert_to_map(elem):
 VarDict = Dict['Var', 'MapElement']
 FuncDict = Dict['NamedFunc', 'MapElement']
 
+def get_var_values(var_list: List['Var'], var_dict: VarDict) -> Optional[List['MapElement']]:
+    """
+    Looks for the valuations of the given variables, and return them as a list, if at least one of them
+    is not trivial. Otherwise, returns None
+    """
+    if len(var_dict) == 0:
+        return None
+    eval_entries = []
+    trivial = True
+    for var in var_list:
+        eval_var = var_dict.get(var, var)
+        eval_entries.append(eval_var)
+        if eval_var != var:
+            trivial = False
+
+    return None if trivial else eval_entries
+
 
 class MapElement:
     """
@@ -144,16 +161,22 @@ class MapElement:
 
     def simplify(self) -> 'MapElement':
         """
-        Try to simplify the given function (e.g. 1+x*0+y -> 1+y)
+        Try to simplify the given function (e.g. 1 + 0*x + y -> 1+y ).
+        The resulting function should compute the same function as the current one, on the same standard variables,
+        and the same order. The only difference is how it is computed inside python
         """
         return self._simplify_with_entries(self.vars)
 
     # Override when needed
-    def _simplify_with_entries(self, simplified_entries: List['MapElement']) -> 'MapElement':
+    def _simplify_with_entries(self, entries: List['MapElement']) -> 'MapElement':
         """
         --------------- Override when needed ---------------
         Try to simplify the given function, given the simplified entries (which can assumed to have
         the number of entries this function needs).
+
+        For example, the function (x,y) -> x*y cannot be simplified, but if we know that one of the entries
+        is 0, then it can be simplified to zero, and if x=1, then it can be simplified to (x,y) -> y ,
+        and similarly with y=1.
         """
         return self
 
@@ -292,19 +315,13 @@ class NamedFunc(MapElement):
         if func != self:
             return func._call_with_dict(var_dict, {})
 
-        eval_entries = []
-        compose = False
-        for var in self.vars:
-            eval_var = var_dict.get(var, var)
-            eval_entries.append(eval_var)
-            if eval_var != var:
-                compose = True
-        return CompositionFunction(function=self, entries=eval_entries) if compose else self
+        eval_entries = get_var_values(self.vars, var_dict)
+        return self if eval_entries is None else CompositionFunction(function=self, entries=eval_entries)
 
-    def _simplify_with_entries(self, simplified_entries: List['MapElement']) -> 'MapElement':
-        if all(var == entry for var, entry in zip(self.vars, simplified_entries)):
+    def _simplify_with_entries(self, entries: List['MapElement']) -> 'MapElement':
+        if all(var == entry for var, entry in zip(self.vars, entries)):
             return self
-        return CompositionFunction(self, simplified_entries)
+        return CompositionFunction(self, entries)
 
     def to_string(self, vars_str_list: List[str]):
         vars_str = ','.join(vars_str_list)
@@ -437,27 +454,21 @@ class MapElementFromFunction(MapElement):
         return f'{self.name}({entries_str})'
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
-        if len(var_dict) == 0:
-            return self
-        eval_entries = []
-        compose = False
-        for var in self.vars:
-            eval_var = var_dict.get(var, var)
-            eval_entries.append(eval_var)
-            if eval_var != var:
-                compose = True
+        eval_entries = get_var_values(self.vars, var_dict)
 
-        if not compose:
-            return self
+        return self if eval_entries is None else CompositionFunction(function=self, entries=eval_entries)
 
-        return CompositionFunction(function=self, entries=eval_entries)
 
-    def _simplify_with_entries(self, simplified_entries: List['MapElement']) -> 'MapElement':
-        if any(not isinstance(entry, MapElementConstant) for entry in simplified_entries):
-            return self._simplify_partial_constant(simplified_entries)
+    def _simplify_with_entries(self, entries: List['MapElement']) -> 'MapElement':
 
-        result = self.function(*[entry.elem for entry in simplified_entries])
-        return MapElementConstant(result)
+        if all(isinstance(entry, MapElementConstant) for entry in entries):
+            result = self.function(*[entry.elem for entry in entries])
+            return MapElementConstant(result)
 
-    def _simplify_partial_constant(self, simplified_entries: List['MapElement']) -> 'MapElement':
-        return CompositionFunction(self, simplified_entries)
+        return self._simplify_partial_constant(entries)
+
+
+    # override this method instead of '_simplify_with_entries' if needed, where you can assume that
+    # not all entries are constant.
+    def _simplify_partial_constant(self, entries: List['MapElement']) -> 'MapElement':
+        return CompositionFunction(self, entries)
