@@ -18,9 +18,6 @@ class Linear(MapElement, RangeTransformer):
         self.b = b
         self.elem = elem
 
-    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
-        return Linear(self.a, self.var._call_with_dict(var_dict, func_dict), self.b)
-
     def to_string(self, vars_str_list: List[str]):
     # def __str__(self):
         a_str = f'{str(self.a)}*' if self.a != 1 else ''
@@ -31,6 +28,8 @@ class Linear(MapElement, RangeTransformer):
             b_str = f' - {-self.b}'
         return f'{a_str}{self.elem}{b_str}'
 
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
+        return Linear(self.a, self.var._call_with_dict(var_dict, func_dict), self.b)
 
     def _simplify_with_entries(self, simplified_entries: List['MapElement']) -> 'MapElement':
         if self.a == 0:

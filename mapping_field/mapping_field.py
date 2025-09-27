@@ -89,6 +89,28 @@ class MapElement:
 
         self.vars = variables
 
+    # <editor-fold desc=" ------------------------ String represnetation ------------------------">
+
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        vars_str_list = [var.name for var in self.vars]
+        return self.to_string(vars_str_list)
+
+    @abstractmethod
+    def to_string(self, vars_str_list: List[str]):
+        """
+        --------------- Override ---------------
+        Represents the function, given the string representations of its variables
+        """
+        pass
+
+    # </editor-fold>
+
+
+    # <editor-fold desc=" ------------------------ Call and Simplify function ------------------------">
+
     def __call__(self, *args, **kwargs) -> 'MapElement':
         """
         There are three ways to apply this function:
@@ -179,23 +201,6 @@ class MapElement:
         and similarly with y=1.
         """
         return self
-
-    # <editor-fold desc=" ------------------------ String represnetation ------------------------">
-
-    def __repr__(self):
-        return str(self)
-
-    def __str__(self):
-        vars_str_list = [var.name for var in self.vars]
-        return self.to_string(vars_str_list)
-
-    @abstractmethod
-    def to_string(self, vars_str_list: List[str]):
-        """
-        --------------- Override ---------------
-        Represents the function, given the string representations of its variables
-        """
-        pass
 
     # </editor-fold>
 
@@ -309,6 +314,10 @@ class NamedFunc(MapElement):
         super().__init__(variables)
         self.name = func_name
 
+    def to_string(self, vars_str_list: List[str]):
+        vars_str = ','.join(vars_str_list)
+        return f'{self.name}({vars_str})'
+
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
 
         func = func_dict.get(self, self)
@@ -322,10 +331,6 @@ class NamedFunc(MapElement):
         if all(var == entry for var, entry in zip(self.vars, entries)):
             return self
         return CompositionFunction(self, entries)
-
-    def to_string(self, vars_str_list: List[str]):
-        vars_str = ','.join(vars_str_list)
-        return f'{self.name}({vars_str})'
 
 
 class Func:
@@ -387,14 +392,6 @@ class CompositionFunction(MapElement):
             self.function = function
             self.entries = entries
 
-    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
-        if len(var_dict) == 0 and len(func_dict) == 0:
-            return self
-        eval_function = self.function._call_with_dict({}, func_dict)
-        eval_entries = [entry._call_with_dict(var_dict, func_dict) for entry in self.entries]
-
-        return CompositionFunction(function=eval_function, entries=eval_entries)
-
     def to_string(self, vars_str_list: List[str]):
         # Compute the str representation for each entry, by supplying it the str
         # representations of its variables
@@ -403,6 +400,14 @@ class CompositionFunction(MapElement):
             entry.to_string([var_str_dict[var] for var in entry.vars])
             for entry in self.entries]
         return self.function.to_string(entries_str_list)
+
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
+        if len(var_dict) == 0 and len(func_dict) == 0:
+            return self
+        eval_function = self.function._call_with_dict({}, func_dict)
+        eval_entries = [entry._call_with_dict(var_dict, func_dict) for entry in self.entries]
+
+        return CompositionFunction(function=eval_function, entries=eval_entries)
 
     def _simplify_with_entries(self, simplified_entries: List['MapElement']) -> 'MapElement':
         # Compute the simplified entries, by supplying each with the simplified version
@@ -458,7 +463,6 @@ class MapElementFromFunction(MapElement):
 
         return self if eval_entries is None else CompositionFunction(function=self, entries=eval_entries)
 
-
     def _simplify_with_entries(self, entries: List['MapElement']) -> 'MapElement':
 
         if all(isinstance(entry, MapElementConstant) for entry in entries):
@@ -466,7 +470,6 @@ class MapElementFromFunction(MapElement):
             return MapElementConstant(result)
 
         return self._simplify_partial_constant(entries)
-
 
     # override this method instead of '_simplify_with_entries' if needed, where you can assume that
     # not all entries are constant.
