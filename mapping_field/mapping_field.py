@@ -72,7 +72,8 @@ class MapElement:
         """
         The 'variables' are the ordered list used when calling the function, as in f(a_1,...,a_n).
         """
-        if len(variables) > len(set(variables)):
+        var_names = set(v.name for v in variables)
+        if len(variables) > len(var_names):
             raise Exception(f'Function must have distinct variables')
         self.vars = variables
         self.num_vars = len(variables)
@@ -115,14 +116,15 @@ class MapElement:
         """
         There are three ways to apply this function:
         1. Positional: Call f(a_1, ..., a_n), where the a_i are either elements or maps.
-        2. Dictionary: Call f({x_1: a_1, ..., x_n: a_n, f_1: F_1, ..., f_k: F_k}).
-           This dictionary must be a single argument, and provides a more general approach than the positional :
+        2. Keywords:   Call f(x_1 = a_1, ..., x_n = a_n, f_1 = F_1, ..., f_k = F_k)
+           Provides a more general approach than the positional :
                 a. The variables don't have to be ordered (e.g. {x_2 = a_2, x_5 = a_5, ... }),
                 b. Not all variables must appear (e.g. {x_1 = a_1, x_7 = a_7}),
                 c. Extra variables can appear (e.g. {x_1 = a_1 , y_2 = b_2}),
                 d. Can add assignments for function variables (e.g. {g=Add, x_1=3})
-        3. Keywords: Call f(x_1 = a_1, ..., x_n = a_n, f_1 = F_1, ..., f_k = F_k)
-           Use only keywords - same process as in the Dictionary.
+        3. Dictionary: Call f({x_1 : a_1, ..., x_n : a_n, f_1 : F_1, ..., f_k : F_k})
+           Must have a single unnamed argument. Behaviour is similar to the keyword approach,
+           only you can use for keys both the variables themselves and their names.
 
         To implement this method in a subclass, you must implement the function _call_with_dict below.
         """
@@ -140,17 +142,25 @@ class MapElement:
         var_dict = {}
         func_dict = {}
         if len(kwargs) == 0:
-            if len(args) != self.num_vars:
-                raise Exception(f'Function needs to get {self.num_vars} values, and instead got {len(args)}.')
-            var_dict = {v: convert_to_map(value) for v, value in zip(self.vars, args)}
+            if len(args) == 1 and isinstance(args[0], Dict):
+                kwargs = args[0]
+                args = []
+            else:
+                if len(args) != self.num_vars:
+                    raise Exception(f'Function needs to get {self.num_vars} values, and instead got {len(args)}.')
+                var_dict = {v: convert_to_map(value) for v, value in zip(self.vars, args)}
 
         # Split assignments into variables and functions
         for key, value in kwargs.items():
-            v = Var.try_get(key)
+
+            v = key if isinstance(key, Var) else None
+            if isinstance(key, str):
+                v = Var.try_get(key)
             if v is not None:
                 var_dict[v] = convert_to_map(value)
                 continue
 
+            f = key if isinstance(key, NamedFunc) else None
             f = NamedFunc.try_get(key)
             if f is not None:
                 assigned_function = convert_to_map(value)
@@ -274,8 +284,8 @@ class Var(MapElement):
         """
         if hasattr(self, 'initialized'):
             return
-        super().__init__([self])
         self.name = name
+        super().__init__([self])
         self.initialized = True
 
     def to_string(self, vars_str_list: List[str]):
@@ -437,6 +447,9 @@ class MapElementConstant(MapElement):
         if isinstance(other, MapElementConstant):
             return self.elem == other.elem
         return super().__eq__(other)
+
+    def evaluate(self) -> ExtElement:
+        return self.elem
 
 
 class MapElementFromFunction(MapElement):
