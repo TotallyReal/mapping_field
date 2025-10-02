@@ -197,18 +197,21 @@ class MapElement:
         The resulting function should compute the same function as the current one, on the same standard variables,
         and the same order. The only difference is how it is computed inside python
         """
-        return self._simplify_with_entries(self.vars)
+        return self._simplify_with_var_values({v:v for v in self.vars})
+
+    def _entry_list(self, var_dict: VarDict):
+        return [var_dict.get(v, v) for v in self.vars]
 
     # Override when needed
-    def _simplify_with_entries(self, entries: List['MapElement']) -> 'MapElement':
+    def _simplify_with_var_values(self, var_dict: VarDict) -> 'MapElement':
         """
         --------------- Override when needed ---------------
-        Try to simplify the given function, given the simplified entries (which can assumed to have
-        the number of entries this function needs).
+        Try to simplify the given function, given assignment of the function standard variables.
 
-        For example, the function (x,y) -> x*y cannot be simplified, but if we know that one of the entries
-        is 0, then it can be simplified to zero, and if x=1, then it can be simplified to (x,y) -> y ,
-        and similarly with y=1.
+        For example, the function
+            (x,y) -> x*y
+        cannot be simplified, but if we know that one of the entries is 0, then it can be simplified to zero,
+        and if x=1, then it can be simplified to (x,y) -> y , and similarly with y=1.
         """
         return self
 
@@ -337,10 +340,9 @@ class NamedFunc(MapElement):
         eval_entries = get_var_values(self.vars, var_dict)
         return self if eval_entries is None else CompositionFunction(function=self, entries=eval_entries)
 
-    def _simplify_with_entries(self, entries: List['MapElement']) -> 'MapElement':
-        if all(var == entry for var, entry in zip(self.vars, entries)):
-            return self
-        return CompositionFunction(self, entries)
+    def _simplify_with_var_values(self, var_dict: VarDict) -> 'MapElement':
+        eval_entries = get_var_values(self.vars, var_dict)
+        return self if eval_entries is None else CompositionFunction(function=self, entries=eval_entries)
 
 
 class Func:
@@ -419,14 +421,12 @@ class CompositionFunction(MapElement):
 
         return CompositionFunction(function=eval_function, entries=eval_entries)
 
-    def _simplify_with_entries(self, simplified_entries: List['MapElement']) -> 'MapElement':
+    def _simplify_with_var_values(self, var_dict: VarDict) -> 'MapElement':
         # Compute the simplified entries, by supplying each with the simplified version
         # of its variables
-        simplified_var_dict = {var: simplified_var for var, simplified_var in zip(self.vars, simplified_entries)}
-        simplified_entries = [
-            entry._simplify_with_entries([simplified_var_dict[var] for var in entry.vars])
-            for entry in self.entries]
-        return self.function._simplify_with_entries(simplified_entries)
+        simplified_entries = { v : entry._simplify_with_var_values(var_dict)
+                               for v, entry in zip(self.function.vars, self.entries)}
+        return self.function._simplify_with_var_values(simplified_entries)
 
 
 class MapElementConstant(MapElement):
@@ -476,8 +476,9 @@ class MapElementFromFunction(MapElement):
 
         return self if eval_entries is None else CompositionFunction(function=self, entries=eval_entries)
 
-    def _simplify_with_entries(self, entries: List['MapElement']) -> 'MapElement':
+    def _simplify_with_var_values(self, var_dict: VarDict) -> 'MapElement':
 
+        entries = self._entry_list(var_dict)
         if all(isinstance(entry, MapElementConstant) for entry in entries):
             result = self.function(*[entry.elem for entry in entries])
             return MapElementConstant(result)

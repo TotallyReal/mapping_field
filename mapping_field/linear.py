@@ -29,13 +29,16 @@ class Linear(MapElement, RangeTransformer):
         return f'{a_str}{self.elem}{b_str}'
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
-        return Linear(self.a, self.var._call_with_dict(var_dict, func_dict), self.b)
+        return Linear(self.a, self.elem._call_with_dict(var_dict, func_dict), self.b)
 
-    def _simplify_with_entries(self, simplified_entries: List['MapElement']) -> 'MapElement':
+    def _simplify_with_var_values(self, var_dict: VarDict) -> 'MapElement':
         if self.a == 0:
             return MapElementConstant(self.b)
 
-        elem = self.elem._simplify_with_entries(simplified_entries)
+        elem = self.elem._simplify_with_var_values(var_dict)
+        if isinstance(elem, MapElementConstant):
+            return MapElementConstant(self.a * elem.evaluate() + self.b)
+
         return Linear(self.a, elem, self.b)
 
     # <editor-fold desc=" ------------------------ Arithmetics ------------------------">
