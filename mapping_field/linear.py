@@ -2,6 +2,7 @@ import math
 from typing import List, Optional, Dict, Tuple
 
 from mapping_field import MapElement, Var, VarDict, FuncDict, MapElementConstant
+from mapping_field.binary_expansion import BinaryExpansion
 from mapping_field.conditions import (
     RangeCondition, RangeTransformer, AssignmentCondition, Condition, TrueCondition, FalseCondition)
 
@@ -103,16 +104,6 @@ class Linear(MapElement, RangeTransformer):
             return self.elem.transform_range(f_range)
         else:
             return RangeCondition(self.elem, f_range)
-
-
-class BoolVar(Var):
-
-    def __new__(cls, var_name: str):
-        return super(BoolVar, cls).__new__(cls, var_name)
-
-    def __init__(self, var_name: str):
-        super().__init__(var_name)
-
 
 class IntVar(Var, RangeTransformer):
 
