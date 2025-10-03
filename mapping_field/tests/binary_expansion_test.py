@@ -1,5 +1,6 @@
 from mapping_field import MapElementConstant
 from mapping_field.binary_expansion import BinaryExpansion, BoolVar
+from mapping_field.conditions import RangeCondition
 
 
 def test_equality_constant():
@@ -73,3 +74,32 @@ def test_shift():
 
     assert x3.shift(-4) == x1
     assert x3.shift(-2) == x2
+
+def test_simplify_range_condition():
+    v = [BoolVar(f'v_{i}') for i in range(4)]
+    x = BinaryExpansion(v)  # A number in [0,16)
+
+    # Note that this should pass without the call to simplified, since it is done automatically when trying to
+    # compare the conditions. In other words, each condition here is simplified twice, though the second time should
+    # be quick since the condition already "knows" that it is simplified.
+    # The reason for that extra "simplified" call is for debugging, namely separate the "real" call to simplify
+    # and the call to compare the condition.
+    condition1 = RangeCondition(x, (3, 100)).simplify()
+    condition2 = RangeCondition(x, (3, 16)).simplify()
+    assert condition1 == condition2
+
+    x = BinaryExpansion([1] + v)  # A number in [1,32), but only odd numbers
+
+    condition1 = RangeCondition(x, (0, 10)).simplify()
+    condition2 = RangeCondition(x, (1, 10)).simplify()
+    assert condition1 == condition2
+
+    # Only odd number in [16, 19) is 17, which is the only integer in [17,18)
+    condition1 = RangeCondition(x, (16, 19)).simplify()
+    condition2 = RangeCondition(x, (17, 18)).simplify()
+    assert condition1 == condition2
+
+    condition1 = RangeCondition(x, (17, 100)).simplify()
+    condition2 = RangeCondition(v[3], (1, 2)).simplify()
+    assert condition1 == condition2
+

@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import operator
 
 from mapping_field import MapElement, Var, VarDict, FuncDict, MapElementConstant
@@ -185,10 +185,11 @@ class AssignmentCondition(Condition):
 
 class RangeCondition(Condition):
 
-    def __init__(self, function: MapElement, f_range: Range):
+    def __init__(self, function: MapElement, f_range: Range, simplified: bool = False):
         super().__init__(function.vars)
         self.function = function
         self.range = f_range
+        self._simplified = simplified
 
     def __repr__(self):
         return f'{self.range[0]} <= {repr(self.function)} < {self.range[1]}'
@@ -213,8 +214,12 @@ class RangeCondition(Condition):
             return FalseCondition
 
         condition = self
-        while isinstance(condition, RangeCondition) and  isinstance(condition.function, RangeTransformer):
-            condition = condition.function.transform_range(condition.range)
+        while (isinstance(condition, RangeCondition) and (not condition._simplified) and
+               isinstance(condition.function, RangeTransformer)):
+            new_condition = condition.function.transform_range(condition.range)
+            if new_condition is None:
+                return condition
+            condition = new_condition
 
         return condition
 
@@ -222,7 +227,11 @@ class RangeCondition(Condition):
 class RangeTransformer:
 
     @abstractmethod
-    def transform_range(self, range_values: Range) -> Condition:
+    def transform_range(self, range_values: Range) -> Optional[Condition]:
+        """
+        Try to simplify being in the given range (should be called on a MapElement).
+        If cannot be simplified, return None.
+        """
         pass
 
 # ========================================================================= #
