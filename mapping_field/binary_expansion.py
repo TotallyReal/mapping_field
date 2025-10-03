@@ -1,4 +1,4 @@
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Tuple
 
 from mapping_field import Var, MapElement, MapElementConstant, ExtElement
 from mapping_field.conditions import (
@@ -43,6 +43,7 @@ class BinaryExpansion(MapElement, RangeTransformer):
             sum_i coef[i] * 2^i
 
         """
+        # For now, each bool variable can appear at most once
         super().__init__([c for c in coefficients if isinstance(c, BoolVar)])
         self.coefficients = tuple([
             c if (isinstance(c, BoolVar) or c == 0 or c == 1) else 0
@@ -109,16 +110,23 @@ class BinaryExpansion(MapElement, RangeTransformer):
         coefs = []
         for c1, c2 in zip(coef1, coef2):
             if carry == 1:
-                if not (isinstance(c1, int) and isinstance(c2, int)):
-                    return None
-                c = carry + c1 + c2
-                if c < 2:
-                    coefs.append(c)
-                    carry = 0
-                else:
-                    coefs.append(c-2)
+
+                if c1 == 1:
+                    coefs.append(c2)
                     carry = 1
-                continue
+                    continue
+                if c2 == 1:
+                    coefs.append(c1)
+                    carry = 1
+                    continue
+
+                if (isinstance(c1, int) and isinstance(c2, int)):
+                    # must be c1 = c2 = 0
+                    coefs.append(1)
+                    carry = 0
+                    continue
+
+                return None
 
             if c1 == 0:
                 coefs.append(c2)
@@ -166,16 +174,24 @@ class BinaryExpansion(MapElement, RangeTransformer):
         for c1, c2 in zip(coef1, coef2):
 
             if carry == -1:
-                if not (isinstance(c1, int) and isinstance(c2, int)):
-                    return None
-                c = carry + c1 - c2
-                if c >= 0:
-                    coefs.append(c)
-                    carry = 0
-                else:
-                    coefs.append(c + 2)
+
+                if c2 == 1:
+                    coefs.append(c1)
                     carry = -1
-                continue
+                    continue
+
+                if c1 == c2:
+                    coefs.append(1)
+                    carry = -1
+                    continue
+
+                if (isinstance(c1, int) and isinstance(c2, int)):
+                    # must be c2 = 0 and c1 = 1
+                    coefs.append(0)
+                    carry = 0
+                    continue
+
+                return None
 
             if c1 == c2:
                 coefs.append(0)

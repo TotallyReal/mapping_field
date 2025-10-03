@@ -58,6 +58,12 @@ def test_arithmetic():
         BinaryExpansion([v1, v2, 1, 1])
     )
 
+    addition_test(
+        BinaryExpansion([1, 1]),
+        BinaryExpansion([1, v1]),
+        BinaryExpansion([0, v1, 1])
+    )
+
 def test_shift():
     v1 = BoolVar('v1')
     v2 = BoolVar('v2')
