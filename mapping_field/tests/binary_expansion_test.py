@@ -22,6 +22,22 @@ def test_equality():
     assert x1 == x2
     assert x2 == x1
 
+def test_constant_split():
+    x = BinaryExpansion([BoolVar('v1'), 0, 1])
+    constant = 4
+    pure = BinaryExpansion([BoolVar('v1')])
+    assert x.split_constant() == (pure, constant)
+
+    x = BinaryExpansion([1, 0, 1])
+    constant = 5
+    pure = None
+    assert x.split_constant() == (pure, constant)
+
+    x = BinaryExpansion([BoolVar('v1'), 0, BoolVar('v2')])
+    constant = 0
+    pure = BinaryExpansion([BoolVar('v1'), 0, BoolVar('v2')])
+    assert x.split_constant() == (pure, constant)
+
 def addition_test(x, y, x_plus_y):
     result = x + y
     assert result == x_plus_y

@@ -71,6 +71,17 @@ class BinaryExpansion(MapElement, RangeTransformer):
         assert self._bool_max_value[-1] == 0  # TODO: Change to return None?
         return self._constant
 
+    def split_constant(self) -> Tuple[Optional['BinaryExpansion'], MapElementConstant]:
+        constant_part = MapElementConstant(self._constant)
+        if self._constant == 0:
+            return (self, constant_part)
+
+        if self._bool_max_value[-1] == 0:
+            return (None, constant_part)
+
+        coefs = [0 if isinstance(c, int) else c for c in self.coefficients]
+        return (BinaryExpansion(coefs), constant_part)
+
     def __eq__(self, other):
 
         try:
