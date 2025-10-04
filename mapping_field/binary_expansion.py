@@ -111,6 +111,25 @@ class BinaryExpansion(MapElement, RangeTransformer):
 
     # <editor-fold desc=" ------------------------ Arithmetic ------------------------">
 
+    @staticmethod
+    def _combination(sign1: int, elem1: 'BinaryExpansion', sign2: int, elem2: 'BinaryExpansion') -> Optional[MapElement]:
+
+        if sign1 == sign2:
+            result = elem1.try_add_binary_expansion(elem2)
+            if result is not None:
+                return result if sign1==1 else -result
+        else:
+            result = elem1.try_sub_binary_expansion(elem2)
+            if result is not None:
+                return result if sign1==1 else -result
+
+            result = elem2.try_sub_binary_expansion(elem1)
+            if result is not None:
+                return result if sign2==1 else -result
+
+        return None
+
+
     def try_add_binary_expansion(self, other: 'BinaryExpansion') -> Optional['BinaryExpansion']:
 
         coef1 = self.coefficients
@@ -167,13 +186,18 @@ class BinaryExpansion(MapElement, RangeTransformer):
         return BinaryExpansion(coefs)
 
     def __add__(self, other):
+        sign, other_elem = as_neg(other)
 
-        result = None
+        if isinstance(other_elem, BinaryExpansion):
 
-        if isinstance(other, BinaryExpansion):
-            result = self.try_add_binary_expansion(other)
+            result = BinaryExpansion._combination(1, self, sign, other_elem)
+            if result is not None:
+                return result
 
-        return super().__add__(other) if result is None else result
+        return super().__add__(other)
+
+    def __radd__(self, other):
+        return self + other
 
     def try_sub_binary_expansion(self, other: 'BinaryExpansion') -> Optional['BinaryExpansion']:
         coef1 = self.coefficients
@@ -229,13 +253,34 @@ class BinaryExpansion(MapElement, RangeTransformer):
         return BinaryExpansion(coefs)
 
     def __sub__(self, other):
-
-        result = None
-
+        sign, other_elem = as_neg(other)
         if isinstance(other, BinaryExpansion):
-            result = self.try_sub_binary_expansion(other)
 
-        return super().__sub__(other) if result is None else result
+            result = BinaryExpansion._combination(1, self, -sign, other_elem)
+            if result is not None:
+                return result
+
+        return super().__sub__(other)
+
+        # result = None
+        #
+        # if isinstance(other, BinaryExpansion):
+        #     result = self.try_sub_binary_expansion(other)
+        #
+        # if isinstance(other, CompositionFunction) and other.function == Neg and other.entries[0] == BinaryExpansion:
+        #     result = self.try_add_binary_expansion(other.entries[0])
+        #
+        # return super().__sub__(other) if result is None else result
+
+    def __rsub__(self, other):
+        sign, other_elem = as_neg(other)
+        if isinstance(other, BinaryExpansion):
+
+            result = BinaryExpansion._combination(sign, other_elem, -1, self)
+            if result is not None:
+                return result
+
+        return super().__rsub__(other)
 
     def shift(self, k: int) -> Optional['BinaryExpansion']:
         if k < 0:
