@@ -6,6 +6,7 @@ from mapping_field.mapping_field import Var, MapElement, MapElementConstant, Ext
 from mapping_field.arithmetics import Mult
 from mapping_field.conditions import (
     RangeTransformer, Range, Condition, FalseCondition, AssignmentCondition, RangeCondition, TrueCondition)
+from mapping_field.linear import LinearTransformer
 
 
 class BoolVar(Var, RangeTransformer):
@@ -28,8 +29,15 @@ class BoolVar(Var, RangeTransformer):
             return TrueCondition
         return AssignmentCondition({self: 1 if a == 1 else 0})
 
+def _two_power(k):
+    k = abs(k)
+    m = 0
+    while k%2==0:
+        k /= 2
+        m += 1
+    return m
 
-class BinaryExpansion(MapElement, RangeTransformer):
+class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
 
     @staticmethod
     def generate(var_name: str, num_digits: int):
@@ -331,6 +339,17 @@ class BinaryExpansion(MapElement, RangeTransformer):
         return self * other
 
     # </editor-fold>
+
+    def transform_linear(self, a: int, b: int) -> Tuple[int, MapElement, int]:
+        elem, constant = self.split_constant()
+        constant = constant.evaluate()
+        b += a * constant
+        if elem is None:
+            return 0, MapElementConstant(0), b
+
+        k = _two_power(a)
+        a //= 2**k
+        return a, elem.shift(k), b
 
     def transform_range(self, range_values: Range) -> Optional[Condition]:
         a, b = range_values

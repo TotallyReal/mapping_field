@@ -1,10 +1,17 @@
+from abc import abstractmethod
 import math
 from typing import List, Optional, Dict, Tuple
 
-from mapping_field import MapElement, Var, VarDict, FuncDict, MapElementConstant
-from mapping_field.binary_expansion import BinaryExpansion
+from mapping_field import MapElement, Var, VarDict, FuncDict, MapElementConstant, ExtElement
 from mapping_field.conditions import (
     RangeCondition, RangeTransformer, AssignmentCondition, Condition, TrueCondition, FalseCondition)
+
+
+class LinearTransformer:
+
+    @abstractmethod
+    def transform_linear(self, a: int, b: int) -> Tuple[int, MapElement, int]:
+        pass
 
 
 class Linear(MapElement, RangeTransformer):
@@ -20,7 +27,6 @@ class Linear(MapElement, RangeTransformer):
         self.elem = elem
 
     def to_string(self, vars_str_list: List[str]):
-    # def __str__(self):
         a_str = f'{str(self.a)}*' if self.a != 1 else ''
         b_str = ''
         if self.b > 0:
@@ -40,6 +46,12 @@ class Linear(MapElement, RangeTransformer):
         if isinstance(elem, MapElementConstant):
             return MapElementConstant(self.a * elem.evaluate() + self.b)
 
+        if isinstance(elem, LinearTransformer):
+            a, elem, b = elem.transform_linear(self.a, self.b)
+            if a == 0:
+                return MapElementConstant(b)
+            return Linear(a, elem, b)
+
         return Linear(self.a, elem, self.b)
 
     # <editor-fold desc=" ------------------------ Arithmetics ------------------------">
@@ -47,16 +59,43 @@ class Linear(MapElement, RangeTransformer):
     def __neg__(self):
         return Linear(-self.a, self.elem, -self.b)
 
+    # The Linear addition always tries to return a "simplified" Linear map.
     def __add__(self, other):
-        if isinstance(other, MapElementConstant) and isinstance(other, (int, float)):
-            other = other.elem
-        if isinstance(other, (int, float)):
-            return Linear(self.a, self.elem, self.b + other)
+        try:
+            value = other.evaluate() if isinstance(other, MapElement) else other
+            return Linear(self.a, self.elem, self.b + value)
+        except:
+            pass
+
         if other == self.elem:
             return Linear(self.a + 1, self.elem, self.b)
-        if isinstance(other, Linear) and self.elem == other.elem:
-            return Linear(self.a + other.a, self.elem, self.b + other.b)
-        return super().__add__(other)
+
+        if isinstance(other, Linear):
+            if isinstance(other.elem, LinearTransformer):
+                a2, elem2, b2 = other.elem.transform_linear(other.a, other.b)
+            else:
+                a2, elem2, b2 = other.a, other.elem, other.b
+
+            if isinstance(self.elem, LinearTransformer):
+                a1, elem1, b1 = self.elem.transform_linear(self.a, self.b)
+            else:
+                a1, elem1, b1 = self.a, self.elem, self.b
+
+            if elem1 == elem2:
+                return Linear(a1 + a2, elem1, b1 + b2)
+
+            if isinstance(a1, int) and isinstance(a2, int):
+                gcd = math.gcd(a1, a2)
+
+                elem1 *= (a1//gcd)
+                elem2 *= (a2//gcd)
+                result = Linear(gcd, elem1 + elem2, b1 + b2)
+                return result
+
+            # and self.elem == other.elem:
+
+        # result = self._try_add_binary_expansion(other)
+        return super().__add__(other) # if result is None else result
 
     def __radd__(self, other):
         return self + other
@@ -105,22 +144,6 @@ class Linear(MapElement, RangeTransformer):
         else:
             return RangeCondition(self.elem, f_range)
 
-class IntVar(Var, RangeTransformer):
-
-    def __new__(cls, var_name: str):
-        return super(IntVar, cls).__new__(cls, var_name)
-
-    def __init__(self, var_name: str):
-        super().__init__(var_name)
-
-    def transform_range(self, f_range:Tuple[float, float]) -> RangeCondition:
-
-        l, h = f_range
-        k = math.ceil(l)
-        if k < h <= k+1:
-            return AssignmentCondition({self: k})
-
-        return RangeCondition(self, f_range)
 
 # '''
 # A ranged function f(x) with range I is defined as f(x) if this value is in I and 0 otherwise, namely:

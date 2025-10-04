@@ -1,6 +1,7 @@
 import pytest
 from typing import List
 
+from mapping_field.binary_expansion import BoolVar, BinaryExpansion
 from mapping_field.linear import Linear, IntVar
 from mapping_field.conditions import RangeCondition, AssignmentCondition, FalseCondition, TrueCondition, Condition
 from mapping_field.mapping_field import MapElementConstant, MapElement, Var
@@ -127,3 +128,22 @@ def test_assignment_from_range():
     result = AssignmentCondition({x: 1})
     assert condition == result
 
+def addition_test(x, y, x_plus_y):
+    addition = x + y
+    assert addition == x_plus_y
+    difference = x_plus_y - x
+    assert difference.simplify() == y.simplify()
+    difference = x_plus_y - y
+    assert difference.simplify() == x.simplify()
+
+def test_linear_addition_of_binary_expansion():
+    v = [BoolVar(f'v_{i}') for i in range(4)]
+
+    x = Linear.of(BinaryExpansion([v[0], 0, v[2]]))
+    y = Linear.of(BinaryExpansion([v[1], 1, v[3]]))
+
+    x = 3*x + 1
+    y = 6*y + 5
+    result = Linear.of(BinaryExpansion([v[0], v[1], v[2], v[3]]))
+    result = 3 * result + 18
+    addition_test(x, y, result)
