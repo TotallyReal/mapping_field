@@ -48,11 +48,9 @@ class _Negative(MapElementFromFunction):
         return super()._simplify_partial_constant(entries)
 
 
-def _as_neg(map_elem: MapElement) -> (int, MapElement):
-    if isinstance(map_elem, CompositionFunction):
-        comp_map: CompositionFunction = map_elem
-        if comp_map.function == Neg:
-            return -1, comp_map.entries[0]
+def as_neg(map_elem: MapElement) -> (int, MapElement):
+    if isinstance(map_elem, CompositionFunction) and map_elem.function == Neg:
+        return -1, map_elem.entries[0]
 
     return 1, map_elem
 
@@ -68,12 +66,16 @@ class _Add(MapElementFromFunction):
         if entries[1] == 0:
             return entries[0]
 
-        sign0, map0 = _as_neg(entries[0])
-        sign1, map1 = _as_neg(entries[1])
+        sign0, map0 = as_neg(entries[0])
+        sign1, map1 = as_neg(entries[1])
 
         if sign0 == 1 and sign1 == 1:
             return super()._simplify_partial_constant(entries)
+
         if sign0 == 1 and sign1 == -1:
+            # TODO: I would like to return map0 - map1, however, if any MapElement subclass defines
+            #       __sub__(self, other) as self + (-other), where (-other) uses the default Neg function,
+            #       this will cause an infinite loop.
             return Sub(map0, map1)
         if sign0 == -1 and sign1 == 1:
             return Sub(map1, map0)
@@ -96,8 +98,8 @@ class _Sub(MapElementFromFunction):
         if entries[1] == 0:
             return entries[0]
 
-        sign0, map0 = _as_neg(entries[0])
-        sign1, map1 = _as_neg(entries[1])
+        sign0, map0 = as_neg(entries[0])
+        sign1, map1 = as_neg(entries[1])
 
         if sign0 == 1 and sign1 == 1:
             return super()._simplify_partial_constant(entries)
@@ -148,11 +150,15 @@ class _Mult(MapElementFromFunction):
             return entries[0]
         if entries[0] == 1:
             return entries[1]
+        if entries[0] == -1:
+            return Neg(entries[1])
 
         if entries[1] == 0:
             return entries[1]
         if entries[1] == 1:
             return entries[0]
+        if entries[1] == -1:
+            return Neg(entries[0])
 
         sign0, numerator0, denominator0 = _as_rational(entries[0])
         sign1, numerator1, denominator1 = _as_rational(entries[1])
