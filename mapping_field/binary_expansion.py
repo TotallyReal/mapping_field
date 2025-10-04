@@ -1,6 +1,9 @@
 from typing import List, Union, Optional, Tuple
 
-from mapping_field import Var, MapElement, MapElementConstant, ExtElement
+from mapping_field.arithmetics import as_neg
+from mapping_field import CompositionFunction
+from mapping_field.mapping_field import Var, MapElement, MapElementConstant, ExtElement
+from mapping_field.arithmetics import Mult
 from mapping_field.conditions import (
     RangeTransformer, Range, Condition, FalseCondition, AssignmentCondition, RangeCondition, TrueCondition)
 
@@ -247,6 +250,40 @@ class BinaryExpansion(MapElement, RangeTransformer):
             return BinaryExpansion(self.coefficients[-k:])
 
         return BinaryExpansion([0] * k + list(self.coefficients))
+
+    def __mul__(self, other):
+        try:
+            other = other.evaluate() if isinstance(other, MapElement) else other
+            if not isinstance(other, int):
+                return super().__mul__(other)
+
+            if other == 0:
+                return MapElementConstant(0)
+
+            n = abs(other)
+
+            k = 0
+            while n % 2 == 0:
+                k += 1
+                n //= 2
+            if other < 0:
+                n *= -1
+
+            elem = self
+            if k > 0:
+                elem = elem.shift(k)
+
+            if n == 1:
+                return elem
+            if n == -1:
+                return -elem
+            return Mult(n, elem)
+
+        except:
+            return super().__mul__(other)
+
+    def __rmul__(self, other):
+        return self * other
 
     # </editor-fold>
 
