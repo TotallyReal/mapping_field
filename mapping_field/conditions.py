@@ -102,6 +102,8 @@ class BinaryCondition(Condition):
     def _eq_simplified(self, other: 'Condition') -> bool:
         if isinstance(other, BinaryCondition):
             return other.value == self.value
+        if isinstance(other, bool):
+            return other == self.value
         return False
 
     def __and__(self, condition: Condition) -> Tuple[Condition, bool]:
@@ -113,7 +115,15 @@ TrueCondition  = BinaryCondition(True)
 FalseCondition = BinaryCondition(False)
 
 
-class ConditionIntersection(Condition):
+class ListCondition(Condition):
+
+    def __init_subclass__(cls, op_type, op_dunder_name: str, join_delim: str,
+                          zero_condition: Condition, one_condition: Condition):
+        cls.op_type = op_type
+        cls.join_delim = join_delim
+        cls.zero_condition = zero_condition
+        cls.one_condition = one_condition
+        setattr(cls, op_dunder_name, cls.op)
 
     def __init__(self, conditions: List[Condition], simplified: bool = False):
         super().__init__(
@@ -123,21 +133,24 @@ class ConditionIntersection(Condition):
         self._simplified = simplified
 
     def __repr__(self):
-        conditions_rep = ', '.join(repr(condition) for condition in self.conditions)
+        conditions_rep = self.__class__.join_delim.join(repr(condition) for condition in self.conditions)
         return f'[{conditions_rep}]'
 
-    def __and__(self, condition: Condition) -> Tuple[Condition, bool]:
+    def op(self, condition: Condition) -> Tuple[Condition, bool]:
         if isinstance(condition, BinaryCondition):
-            return condition & self
+            return self.__class__.op_type(condition , self)
 
-        if isinstance(condition, ConditionIntersection):
-            return ConditionIntersection([*self.conditions, *condition.conditions]), False
+        if isinstance(condition, self.__class__):
+            return self.__class__([*self.conditions, *condition.conditions]), False
 
-        return ConditionIntersection([*self.conditions, condition]), False
+        return self.__class__([*self.conditions, condition]), False
+
 
     def simplify(self):
         if self._simplified:
             return self
+
+        cls = self.__class__
 
         final_conditions = []
         conditions = self.conditions
@@ -146,10 +159,10 @@ class ConditionIntersection(Condition):
 
             condition = condition.simplify()
 
-            if condition == TrueCondition:
+            if condition == cls.one_condition:
                 continue
 
-            if isinstance(condition, ConditionIntersection):
+            if isinstance(condition, cls):
                 conditions.extend(condition.conditions)
                 continue
 
@@ -157,17 +170,17 @@ class ConditionIntersection(Condition):
                 # Check if this new condition intersects in a special way with an existing condition.
                 # Each time this loop repeats itself, the conditions array's size must decrease by 1, so it cannot
                 # continue forever.
-                if condition == FalseCondition:
-                    return FalseCondition
+                if condition == cls.zero_condition:
+                    return cls.zero_condition
 
                 for existing_condition in final_conditions:
-                    prod_cond, is_simpler = existing_condition & condition
+                    prod_cond, is_simpler = self.__class__.op_type(existing_condition, condition)
                     if is_simpler:
                         final_conditions = [cond for cond in final_conditions if cond != existing_condition]
                         condition = prod_cond.simplify()
                         break
 
-                    prod_cond, is_simpler = condition & existing_condition
+                    prod_cond, is_simpler = self.__class__.op_type(condition, existing_condition)
                     if is_simpler:
                         final_conditions = [cond for cond in final_conditions if cond != existing_condition]
                         condition = prod_cond.simplify()
@@ -179,19 +192,15 @@ class ConditionIntersection(Condition):
                     break
 
         if len(final_conditions) == 0:
-            return TrueCondition
+            return self.__class__.one_condition
 
         if len(final_conditions) == 1:
             return final_conditions[0]
 
-        # if len(final_conditions) == len(self.conditions):
-        #     self._simplified = True
-        #     return self
-
-        return ConditionIntersection(final_conditions, simplified = True)
+        return cls(final_conditions, simplified = True)
 
     def _eq_simplified(self, other: Condition):
-        if not isinstance(other, ConditionIntersection):
+        if not isinstance(other, self.__class__):
             return False
         if len(self.conditions) != len(other.conditions):
             return False
@@ -201,6 +210,13 @@ class ConditionIntersection(Condition):
                 return False
 
         return True
+
+class ConditionIntersection(ListCondition,
+                            op_type=operator.and_, op_dunder_name='__and__', join_delim=' & ',
+                            zero_condition = FalseCondition, one_condition = TrueCondition):
+
+    def __init__(self, conditions: List[Condition], simplified: bool = False):
+        super().__init__(conditions, simplified)
 
 
 class AssignmentCondition(Condition):
@@ -237,6 +253,10 @@ class RangeCondition(Condition):
         self._simplified = simplified
 
     def __repr__(self):
+        lower = '' if self.range[0] == float('-inf') else f'{self.range[0]} <= '
+        upper = '' if self.range[1] == float('inf') else f' < {self.range[1]}'
+        return f'{lower}{repr(self.function)}{upper}'
+
         return f'{self.range[0]} <= {repr(self.function)} < {self.range[1]}'
 
     def _eq_simplified(self, condition: 'Condition') -> bool:
@@ -250,9 +270,6 @@ class RangeCondition(Condition):
                 low = max(self.range[0], condition.range[0])
                 high = min(self.range[1], condition.range[1])
                 if high <= low:
-                    return FalseCondition
-                return RangeCondition(self.function, (low, high))
-        return super().__mul__(condition)
                     return FalseCondition, True
                 return RangeCondition(self.function, (low, high)), True
 
