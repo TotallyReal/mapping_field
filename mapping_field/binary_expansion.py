@@ -2,7 +2,7 @@ from typing import List, Union, Optional, Tuple
 
 from mapping_field.arithmetics import as_neg
 from mapping_field import CompositionFunction
-from mapping_field.mapping_field import Var, MapElement, MapElementConstant, ExtElement
+from mapping_field.mapping_field import Var, MapElement, MapElementConstant, ExtElement, VarDict, FuncDict
 from mapping_field.arithmetics import Mult
 from mapping_field.conditions import (
     RangeTransformer, Range, Condition, FalseCondition, AssignmentCondition, RangeCondition, TrueCondition)
@@ -55,6 +55,7 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
 
         """
         # For now, each bool variable can appear at most once
+        assert all((isinstance(c, BoolVar) or c == 0 or c == 1) for c in coefficients)
         super().__init__([c for c in coefficients if isinstance(c, BoolVar)])
         self.coefficients = tuple([
             c if (isinstance(c, BoolVar) or c == 0 or c == 1) else 0
@@ -81,6 +82,12 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
     def evaluate(self) -> ExtElement:
         assert self._bool_max_value[-1] == 0  # TODO: Change to return None?
         return self._constant
+
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
+        coefs = [(c if isinstance(c,int) else var_dict.get(c,c)) for c in self.coefficients]
+        if self.coefficients == coefs:
+            return self
+        return BinaryExpansion(coefs)
 
     def split_constant(self) -> Tuple[Optional['BinaryExpansion'], MapElementConstant]:
         constant_part = MapElementConstant(self._constant)
