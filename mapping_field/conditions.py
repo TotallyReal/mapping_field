@@ -337,18 +337,14 @@ class ConditionalFunction(MapElement):
         # TODO: fix this printing function
         return ' , '.join([f'( {repr(condition)} -> {repr(map)} )' for (condition, map) in self.regions])
 
-    def __eq__(self, other: 'Condition') -> bool:
-        if not isinstance(other, ConditionalFunction):
-            return super().__eq__(other)
+    def evaluate(self) -> ExtElement:
+        condition, func = self.regions[0]
+        value = func.evaluate()
+        assert all([value == func.evaluate() for _, func in self.regions])
+        return value
 
-        if len(self.regions) != len(other.regions):
-            return False
-
-        for region in self.regions:
-            if region not in other.regions:
-                return False
-
-        return True
+    def __eq__(self, other: MapElement) -> bool:
+        return (self-other).simplify().is_zero()
 
     # <editor-fold desc=" ------------------------ arithmetics ------------------------">
 

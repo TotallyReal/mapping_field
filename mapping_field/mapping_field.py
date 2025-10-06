@@ -59,7 +59,7 @@ class MapElement:
     """
     The main class representing a "formula" which both has variables, and function variables.
 
-    For exmaple:
+    For example:
             PHI(x, y, f) := sin(x*y) + f(x - y)
     This function has two standard variables x, y and one function variable f
 
@@ -191,6 +191,12 @@ class MapElement:
         assert isinstance(map_elem, MapElementConstant)
         return map_elem.evaluate()
 
+    def is_zero(self) -> bool:
+        try:
+            return self.evaluate() == 0
+        except:
+            return False
+
     def simplify(self) -> 'MapElement':
         """
         Try to simplify the given function (e.g. 1 + 0*x + y -> 1+y ).
@@ -267,6 +273,8 @@ class Var(MapElement):
         Checks if there is a variable with the given name. Return it if exists, and otherwise None.
         """
         return cls._instances.get(var_name, None)
+
+    # TODO: Consider using __class_getitem__ for the try_get method
 
     @classmethod
     def clear_vars(cls):
