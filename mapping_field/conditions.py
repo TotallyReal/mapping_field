@@ -1,8 +1,8 @@
 from abc import abstractmethod
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 import operator
 
-from mapping_field import MapElement, Var, VarDict, FuncDict, MapElementConstant, ExtElement
+from mapping_field import MapElement, Var, VarDict, FuncDict, ExtElement
 
 Range = Tuple[float, float]
 

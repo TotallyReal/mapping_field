@@ -1,5 +1,5 @@
 from mapping_field import MapElement, MapElementFromFunction, MapElementConstant, CompositionFunction, convert_to_map
-from typing import Callable, Any, Dict, Optional, Union, List, Tuple
+from typing import List
 
 """
 Implement arithmetics for the MapElement class.
@@ -73,9 +73,9 @@ class _Add(MapElementFromFunction):
             return super()._simplify_partial_constant(entries)
 
         if sign0 == 1 and sign1 == -1:
-            # TODO: I would like to return map0 - map1, however, if any MapElement subclass defines
-            #       __sub__(self, other) as self + (-other), where (-other) uses the default Neg function,
-            #       this will cause an infinite loop.
+            # Remark: I would like to return map0 - map1, however, if any MapElement subclass defines
+            #         __sub__(self, other) as self + (-other), where (-other) uses the default Neg function,
+            #         this will cause an infinite loop.
             return Sub(map0, map1)
         if sign0 == -1 and sign1 == 1:
             return Sub(map1, map0)

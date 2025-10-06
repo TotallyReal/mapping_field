@@ -1,7 +1,6 @@
 from typing import List, Union, Optional, Tuple
 
 from mapping_field.arithmetics import as_neg
-from mapping_field import CompositionFunction
 from mapping_field.mapping_field import Var, MapElement, MapElementConstant, ExtElement, VarDict, FuncDict
 from mapping_field.arithmetics import Mult
 from mapping_field.conditions import Range, Condition, FalseCondition, TrueCondition
@@ -392,7 +391,6 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
         two_power = 2**len(coefs)
         for i in range(len(coefs)-1,-1,-1):
             c = coefs[i]
-        # for c, cur_max_value in reversed(list(zip(coefs, self._bool_max_value))):
             two_power //= 2
             if c == 0:
                 continue
@@ -410,7 +408,7 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
 
             break
 
-        if a <= 0 and self._bool_max_value[i+1] <= b:
+        if a <= 0 and self._bool_max_value[i] < b: # TODO: +1 ?
             return condition
         else:
             return condition * RangeCondition(BinaryExpansion(coefs[:i+1]), (a, b), simplified=True)
