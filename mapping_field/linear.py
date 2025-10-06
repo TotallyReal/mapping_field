@@ -3,8 +3,8 @@ import math
 from typing import List, Optional, Dict, Tuple
 
 from mapping_field import MapElement, Var, VarDict, FuncDict, MapElementConstant, ExtElement
-from mapping_field.conditions import (
-    RangeCondition, RangeTransformer, AssignmentCondition, Condition, TrueCondition, FalseCondition)
+from mapping_field.conditions import Condition, TrueCondition, FalseCondition
+from mapping_field.ranged_condition import RangeCondition, RangeTransformer, AssignmentCondition
 
 
 class LinearTransformer:
@@ -139,10 +139,7 @@ class Linear(MapElement, RangeTransformer):
         f_range = ((l-self.b)/self.a, (h-self.b)/self.a)
         if self.a < 0:
             f_range = (f_range[1], f_range[0])
-        if isinstance(self.elem, Linear):
-            return self.elem.transform_range(f_range)
-        else:
-            return RangeCondition(self.elem, f_range)
+        return RangeCondition(self.elem, f_range)
 
 
 # '''

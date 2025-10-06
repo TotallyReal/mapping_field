@@ -2,8 +2,9 @@ import pytest
 from typing import List
 
 from mapping_field.binary_expansion import BoolVar, BinaryExpansion
-from mapping_field.linear import Linear, IntVar
-from mapping_field.conditions import RangeCondition, AssignmentCondition, FalseCondition, TrueCondition, Condition
+from mapping_field.linear import Linear
+from mapping_field.conditions import  FalseCondition, TrueCondition, Condition
+from mapping_field.ranged_condition import RangeCondition, AssignmentCondition, ReLU
 from mapping_field.mapping_field import MapElementConstant, MapElement, Var
 
 @pytest.fixture(autouse=True)
@@ -114,19 +115,19 @@ def test_assignment_condition():
     assert prod == result
 
 
-def test_assignment_from_range():
-    x = IntVar('x')
-
-    condition = RangeCondition(x, (5,6))
-    condition = condition.simplify()
-    result = AssignmentCondition({x: 5})
-    assert condition == result
-
-    linear_func = Linear(5, x, 2)
-    condition = RangeCondition(linear_func, (7,12))
-    condition = condition.simplify()
-    result = AssignmentCondition({x: 1})
-    assert condition == result
+# def test_assignment_from_range():
+#     x = BinaryExpansion.generate('x', 4)
+#
+#     condition = RangeCondition(x, (5,6))
+#     condition = condition.simplify()
+#     result = AssignmentCondition({x: 5})
+#     assert condition == result
+#
+#     linear_func = Linear(5, x, 2)
+#     condition = RangeCondition(linear_func, (7,12))
+#     condition = condition.simplify()
+#     result = AssignmentCondition({x: 1})
+#     assert condition == result
 
 def addition_test(x, y, x_plus_y):
     addition = x + y

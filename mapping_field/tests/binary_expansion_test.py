@@ -1,6 +1,6 @@
 from mapping_field import MapElementConstant
 from mapping_field.binary_expansion import BinaryExpansion, BoolVar
-from mapping_field.conditions import RangeCondition, AssignmentCondition
+from mapping_field.ranged_condition import RangeCondition, AssignmentCondition
 
 
 def test_equality_constant():

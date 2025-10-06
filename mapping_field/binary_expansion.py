@@ -4,8 +4,8 @@ from mapping_field.arithmetics import as_neg
 from mapping_field import CompositionFunction
 from mapping_field.mapping_field import Var, MapElement, MapElementConstant, ExtElement, VarDict, FuncDict
 from mapping_field.arithmetics import Mult
-from mapping_field.conditions import (
-    RangeTransformer, Range, Condition, FalseCondition, AssignmentCondition, RangeCondition, TrueCondition)
+from mapping_field.conditions import Range, Condition, FalseCondition, TrueCondition
+from mapping_field.ranged_condition import AssignmentCondition, RangeCondition, RangeTransformer
 from mapping_field.linear import LinearTransformer
 
 
