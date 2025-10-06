@@ -3,7 +3,7 @@ from typing import Tuple, Optional
 
 from mapping_field import VarDict, MapElement, MapElementConstant
 from mapping_field.conditions import Condition, FalseCondition, ConditionIntersection, Range, ConditionalFunction, \
-    MapElementProcessor
+    MapElementProcessor, TrueCondition
 
 
 class AssignmentCondition(Condition, MapElementProcessor):
@@ -59,7 +59,7 @@ class AssignmentCondition(Condition, MapElementProcessor):
             if len(assignments1) == len(assignments2):
                 special_key = None
                 range = (0,0)
-                for key, value in assignments1:
+                for key, value in assignments1.items():
                     if key not in assignments2:
                         return super().__or__(condition)
 
@@ -72,16 +72,21 @@ class AssignmentCondition(Condition, MapElementProcessor):
                     if abs(value - value2) != 1:
                         return super().__or__(condition)
                     special_key = key
-                    range = (min(value, value2), max(value, value2))
+                    range = (min(value, value2), max(value, value2) + 1)
 
                 if special_key is None:
                     return self, True
 
                 assign_cond = AssignmentCondition({k: v for k,v in assignments1.items() if k != special_key})
                 range_cond = RangeCondition(special_key, range)
-                return ConditionIntersection([assign_cond, range_cond],simplified=True), True
+                return ConditionIntersection([assign_cond, range_cond]), True
 
         return super().__or__(condition)
+
+    def simplify(self) -> 'Condition':
+        if len(self.var_dict) == 0:
+            return TrueCondition
+        return self
 
 
 class RangeCondition(Condition):
