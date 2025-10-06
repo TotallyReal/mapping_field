@@ -125,6 +125,13 @@ class Linear(MapElement, RangeTransformer):
 
     # </editor-fold>
 
+    def evaluate(self) -> ExtElement:
+        if isinstance(self.elem, MapElementConstant):
+            return self.a * self.elem.evaluate() + self.b
+
+        assert self.a == 0
+        return self.b
+
     def __eq__(self, other: MapElement):
         if not isinstance(other, Linear):
             return super().__eq__(other)
