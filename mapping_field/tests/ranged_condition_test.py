@@ -67,3 +67,22 @@ def test_op_conditional_functions_ranges():
     ])
 
     assert  result == cond_add
+
+
+def test_comparison_operators():
+    dummy = DummyMap(0)
+
+    cond = (dummy < 10)
+    assert cond == RangeCondition(dummy, (float('-inf'), 10))
+
+    cond = (dummy <= 10)
+    assert cond == RangeCondition(dummy, (float('-inf'), 11))
+
+    cond = (10 <= dummy)
+    assert cond == RangeCondition(dummy, (10, float('inf')))
+
+    cond = (10 < dummy)
+    assert cond == RangeCondition(dummy, (11, float('inf')))
+
+    # Unfortunately, python is terrible, and I can't use 2-sided comparisons like:
+    #   cond = (10 <= dummy < 20)

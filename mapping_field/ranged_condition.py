@@ -50,7 +50,7 @@ class AssignmentCondition(Condition, MapElementProcessor):
 
             # check if one condition is contained in the second
             if len(assignments1) < len(assignments2):
-                for key, value in assignments1:
+                for key, value in assignments1.items():
                     if (key not in assignments2) or assignments1[key] != assignments2[key]:
                         return super().__or__(condition)
                 return cond1, True
@@ -159,6 +159,51 @@ class RangeCondition(Condition):
 
         return condition
 
+    # <editor-fold desc=" ------------------------ comparison ------------------------">
+
+    # Used for writing ranged conditions as 'a < func < b' for some map element func, and two constants a, b
+
+    def __lt__(self, other) -> Condition:
+        if not isinstance(other, (int, float)):
+            return NotImplemented
+        if other == float('inf'):
+            return self
+        if self.range[1] != float('inf'):
+            raise Exception(f'Cannot add a second upper bound {other} to {self}')
+        return RangeCondition(self.function, (self.range[0], other))
+
+    def __le__(self, other) -> Condition:
+        if not isinstance(other, (int, float)):
+            return NotImplemented
+        return self.__lt__(other + 1)
+
+    def __ge__(self, other) -> Condition:
+        if not isinstance(other, (int, float)):
+            return NotImplemented
+        if other == float('-inf'):
+            return self
+        if self.range[0] != float('-inf'):
+            raise Exception(f'Cannot add a second lower bound {other} to {self}')
+        return RangeCondition(self.function, (other, self.range[1]))
+
+    def __gt__(self, other) -> Condition:
+        if not isinstance(other, (int, float)):
+            return NotImplemented
+        return self.__ge__(other - 1)
+
+    # </editor-fold>
+
+
+def _ranged(elem: MapElement, low: int, high: int) -> RangeCondition:
+    if isinstance(low, (int, float)) and isinstance(high, (int, float)):
+        return RangeCondition(elem, (low, high))
+    return NotImplemented
+
+MapElement.__le__ = lambda self, n: _ranged(self, float('-inf'), n+1)
+MapElement.__lt__ = lambda self, n: _ranged(self, float('-inf'), n)
+MapElement.__ge__ = lambda self, n: _ranged(self, n, float('inf'))
+MapElement.__gt__ = lambda self, n: _ranged(self, n+1, float('inf'))
+
 
 class RangeTransformer:
 
@@ -169,7 +214,6 @@ class RangeTransformer:
         If cannot be simplified, return None.
         """
         pass
-
 
 
 def ReLU(map_elem: MapElement):
