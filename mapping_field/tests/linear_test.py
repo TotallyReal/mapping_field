@@ -3,7 +3,7 @@ from typing import List
 
 from mapping_field.binary_expansion import BoolVar, BinaryExpansion
 from mapping_field.linear import Linear
-from mapping_field.conditions import  FalseCondition, TrueCondition, Condition
+from mapping_field.conditions import FalseCondition, TrueCondition, Condition, ConditionalFunction
 from mapping_field.ranged_condition import RangeCondition, AssignmentCondition, ReLU
 from mapping_field.mapping_field import MapElement, Var
 
@@ -179,7 +179,8 @@ def test_me():
 
 
 def test_linear_ranged_condition_subtraction():
-    x = BinaryExpansion.generate('x', 4) # in range [0,16)
+    vv = [BoolVar(f'x_{i}') for i in range(4)]
+    x = BinaryExpansion(vv)
     xx = Linear.of(x)
 
     v1 = ReLU(xx-7)
@@ -188,3 +189,10 @@ def test_linear_ranged_condition_subtraction():
     v = v.simplify()
 
     assert v == x.coefficients[3]
+
+    v = 8 * v
+    u = ConditionalFunction.always(xx) - v
+    u = u.simplify()
+
+    result = BinaryExpansion(vv[:3])
+    assert u == result

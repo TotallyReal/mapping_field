@@ -133,10 +133,12 @@ class Linear(MapElement, RangeTransformer):
         return self.b
 
     def __eq__(self, other: MapElement):
+        if self.elem == other:
+            return self.a == 1 and self.b == 0
         if not isinstance(other, Linear):
             return super().__eq__(other)
 
-        return (self.a == other.a) and (self.b == other.b) and (self.elem == other.elem)
+        return (self.a == other.a) and (self.b == other.b) and (self.elem.simplify() == other.elem.simplify())
 
     def transform_range(self, f_range:Tuple[float, float]) -> Condition:
         l, h = f_range

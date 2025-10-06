@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import List, Tuple
 import operator
 
-from mapping_field import MapElement, Var, VarDict, FuncDict, ExtElement
+from mapping_field import MapElement, Var, VarDict, FuncDict, ExtElement, MapElementConstant
 
 Range = Tuple[float, float]
 
@@ -350,6 +350,8 @@ class ConditionalFunction(MapElement):
     # <editor-fold desc=" ------------------------ arithmetics ------------------------">
 
     def _op(self, other: 'MapElement', op_func) -> 'ConditionalFunction':
+        if isinstance(other, int):
+            other = MapElementConstant(other)
         if not isinstance(other, ConditionalFunction):
             other = ConditionalFunction.always(other)
         regions: List[Tuple[Condition, MapElement]] = []
