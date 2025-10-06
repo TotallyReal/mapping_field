@@ -320,7 +320,8 @@ class ConditionalFunction(MapElement):
     A conditional function of the form:
        1_(cond_1) * f_1 + 1_(cond_2) * f_2 + ... + 1_(cond_n) * f_n
 
-    Working under the assumption that the conditions do not intersect
+    Working under the assumption that the conditions do not intersect, and cover the whole space, namely
+    the form a decomposition of the whole space.
     """
 
     @staticmethod
@@ -348,7 +349,7 @@ class ConditionalFunction(MapElement):
 
     # <editor-fold desc=" ------------------------ arithmetics ------------------------">
 
-    def _op(self, other: 'MapElement', op_func):
+    def _op(self, other: 'MapElement', op_func) -> 'ConditionalFunction':
         if not isinstance(other, ConditionalFunction):
             other = ConditionalFunction.always(other)
         regions: List[Tuple[Condition, MapElement]] = []
@@ -395,7 +396,25 @@ class ConditionalFunction(MapElement):
                    for region in self.regions]
         return ConditionalFunction(regions)
 
-    def _simplify_with_entries(self, simplified_entries: List['MapElement']) -> 'MapElement':
-        regions = [(region[0].simplify(), region[1].simplify())
-                   for region in self.regions]
-        return ConditionalFunction(regions)
+    def _simplify_with_var_values(self, var_dict: VarDict) -> 'MapElement':
+        regions = []
+        for condition, func in self.regions:
+            condition = condition.simplify()
+            if condition == FalseCondition:
+                continue
+            func = func._simplify_with_var_values(var_dict)
+            if isinstance(condition, MapElementProcessor):
+                func = condition.process(func)
+
+            for i, (prev_cond, prev_func) in enumerate(regions):
+                if prev_func == func:
+                    condition_union = (prev_cond | condition)[0]
+                    condition_union = condition_union.simplify()
+                    regions[i][0] = condition_union
+                    break
+            else:
+                regions.append([condition, func])
+
+        if len(regions) == 1 and regions[0][0] == TrueCondition:
+            return regions[0][1]
+        return ConditionalFunction([tuple(region) for region in regions])

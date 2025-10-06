@@ -176,3 +176,15 @@ def test_me():
     prod = cond1 * cond2
     prod = prod.simplify()
     assert prod == cond1
+
+
+def test_linear_ranged_condition_subtraction():
+    x = BinaryExpansion.generate('x', 4) # in range [0,16)
+    xx = Linear.of(x)
+
+    v1 = ReLU(xx-7)
+    v2 = ReLU(xx-8)
+    v = v1 - v2
+    v = v.simplify()
+
+    assert v == x.coefficients[3]
