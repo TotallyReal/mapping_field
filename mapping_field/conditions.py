@@ -69,6 +69,9 @@ class Condition:
         while cond2 & cond1 not. Hence, if you really want to check if it can be simpler, check both, or use
         Condition.intersection(...) directly.
         """
+        if not isinstance(condition, Condition):
+            return NotImplemented
+
         if isinstance(condition, BinaryCondition) or isinstance(condition, ConditionIntersection):
             return condition & self
 
@@ -76,6 +79,31 @@ class Condition:
             return self, True
 
         return ConditionIntersection([self, condition]), False
+
+    @classmethod
+    def union(cls, condition1: 'Condition', condition2: 'Condition') -> Tuple['Condition', bool]:
+        """
+        Similar to Condition.intersection(...), but with union.
+        """
+        condition, is_simpler = condition1 | condition2
+        if is_simpler:
+            return condition, is_simpler
+        return condition2 | condition1
+
+    def __or__(self, condition: 'Condition') -> Tuple['Condition', bool]:
+        """
+        Similar to __and__, but for __or__
+        """
+        if not isinstance(condition, Condition):
+            return NotImplemented
+
+        if isinstance(condition, BinaryCondition) or isinstance(condition, ConditionUnion):
+            return condition | self
+
+        if self == condition:
+            return self, True
+
+        return ConditionUnion([self, condition]), False
 
     def __mul__(self, condition: 'Condition'):
         """
@@ -107,9 +135,10 @@ class BinaryCondition(Condition):
         return False
 
     def __and__(self, condition: Condition) -> Tuple[Condition, bool]:
-        if self.value:
-            return condition, True
-        return self, True
+        return (condition if self.value else FalseCondition), True
+
+    def __or__(self, condition: 'Condition') -> Tuple['Condition', bool]:
+        return (condition if not self.value else TrueCondition), True
 
 TrueCondition  = BinaryCondition(True)
 FalseCondition = BinaryCondition(False)
@@ -144,7 +173,6 @@ class ListCondition(Condition):
             return self.__class__([*self.conditions, *condition.conditions]), False
 
         return self.__class__([*self.conditions, condition]), False
-
 
     def simplify(self):
         if self._simplified:
@@ -218,6 +246,13 @@ class ConditionIntersection(ListCondition,
     def __init__(self, conditions: List[Condition], simplified: bool = False):
         super().__init__(conditions, simplified)
 
+class ConditionUnion(ListCondition,
+                            op_type = operator.or_, op_dunder_name = '__or__', join_delim = ' | ',
+                            zero_condition = TrueCondition, one_condition = FalseCondition):
+
+    def __init__(self, conditions: List[Condition], simplified: bool = False):
+        super().__init__(conditions, simplified)
+
 
 class AssignmentCondition(Condition):
 
@@ -242,6 +277,56 @@ class AssignmentCondition(Condition):
             return AssignmentCondition({**self.var_dict, **condition.var_dict}), True
 
         return super().__and__(condition)
+
+    def __or__(self, condition: 'Condition') -> Tuple['Condition', bool]:
+        if isinstance(condition, RangeCondition):
+            return condition | self
+
+        cond1 = self
+        cond2 = condition
+
+        if isinstance(condition, AssignmentCondition):
+            assignments1 = self.var_dict
+            assignments2 = condition.var_dict
+
+            if len(assignments2) < len(assignments1):
+                assignments1, assignments2 = assignments2, assignments1
+                cond1, cond2 = cond2, cond1
+
+            # check if one condition is contained in the second
+            if len(assignments1) < len(assignments2):
+                for key, value in assignments1:
+                    if (key not in assignments2) or assignments1[key] != assignments2[key]:
+                        return super().__or__(condition)
+                return cond1, True
+
+            # same key, only one differ in value, and they are consecutive integers
+            if len(assignments1) == len(assignments2):
+                special_key = None
+                range = (0,0)
+                for key, value in assignments1:
+                    if key not in assignments2:
+                        return super().__or__(condition)
+
+                    value2 = assignments2[key]
+                    if value2 == value:
+                        continue
+                    if special_key is not None:
+                        return super().__or__(condition)
+
+                    if abs(value - value2) != 1:
+                        return super().__or__(condition)
+                    special_key = key
+                    range = (min(value, value2), max(value, value2))
+
+                if special_key is None:
+                    return self, True
+
+                assign_cond = AssignmentCondition({k: v for k,v in assignments1.items() if k != special_key})
+                range_cond = RangeCondition(special_key, range)
+                return ConditionIntersection([assign_cond, range_cond],simplified=True), True
+
+        return super().__or__(condition)
 
 
 class RangeCondition(Condition):
@@ -280,6 +365,29 @@ class RangeCondition(Condition):
                 return ConditionIntersection([RangeCondition(function, self.range), condition]), True
 
         return super().__and__(condition)
+
+    def __or__(self, condition: Condition) -> Tuple[Condition, bool]:
+
+        # TODO: For now I assume that we only deal with integers
+        if isinstance(condition, AssignmentCondition) and len(condition.var_dict) == 1:
+            key, value = list(condition.var_dict.items())[0]
+            if key == self.function:
+                if value == self.range[0] - 1:
+                    return RangeCondition(self.function, (self.range[0]-1, self.range[1])), True
+                if value == self.range[1]:
+                    return RangeCondition(self.function, (self.range[0], self.range[1]+1)), True
+                if self.range[0] <= value < self.range[1]:
+                    return self, True
+
+
+        if isinstance(condition, RangeCondition) and condition.function == self.function:
+            if self.range[1] < condition.range[0] or condition.range[1] < self.range[0]:
+                return super().__or__(condition)
+            a = min(self.range[0], condition.range[0])
+            b = max(self.range[1], condition.range[1])
+            return RangeCondition(self.function, (a, b)), True
+
+        return super().__or__(condition)
 
 
     def simplify(self) -> 'Condition':

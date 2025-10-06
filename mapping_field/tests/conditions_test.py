@@ -1,7 +1,8 @@
 from typing import List
 
 from mapping_field.conditions import (
-    Condition, TrueCondition, FalseCondition, RangeCondition, ConditionIntersection, ConditionalFunction, ReLU)
+    Condition, TrueCondition, FalseCondition, RangeCondition, ConditionIntersection, ConditionalFunction, ReLU,
+    AssignmentCondition)
 from mapping_field.mapping_field import MapElementConstant, MapElement
 
 class DummyCondition(Condition):
@@ -68,7 +69,7 @@ def test_improved_simplify_intersection():
     result = (dummies[0] * dummies[1] * dummies[2] * dummies[3])
     assert prod == result
 
-def test_range_condition():
+def test_range_condition_intersection():
     dummy_map = DummyMap(0)
 
     cond1 = RangeCondition(dummy_map, (0,10))
@@ -78,6 +79,21 @@ def test_range_condition():
 
     cond3 = RangeCondition(dummy_map, [15,25])
     assert cond1 * cond3 == FalseCondition
+
+def test_range_condition_union():
+    dummy_map = DummyMap(0)
+
+    cond1 = RangeCondition(dummy_map, (0,10))
+    cond2 = RangeCondition(dummy_map, (5,15))
+    cond12 = RangeCondition(dummy_map, (0,15))
+    assert (cond1 | cond2)[0] == cond12
+
+    cond2 = AssignmentCondition({dummy_map: 10})
+    cond12 = RangeCondition(dummy_map, (0,11))
+    assert (cond1 | cond2)[0] == cond12
+
+    cond3 = RangeCondition(dummy_map, [15,25])
+    assert (cond1 | cond3)[1] == False
 
 
 # Test conditional functions
