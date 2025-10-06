@@ -305,6 +305,12 @@ class Var(MapElement):
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
         return var_dict.get(self, self)
 
+    def __eq__(self, other):
+        return isinstance(other, Var) and self.name == other.name
+
+    def __hash__(self):
+        return hash(('Var', self.name))
+
 
 class NamedFunc(MapElement):
     """
