@@ -55,20 +55,28 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
 
         """
         # For now, each bool variable can appear at most once
-        assert all((isinstance(c, BoolVar) or c == 0 or c == 1) for c in coefficients)
+        self.coefficients = []
+        for c in coefficients:
+            if isinstance(c, MapElementConstant):
+                c = c.evaluate()
+            if isinstance(c, int):
+                assert c == 0 or c == 1, f'can only use 0 or 1 as integer coefficients, instead for {c}'
+                # TODO: maybe remove the 1 as coefficient?
+                self.coefficients.append(c)
+                continue
+            assert isinstance(c, BoolVar), (f'Coefficients for Binary expansion can only be BoolVar, 0 or 1.'
+                                            f'Instead got {c} of type {c.__class__}')
+            self.coefficients.append(c)
+
         super().__init__([c for c in coefficients if isinstance(c, BoolVar)])
-        self.coefficients = tuple([
-            c if (isinstance(c, BoolVar) or c == 0 or c == 1) else 0
-            # TODO: maybe remove the 1 as coefficient?
-            for c in coefficients])
 
         self._constant = 0                  # The value of this map element without the bool variables
         self._bool_max_value = [0]          # max value of only bool variables, up to position i-1
 
         two_power = 1
-        for i, c in enumerate(self.coefficients):
-            if isinstance(c, int):
-                self._constant += two_power * c
+        for i, cc in enumerate(self.coefficients):
+            if isinstance(cc, int):
+                self._constant += two_power * cc
                 self._bool_max_value.append(self._bool_max_value[-1])
             else:
                 self._bool_max_value.append(self._bool_max_value[-1] + two_power)
