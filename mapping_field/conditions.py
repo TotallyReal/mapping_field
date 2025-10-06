@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import List, Tuple, Optional
 import operator
 
-from mapping_field import MapElement, Var, VarDict, FuncDict, MapElementConstant
+from mapping_field import MapElement, Var, VarDict, FuncDict, MapElementConstant, ExtElement
 
 Range = Tuple[float, float]
 
@@ -181,7 +181,7 @@ class ListCondition(Condition):
         cls = self.__class__
 
         final_conditions = []
-        conditions = self.conditions
+        conditions = self.conditions.copy()
 
         for condition in conditions:
 
@@ -202,7 +202,7 @@ class ListCondition(Condition):
                     return cls.zero_condition
 
                 for existing_condition in final_conditions:
-                    prod_cond, is_simpler = self.__class__.op_type(existing_condition, condition)
+                    prod_cond, is_simpler = cls.op_type(existing_condition, condition)
                     if is_simpler:
                         final_conditions = [cond for cond in final_conditions if cond != existing_condition]
                         condition = prod_cond.simplify()
@@ -252,6 +252,58 @@ class ConditionUnion(ListCondition,
 
     def __init__(self, conditions: List[Condition], simplified: bool = False):
         super().__init__(conditions, simplified)
+
+    def __and__(self, condition: Condition) -> Tuple[Condition, bool]:
+        # We have two types of simplifications:
+        # 1. one condition is contained in the other
+        # 2. Both conditions are unions, of the form:
+        #       A_1 | A_2 | ... | A_n   ,   B_1 | A_2 | ... | A_n
+        #    and A_1 * B_1 can be simplified, in which case we return
+        #       (A_1 * B_1) | A_2 | A_3 | ... | A_n
+
+        if isinstance(condition, BinaryCondition):
+            return condition & self
+
+        conditions1 = self.conditions.copy()
+        conditions2 = condition.conditions.copy() if isinstance(condition, ConditionUnion) else [condition]
+
+        swapped = False
+        if len(conditions1) < len(conditions2):
+            conditions1, conditions2 = conditions2, conditions1
+            swapped = True
+
+        n1 = len(conditions1)
+        used_positions = [False] * n1
+        special_condition = None
+
+        for cond2 in conditions2:
+            for i in range(n1):
+                if not used_positions[i] and conditions1[i] == cond2:
+                    used_positions[i] = True
+                    break
+            else:
+                if special_condition is not None:
+                    return super().__and__(condition)
+                special_condition = cond2
+
+        if special_condition is None:
+            # Full containement
+            return (self if swapped else condition), True
+
+        if len(conditions1) == len(conditions2):
+            second_special_condition = None
+            for i in range(n1):
+                if not used_positions[i]:
+                    second_special_condition = conditions1[i]
+                    break
+
+            prod, is_simpler = special_condition & second_special_condition
+            if is_simpler:
+                conditions = [c for flag, c in zip(used_positions, conditions1) if flag]
+                return ConditionUnion(conditions + [prod]), True
+
+        return super().__and__(condition)
+
 
 
 
