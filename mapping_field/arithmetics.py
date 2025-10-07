@@ -215,8 +215,7 @@ Neg = _Negative()
 MapElement.__neg__ = lambda self: Neg(self)
 
 Add = _Add()
-MapElement.__add__  = params_to_maps(lambda self, other: Add(self, other))
-MapElement.__radd__ = params_to_maps(lambda self, other: Add(other, self))
+MapElement.add  = params_to_maps(lambda self, other: Add(self, other))
 
 Sub = _Sub()
 MapElement.__sub__  = params_to_maps(lambda self, other: Sub(self, other))

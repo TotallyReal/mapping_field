@@ -207,7 +207,7 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
 
         return BinaryExpansion(coefs)
 
-    def __add__(self, other):
+    def add(self, other: MapElement) -> MapElement:
         sign, other_elem = as_neg(other)
 
         if isinstance(other_elem, BinaryExpansion):
@@ -216,7 +216,7 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
             if result is not None:
                 return result
 
-        return super().__add__(other)
+        return super().add(other)
 
     def __radd__(self, other):
         return self + other

@@ -351,7 +351,7 @@ class ConditionalFunction(MapElement):
 
     # <editor-fold desc=" ------------------------ arithmetics ------------------------">
 
-    def _op(self, other: 'MapElement', op_func) -> 'ConditionalFunction':
+    def _op(self, other: MapElement, op_func) -> 'ConditionalFunction':
         if isinstance(other, int):
             other = MapElementConstant(other)
         if not isinstance(other, ConditionalFunction):
@@ -364,9 +364,7 @@ class ConditionalFunction(MapElement):
                     regions.append(( cond_prod, op_func(elem1, elem2)))
         return ConditionalFunction(regions)
 
-    def __add__(self, other: MapElement) -> 'ConditionalFunction':
-        if other == 0:
-            return self
+    def add(self, other: MapElement) -> 'ConditionalFunction':
         return self._op(other, operator.add)
 
     def __radd__(self, other: MapElement) -> 'ConditionalFunction':

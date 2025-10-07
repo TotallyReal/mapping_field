@@ -20,6 +20,35 @@ class DummyMap(MapElement):
     def __eq__(self, other):
         return isinstance(other, DummyMap) and other.value == self.value
 
+class ImprovedDummyMap(MapElement):
+    def __init__(self, value: Tuple =(0,)):
+        super().__init__([])
+        self.value = value
+
+    def to_string(self, vars_str_list: List[str]):
+        return f'ImprovedDummyMap({self.value})'
+
+    def __eq__(self, other):
+        if isinstance(other, DummyMap):
+            return len(self.value) == 1 and self.value[0] == other.value
+        return isinstance(other, ImprovedDummyMap) and set(self.value) == set(other.value)
+
+    def add(self, other):
+        if isinstance(other, DummyMap):
+            return ImprovedDummyMap(self.value + (other.value,))
+        if isinstance(other, ImprovedDummyMap):
+            return ImprovedDummyMap(self.value + other.value)
+        return super().add(other)
+
+def test_addition_choice():
+def test_addition_commutative_choice():
+    elem1 = DummyMap(0)
+    elem2 = ImprovedDummyMap((1,))
+
+    addition1 = elem1 + elem2
+    addition2 = elem2 + elem1
+    assert addition1 == addition2
+
 # ----------------- test simple arithmetics -----------------
 
 def test_simple_arithmetics():

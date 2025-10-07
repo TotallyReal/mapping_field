@@ -60,7 +60,7 @@ class Linear(MapElement, RangeTransformer):
         return Linear(-self.a, self.elem, -self.b)
 
     # The Linear addition always tries to return a "simplified" Linear map.
-    def __add__(self, other):
+    def add(self, other: MapElement) -> MapElement:
         try:
             value = other.evaluate() if isinstance(other, MapElement) else other
             if value == 0:
@@ -97,7 +97,7 @@ class Linear(MapElement, RangeTransformer):
             # and self.elem == other.elem:
 
         # result = self._try_add_binary_expansion(other)
-        return super().__add__(other) # if result is None else result
+        return super().add(other) # if result is None else result
 
     def __radd__(self, other):
         return self + other

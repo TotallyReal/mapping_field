@@ -228,11 +228,27 @@ class MapElement:
 
     # <editor-fold desc=" ------------------------ Arithmetic functions ------------------------">
 
-    def __add__(self, other) -> 'MapElement':
+    def add(self, other: 'MapElement') -> 'MapElement':
         return NotImplemented
 
+    def __add__(self, other) -> 'MapElement':
+        other = convert_to_map(other)
+        if other is NotImplemented:
+            return NotImplemented
+
+        # Some absolutely default behaviour
+        if self == 0:
+            return other
+        if other == 0:
+            return self
+
+        # If this object has the default addition, but the other doesn't, use the other's addition
+        if (self.__class__.add is MapElement.add) and (other.__class__.add is not MapElement.add):
+            return other.add(self)
+        return self.add(other)
+
     def __radd__(self, other) -> 'MapElement':
-        return NotImplemented
+        return self.__add__(other)
 
     def __neg__(self) -> 'MapElement':
         return NotImplemented
