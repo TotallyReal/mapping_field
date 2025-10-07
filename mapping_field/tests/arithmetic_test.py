@@ -1,5 +1,7 @@
+from typing import List, Tuple
+
 import pytest
-from mapping_field.mapping_field import Var, NamedFunc, Func
+from mapping_field.mapping_field import Var, NamedFunc, Func, MapElement
 
 
 @pytest.fixture(autouse=True)
@@ -7,9 +9,18 @@ def reset_static_variables():
     Var._instances = {}
     NamedFunc._instances = {}
 
+class DummyMap(MapElement):
+    def __init__(self, value=0):
+        super().__init__([])
+        self.value = value
+
+    def to_string(self, vars_str_list: List[str]):
+        return f'DummyMap({self.value})'
+
+    def __eq__(self, other):
+        return isinstance(other, DummyMap) and other.value == self.value
 
 # ----------------- test simple arithmetics -----------------
-
 
 def test_simple_arithmetics():
     x, y, z = Var('x'), Var('y'), Var('z')
@@ -30,64 +41,64 @@ def test_simple_arithmetics():
 # TODO: not the best way to test with str(.), but it will do until I can compare functions
 
 def test_zero_addition():
-    x = Var('x')
-    assert str(x+0) == 'x'
-    assert str(0+x) == 'x'
+    x = DummyMap(0)
+    assert x + 0 == x
+    assert 0 + x == x
 
 
 def test_zero_subtraction():
-    x = Var('x')
-    assert str(x - 0) == 'x'
-    assert str(0 - x) == '(-x)'
+    x = DummyMap(0)
+    assert x - 0 == x
+    assert str(0 - x) == '(-DummyMap(0))'
 
 
 def test_zero_multiplication():
-    x = Var('x')
-    assert str(x * 0) == '0'
-    assert str(0 * x) == '0'
+    x = DummyMap(0)
+    assert x * 0 == 0
+    assert 0 * x == 0
 
 
 def test_one_multiplication():
-    x = Var('x')
-    assert str(x * 1) == 'x'
-    assert str(1 * x) == 'x'
+    x = DummyMap(0)
+    assert x * 1 == x
+    assert 1 * x == x
 
 
 def test_zero_division():
-    x = Var('x')
-    assert str(0 / x) == '0'
+    x = DummyMap(0)
+    assert 0 / x == 0
     with pytest.raises(Exception):
-        assert str(x / 0) == '0'
+        y = x / 0
 
 
 def test_one_division():
-    x = Var('x')
-    assert str(x / 1) == 'x'
+    x = DummyMap(0)
+    assert x / 1 == x
 
 
 # ----------------- General Addition Rules -----------------
 
 def test_neg_distributive():
 
-    x, y, z = Var('x'), Var('y'), Var('z')
-    assert str(-(-x)) == 'x'
-    assert str(-(x-y)) == '(y-x)'
+    x, y, z = DummyMap(0), DummyMap(1), DummyMap(2)
+    assert (-(-x)) == x
+    assert str(-(x-y)) == '(DummyMap(1)-DummyMap(0))'
 
 
 def test_addition_rules():
-    x, y = Var('x'), Var('y')
-    assert str(x+y) == '(x+y)'
-    assert str(x+(-y)) == '(x-y)'
-    assert str((-x)+y) == '(y-x)'
-    assert str((-x)+(-y)) == '(-(x+y))'
+    x, y = DummyMap(0), DummyMap(1)
+    assert str(x+y) == '(DummyMap(0)+DummyMap(1))'
+    assert str(x+(-y)) == '(DummyMap(0)-DummyMap(1))'
+    assert str((-x)+y) == '(DummyMap(1)-DummyMap(0))'
+    assert str((-x)+(-y)) == '(-(DummyMap(0)+DummyMap(1)))'
 
 
 def test_subtraction_rules():
-    x, y = Var('x'), Var('y')
-    assert str(x-y) == '(x-y)'
-    assert str(x-(-y)) == '(x+y)'
-    assert str((-x)-y) == '(-(y+x))'  # TODO: x,y switched positions! Need a better way to compare.
-    assert str((-x)-(-y)) == '(y-x)'
+    x, y = DummyMap(0), DummyMap(1)
+    assert str(x-y) == '(DummyMap(0)-DummyMap(1))'
+    assert str(x-(-y)) == '(DummyMap(0)+DummyMap(1))'
+    assert str((-x)-y) == '(-(DummyMap(1)+DummyMap(0)))'  # TODO: 0,1 switched positions! Need a better way to compare.
+    assert str((-x)-(-y)) == '(DummyMap(1)-DummyMap(0))'
 
 
 # ----------------- General Multiplication Rules -----------------
