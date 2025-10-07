@@ -97,9 +97,6 @@ def test_shift():
     assert x3.shift(-4) == x1
     assert x3.shift(-2) == x2
 
-    assert x1 * 4 == x2
-    assert x2 == x1 * 4
-
 def test_simplify_range_condition():
     v = [BoolVar(f'v_{i}') for i in range(4)]
     x = BinaryExpansion(v)  # A number in [0,16)

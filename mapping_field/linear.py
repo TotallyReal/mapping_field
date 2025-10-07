@@ -1,6 +1,6 @@
 from abc import abstractmethod
 import math
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from mapping_field import MapElement, VarDict, FuncDict, MapElementConstant, ExtElement
 from mapping_field.conditions import Condition, TrueCondition, FalseCondition
@@ -8,6 +8,9 @@ from mapping_field.ranged_condition import RangeCondition, RangeTransformer
 
 
 class LinearTransformer:
+
+    def linear_combination(self, k1: int, k2: int, elem2: MapElement) -> Optional[Tuple[int, MapElement]]:
+        return None
 
     @abstractmethod
     def transform_linear(self, a: int, b: int) -> Tuple[int, MapElement, int]:
@@ -89,10 +92,18 @@ class Linear(MapElement, RangeTransformer):
             if isinstance(a1, int) and isinstance(a2, int):
                 gcd = math.gcd(a1, a2)
 
-                elem1 *= (a1//gcd)
-                elem2 *= (a2//gcd)
-                result = Linear(gcd, elem1 + elem2, b1 + b2)
-                return result
+                if isinstance(elem1, LinearTransformer):
+                    result = elem1.linear_combination(a1//gcd, a2//gcd, elem2)
+                    if result is not None:
+                        k, elem = result
+                        return Linear(gcd * k, elem, b1 + b2)
+
+                if isinstance(elem2, LinearTransformer):
+                    result = elem2.linear_combination(a2//gcd, a1//gcd, elem1)
+                    if result is not None:
+                        k, elem = result
+                        return Linear(gcd * k, elem, b1 + b2)
+
 
             # and self.elem == other.elem:
 
@@ -130,8 +141,11 @@ class Linear(MapElement, RangeTransformer):
     # </editor-fold>
 
     def evaluate(self) -> ExtElement:
-        if isinstance(self.elem, MapElementConstant):
-            return self.a * self.elem.evaluate() + self.b
+        try:
+            n = self.elem.evaluate()
+            return self.a * n + self.b
+        except:
+            pass
 
         assert self.a == 0
         return self.b
@@ -142,7 +156,11 @@ class Linear(MapElement, RangeTransformer):
         if not isinstance(other, Linear):
             return super().__eq__(other)
 
-        return (self.a == other.a) and (self.b == other.b) and (self.elem.simplify() == other.elem.simplify())
+        try:
+            return (self-other).evaluate() == 0
+        except:
+            return False
+
 
     def transform_range(self, f_range:Tuple[float, float]) -> Condition:
         l, h = f_range

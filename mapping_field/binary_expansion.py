@@ -2,7 +2,6 @@ from typing import List, Union, Optional, Tuple
 
 from mapping_field.arithmetics import as_neg
 from mapping_field.mapping_field import Var, MapElement, MapElementConstant, ExtElement, VarDict, FuncDict
-from mapping_field.arithmetics import Mult
 from mapping_field.conditions import Range, Condition, FalseCondition, TrueCondition
 from mapping_field.ranged_condition import AssignmentCondition, RangeCondition, RangeTransformer
 from mapping_field.linear import LinearTransformer
@@ -133,6 +132,54 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
 
     # <editor-fold desc=" ------------------------ Arithmetic ------------------------">
 
+    def linear_combination(self, k1: int, k2: int, elem2: MapElement) -> Optional[Tuple[int, MapElement]]:
+        if not isinstance(elem2, BinaryExpansion):
+            return None
+
+        elem1 = self
+
+        coef1 = elem1.coefficients
+        non_zero1 = [i for i, v in enumerate(coef1) if v!=0]
+        if k1 == 0 or len(non_zero1) == 0:
+            return k2, elem2
+
+        coef2 = elem2.coefficients
+        non_zero2 = [i for i, v in enumerate(coef2) if v!=0]
+        if k2 == 0 or len(non_zero2) == 0:
+            return k1, elem1
+
+        if len(non_zero1) == len(non_zero2):
+            diff = non_zero1[0] - non_zero2[0]
+            if all( ((coef1[i1] == coef2[i2]) and (i1 - i2 == diff)) for i1,i2 in zip(non_zero1, non_zero2)):
+                if diff >= 0:
+                    return (2 ** diff) * k1 + k2, elem2
+                else:
+                    return (2 ** (-diff)) * k2 + k1, elem1
+
+        # Under assumption, k1 and k2 are coprime
+
+        m1 = _two_power(k1)
+        m2 = _two_power(k2)
+        if abs(k1) != 2**m1 or abs(k2) != 2**m2:
+            return None
+
+        elem1 = self
+        if m2 > m1:
+            m1, m2 = m2, m1
+            k1, k2 = k2, k1
+            elem1, elem2 = elem2, elem1
+
+        # now m1 >= m2, and since k1, k2 are coprime, this means that m2 = 0
+
+        elem1 = elem1.shift(m1)
+
+        result = BinaryExpansion._combination(1 if k1 > 0 else -1, elem1, 1 if k2 > 0 else -1, elem2)
+        if result is None:
+            return None
+
+        return as_neg(result)
+
+
     @staticmethod
     def _combination(sign1: int, elem1: 'BinaryExpansion', sign2: int, elem2: 'BinaryExpansion') -> Optional[MapElement]:
 
@@ -150,7 +197,6 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
                 return result if sign2==1 else -result
 
         return None
-
 
     def try_add_binary_expansion(self, other: 'BinaryExpansion') -> Optional['BinaryExpansion']:
 
@@ -318,37 +364,6 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
 
         return BinaryExpansion([0] * k + list(self.coefficients))
 
-    def mul(self, other: MapElement) -> MapElement:
-        try:
-            other = other.evaluate() if isinstance(other, MapElement) else other
-        except:
-            return super().mul(other)
-
-        if not isinstance(other, int):
-            return super().mul(other)
-
-        # other == 0, 1 is dealt by default in MapElement
-
-        n = abs(other)
-
-        k = 0
-        while n % 2 == 0:
-            k += 1
-            n //= 2
-        if other < 0:
-            n *= -1
-
-        elem = self
-        if k > 0:
-            elem = elem.shift(k)
-
-        if n == 1:
-            return elem
-        if n == -1:
-            return -elem
-        return Mult(n, elem)
-
-
     def __rmul__(self, other):
         return self * other
 
@@ -360,10 +375,8 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
         b += a * constant
         if elem is None:
             return 0, MapElementConstant.zero, b
-
-        k = _two_power(a)
-        a //= 2**k
-        return a, elem.shift(k), b
+        else:
+            return a, elem, b
 
     def transform_range(self, range_values: Range) -> Optional[Condition]:
         a, b = range_values

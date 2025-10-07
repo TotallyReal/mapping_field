@@ -130,6 +130,19 @@ def test_assignment_condition():
 #     result = AssignmentCondition({x: 1})
 #     assert condition == result
 
+def test_linear_shift():
+    v1 = BoolVar('v1')
+    v2 = BoolVar('v2')
+
+    x1 = Linear.of(BinaryExpansion([v1, v2, 0, 1, 1]))
+    x2 = Linear.of(BinaryExpansion([0, 0, v1, v2, 0, 1, 1]))
+    x3 = Linear.of(BinaryExpansion([0, 0, 0, 0, v1, v2, 0, 1, 1]))
+
+    assert x1*4 == x2
+    assert x1*16 == x3
+    assert x2*4 == x3
+
+
 def addition_test(x, y, x_plus_y):
     addition = x + y
     assert addition == x_plus_y
@@ -142,6 +155,11 @@ def test_linear_addition_of_binary_expansion():
     v = [BoolVar(f'v_{i}') for i in range(4)]
 
     x = Linear.of(BinaryExpansion([v[0], 0, v[2]]))
+    y = Linear.of(BinaryExpansion([0, v[0], 0, v[2]]))
+    result = 5*y
+    addition_test(6 * x, 2 * y, result)
+
+
     y = Linear.of(BinaryExpansion([v[1], 1, v[3]]))
 
     x = 3*x + 1
