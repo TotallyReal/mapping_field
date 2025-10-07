@@ -63,6 +63,8 @@ class Linear(MapElement, RangeTransformer):
     def __add__(self, other):
         try:
             value = other.evaluate() if isinstance(other, MapElement) else other
+            if value == 0:
+                return self
             return Linear(self.a, self.elem, self.b + value)
         except:
             pass
@@ -110,6 +112,10 @@ class Linear(MapElement, RangeTransformer):
         if isinstance(other, MapElementConstant) and isinstance(other.elem, (int, float)):
             other = other.elem
         if isinstance(other, (int, float)):
+            if other == 1:
+                return self
+            if other == 0:
+                return MapElementConstant.zero
             return Linear(self.a * other, self.elem, self.b * other)
         return super().__mul__(other)
 

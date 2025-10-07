@@ -120,7 +120,7 @@ def _as_rational(map_elem: MapElement) -> (int, MapElement, MapElement):
     :return: sign, numerator, denominator
     """
     if not isinstance(map_elem, CompositionFunction):
-        return 1, map_elem, MapElementConstant(1)
+        return 1, map_elem, MapElementConstant.one
 
     sign = 1
 
@@ -129,14 +129,14 @@ def _as_rational(map_elem: MapElement) -> (int, MapElement, MapElement):
         sign = -1
         map_elem = comp_map.entries[0]
         if not isinstance(map_elem, CompositionFunction):
-            return sign, map_elem, MapElementConstant(1)
+            return sign, map_elem, MapElementConstant.one
 
         comp_map: CompositionFunction = map_elem
 
     if comp_map.function == Div:
         return sign, comp_map.entries[0], comp_map.entries[1]
 
-    return sign, map_elem, MapElementConstant(1)
+    return sign, map_elem, MapElementConstant.one
 
 
 class _Mult(MapElementFromFunction):
@@ -206,7 +206,7 @@ def params_to_maps(f):
 
     def wrapper(self, element):
         value = convert_to_map(element)
-        return NotImplemented if value == NotImplemented else f(self, value)
+        return NotImplemented if value is NotImplemented else f(self, value)
 
     return wrapper
 
@@ -215,17 +215,17 @@ Neg = _Negative()
 MapElement.__neg__ = lambda self: Neg(self)
 
 Add = _Add()
-MapElement.__add__ = params_to_maps(lambda self, other: Add(self, other))
+MapElement.__add__  = params_to_maps(lambda self, other: Add(self, other))
 MapElement.__radd__ = params_to_maps(lambda self, other: Add(other, self))
 
 Sub = _Sub()
-MapElement.__sub__ = params_to_maps(lambda self, other: Sub(self, other))
+MapElement.__sub__  = params_to_maps(lambda self, other: Sub(self, other))
 MapElement.__rsub__ = params_to_maps(lambda self, other: Sub(other, self))
 
 Mult = _Mult()
-MapElement.__mul__ = params_to_maps(lambda self, other: Mult(self, other))
+MapElement.__mul__  = params_to_maps(lambda self, other: Mult(self, other))
 MapElement.__rmul__ = params_to_maps(lambda self, other: Mult(other, self))
 
 Div = _Div()
-MapElement.__truediv__ = params_to_maps(lambda self, other: Div(self, other))
+MapElement.__truediv__  = params_to_maps(lambda self, other: Div(self, other))
 MapElement.__rtruediv__ = params_to_maps(lambda self, other: Div(other, self))

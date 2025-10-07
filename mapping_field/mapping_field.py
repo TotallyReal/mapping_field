@@ -465,6 +465,9 @@ class MapElementConstant(MapElement):
     def evaluate(self) -> ExtElement:
         return self.elem
 
+MapElementConstant.zero = MapElementConstant(0)
+MapElementConstant.one = MapElementConstant(1)
+
 
 class MapElementFromFunction(MapElement):
 

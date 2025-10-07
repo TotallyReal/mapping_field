@@ -345,7 +345,9 @@ class ConditionalFunction(MapElement):
         return value
 
     def __eq__(self, other: MapElement) -> bool:
-        return (self-other).simplify().is_zero()
+        if (isinstance(other, MapElement) or isinstance(other, int)):
+            return (self-other).simplify().is_zero()
+        return super().__eq__(other)
 
     # <editor-fold desc=" ------------------------ arithmetics ------------------------">
 
@@ -363,18 +365,26 @@ class ConditionalFunction(MapElement):
         return ConditionalFunction(regions)
 
     def __add__(self, other: MapElement) -> 'ConditionalFunction':
+        if other == 0:
+            return self
         return self._op(other, operator.add)
 
     def __radd__(self, other: MapElement) -> 'ConditionalFunction':
-        return self._op(other, operator.add)
+        return self + other
 
     def __mul__(self, other: MapElement) -> 'ConditionalFunction':
+        if other == 1:
+            return self
+        if other == 0:
+            return MapElementConstant.zero
         return self._op(other, operator.mul)
 
     def __rmul__(self, other: MapElement) -> 'ConditionalFunction':
-        return self._op(other, operator.mul)
+        return self * other
 
     def __sub__(self, other: MapElement) -> 'ConditionalFunction':
+        if other == 0:
+            return self
         return self._op(other, operator.sub)
 
     def __rsub__(self, other: MapElement) -> 'ConditionalFunction':

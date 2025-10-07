@@ -325,7 +325,7 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
                 return super().__mul__(other)
 
             if other == 0:
-                return MapElementConstant(0)
+                return MapElementConstant.zero
 
             n = abs(other)
 
@@ -359,7 +359,7 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
         constant = constant.evaluate()
         b += a * constant
         if elem is None:
-            return 0, MapElementConstant(0), b
+            return 0, MapElementConstant.zero, b
 
         k = _two_power(a)
         a //= 2**k
