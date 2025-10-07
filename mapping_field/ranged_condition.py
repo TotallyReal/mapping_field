@@ -228,7 +228,15 @@ class RangeTransformer:
 
 
 def ReLU(map_elem: MapElement):
+    zero = MapElementConstant.zero
+    if isinstance(map_elem, ConditionalFunction):
+        regions = []
+        for condition, func in map_elem.regions:
+            regions.append( (condition * (func >= 0), func) )
+            regions.append( (condition * (func < 0), zero) )
+        regions = [(cond, func) for cond, func in regions if FalseCondition != cond]
+        return ConditionalFunction(regions)
     return ConditionalFunction([
-        (RangeCondition(map_elem, (0, float('inf'))), map_elem),
-        (RangeCondition(map_elem, (float('-inf'), 0)), MapElementConstant(0))
+        ((map_elem >= 0), map_elem),
+        ((map_elem < 0), zero)
     ])
