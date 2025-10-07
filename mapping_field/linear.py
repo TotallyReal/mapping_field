@@ -108,16 +108,14 @@ class Linear(MapElement, RangeTransformer):
     def __rsub__(self, other):
         return (-self) + other
 
-    def __mul__(self, other):
+    def mul(self, other: MapElement) -> MapElement:
         if isinstance(other, MapElementConstant) and isinstance(other.elem, (int, float)):
-            other = other.elem
-        if isinstance(other, (int, float)):
-            if other == 1:
-                return self
-            if other == 0:
-                return MapElementConstant.zero
-            return Linear(self.a * other, self.elem, self.b * other)
-        return super().__mul__(other)
+            try:
+                n = other.evaluate()
+            except:
+                return super().mul(other)
+            return Linear(self.a * n, self.elem, self.b * n)
+        return super().mul(other)
 
     def __rmul__(self, other):
         return self * other

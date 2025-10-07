@@ -318,36 +318,36 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
 
         return BinaryExpansion([0] * k + list(self.coefficients))
 
-    def __mul__(self, other):
+    def mul(self, other: MapElement) -> MapElement:
         try:
             other = other.evaluate() if isinstance(other, MapElement) else other
-            if not isinstance(other, int):
-                return super().__mul__(other)
-
-            if other == 0:
-                return MapElementConstant.zero
-
-            n = abs(other)
-
-            k = 0
-            while n % 2 == 0:
-                k += 1
-                n //= 2
-            if other < 0:
-                n *= -1
-
-            elem = self
-            if k > 0:
-                elem = elem.shift(k)
-
-            if n == 1:
-                return elem
-            if n == -1:
-                return -elem
-            return Mult(n, elem)
-
         except:
-            return super().__mul__(other)
+            return super().mul(other)
+
+        if not isinstance(other, int):
+            return super().mul(other)
+
+        # other == 0, 1 is dealt by default in MapElement
+
+        n = abs(other)
+
+        k = 0
+        while n % 2 == 0:
+            k += 1
+            n //= 2
+        if other < 0:
+            n *= -1
+
+        elem = self
+        if k > 0:
+            elem = elem.shift(k)
+
+        if n == 1:
+            return elem
+        if n == -1:
+            return -elem
+        return Mult(n, elem)
+
 
     def __rmul__(self, other):
         return self * other

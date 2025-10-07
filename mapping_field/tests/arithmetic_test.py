@@ -40,7 +40,9 @@ class ImprovedDummyMap(MapElement):
             return ImprovedDummyMap(self.value + other.value)
         return super().add(other)
 
-def test_addition_choice():
+    def mul(self, other):
+        return self.add(other)
+
 def test_addition_commutative_choice():
     elem1 = DummyMap(0)
     elem2 = ImprovedDummyMap((1,))
@@ -48,6 +50,14 @@ def test_addition_commutative_choice():
     addition1 = elem1 + elem2
     addition2 = elem2 + elem1
     assert addition1 == addition2
+
+def test_multiplication_commutative_choice():
+    elem1 = DummyMap(0)
+    elem2 = ImprovedDummyMap((1,))
+
+    multiplication1 = elem1 * elem2
+    multiplication2 = elem2 * elem1
+    assert multiplication1 == multiplication2
 
 # ----------------- test simple arithmetics -----------------
 

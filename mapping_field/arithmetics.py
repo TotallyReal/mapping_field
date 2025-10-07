@@ -222,8 +222,7 @@ MapElement.__sub__  = params_to_maps(lambda self, other: Sub(self, other))
 MapElement.__rsub__ = params_to_maps(lambda self, other: Sub(other, self))
 
 Mult = _Mult()
-MapElement.__mul__  = params_to_maps(lambda self, other: Mult(self, other))
-MapElement.__rmul__ = params_to_maps(lambda self, other: Mult(other, self))
+MapElement.mul  = params_to_maps(lambda self, other: Mult(self, other))
 
 Div = _Div()
 MapElement.__truediv__  = params_to_maps(lambda self, other: Div(self, other))

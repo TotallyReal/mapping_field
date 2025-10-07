@@ -370,11 +370,7 @@ class ConditionalFunction(MapElement):
     def __radd__(self, other: MapElement) -> 'ConditionalFunction':
         return self + other
 
-    def __mul__(self, other: MapElement) -> 'ConditionalFunction':
-        if other == 1:
-            return self
-        if other == 0:
-            return MapElementConstant.zero
+    def mul(self, other: MapElement) -> 'ConditionalFunction':
         return self._op(other, operator.mul)
 
     def __rmul__(self, other: MapElement) -> 'ConditionalFunction':

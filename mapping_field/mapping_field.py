@@ -259,11 +259,31 @@ class MapElement:
     def __rsub__(self, other) -> 'MapElement':
         return NotImplemented
 
-    def __mul__(self, other) -> 'MapElement':
+    def mul(self, other: 'MapElement') -> 'MapElement':
         return NotImplemented
 
+    def __mul__(self, other) -> 'MapElement':
+        other = convert_to_map(other)
+        if other is NotImplemented:
+            return NotImplemented
+
+        # Some absolutely default behaviour
+        if self == 0 or other == 0:
+            return MapElementConstant.zero
+        if self == 1:
+            return other
+        if other == 1:
+            return self
+        # TODO: Consider processing multiplying by (-1) as taking the negative.
+        #       Make sure there are no infinite loops, if neg is defined by multiplying by (-1)
+
+        # If this object has the default multiplication, but the other doesn't, use the other's multiplication
+        if (self.__class__.mul is MapElement.mul) and (other.__class__.mul is not MapElement.mul):
+            return other.mul(self)
+        return self.mul(other)
+
     def __rmul__(self, other) -> 'MapElement':
-        return NotImplemented
+        return self.__mul__(other)
 
     def __truediv__(self, other) -> 'MapElement':
         return NotImplemented
