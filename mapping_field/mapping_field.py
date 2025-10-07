@@ -228,10 +228,25 @@ class MapElement:
 
     # <editor-fold desc=" ------------------------ Arithmetic functions ------------------------">
 
+    @staticmethod
+    def addition(elem1: 'MapElement' ,elem2: 'MapElement') -> 'MapElement':
+        """
+        A default implementation, overriden in arithmetics.py
+        """
+        return NotImplemented
+
     def add(self, other: 'MapElement') -> 'MapElement':
+        """
+        Tries to add this element with 'other', assuming it is a MapElement.
+        Override in subclass when it is not the default behaviour.
+        """
         return NotImplemented
 
     def __add__(self, other) -> 'MapElement':
+        """
+        Override this method only for adding new type of objects other than:
+        int, float, FieldElement and MapElement.
+        """
         other = convert_to_map(other)
         if other is NotImplemented:
             return NotImplemented
@@ -242,10 +257,15 @@ class MapElement:
         if other == 0:
             return self
 
-        # If this object has the default addition, but the other doesn't, use the other's addition
-        if (self.__class__.add is MapElement.add) and (other.__class__.add is not MapElement.add):
-            return other.add(self)
-        return self.add(other)
+        result = self.add(other)
+        if result is not NotImplemented:
+            return result
+
+        result = other.add(self)
+        if result is not NotImplemented:
+            return result
+
+        return MapElement.addition(self, other)
 
     def __radd__(self, other) -> 'MapElement':
         return self.__add__(other)
@@ -259,10 +279,25 @@ class MapElement:
     def __rsub__(self, other) -> 'MapElement':
         return NotImplemented
 
+    @staticmethod
+    def multiplication(elem1: 'MapElement' ,elem2: 'MapElement') -> 'MapElement':
+        """
+        A default implementation, overriden in arithmetics.py
+        """
+        return NotImplemented
+
     def mul(self, other: 'MapElement') -> 'MapElement':
+        """
+        Tries to multiply this element with 'other', assuming it is a MapElement.
+        Override in subclass when it is not the default behaviour.
+        """
         return NotImplemented
 
     def __mul__(self, other) -> 'MapElement':
+        """
+        Override this method only for adding new type of objects other than:
+        int, float, FieldElement and MapElement.
+        """
         other = convert_to_map(other)
         if other is NotImplemented:
             return NotImplemented
@@ -277,10 +312,15 @@ class MapElement:
         # TODO: Consider processing multiplying by (-1) as taking the negative.
         #       Make sure there are no infinite loops, if neg is defined by multiplying by (-1)
 
-        # If this object has the default multiplication, but the other doesn't, use the other's multiplication
-        if (self.__class__.mul is MapElement.mul) and (other.__class__.mul is not MapElement.mul):
-            return other.mul(self)
-        return self.mul(other)
+        result = self.mul(other)
+        if result is not NotImplemented:
+            return result
+
+        result = other.mul(self)
+        if result is not NotImplemented:
+            return result
+
+        return MapElement.multiplication(self, other)
 
     def __rmul__(self, other) -> 'MapElement':
         return self.__mul__(other)

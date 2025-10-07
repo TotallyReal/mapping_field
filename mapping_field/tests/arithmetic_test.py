@@ -19,6 +19,9 @@ class DummyMap(MapElement):
 
     def __eq__(self, other):
         return isinstance(other, DummyMap) and other.value == self.value
+    
+    def add(self, other):
+        return super().add(other)
 
 class ImprovedDummyMap(MapElement):
     def __init__(self, value: Tuple =(0,)):

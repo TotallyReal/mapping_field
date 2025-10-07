@@ -1,5 +1,5 @@
 from mapping_field import MapElement, MapElementFromFunction, MapElementConstant, CompositionFunction, convert_to_map
-from typing import List
+from typing import List, Tuple
 
 """
 Implement arithmetics for the MapElement class.
@@ -48,7 +48,7 @@ class _Negative(MapElementFromFunction):
         return super()._simplify_partial_constant(entries)
 
 
-def as_neg(map_elem: MapElement) -> (int, MapElement):
+def as_neg(map_elem: MapElement) -> Tuple[int, MapElement]:
     if isinstance(map_elem, CompositionFunction) and map_elem.function == Neg:
         return -1, map_elem.entries[0]
 
@@ -215,14 +215,14 @@ Neg = _Negative()
 MapElement.__neg__ = lambda self: Neg(self)
 
 Add = _Add()
-MapElement.add  = params_to_maps(lambda self, other: Add(self, other))
+MapElement.addition  = Add
 
 Sub = _Sub()
 MapElement.__sub__  = params_to_maps(lambda self, other: Sub(self, other))
 MapElement.__rsub__ = params_to_maps(lambda self, other: Sub(other, self))
 
 Mult = _Mult()
-MapElement.mul  = params_to_maps(lambda self, other: Mult(self, other))
+MapElement.multiplication  = Mult
 
 Div = _Div()
 MapElement.__truediv__  = params_to_maps(lambda self, other: Div(self, other))
