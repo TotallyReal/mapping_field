@@ -253,7 +253,7 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
 
         return BinaryExpansion(coefs)
 
-    def add(self, other: MapElement) -> MapElement:
+    def add(self, other: MapElement) -> Optional[MapElement]:
         sign, other_elem = as_neg(other)
 
         if isinstance(other_elem, BinaryExpansion):
@@ -264,8 +264,8 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
 
         return super().add(other)
 
-    def __radd__(self, other):
-        return self + other
+    def radd(self, other: MapElement) -> Optional[MapElement]:
+        return self.add(other)
 
     def try_sub_binary_expansion(self, other: 'BinaryExpansion') -> Optional['BinaryExpansion']:
         coef1 = self.coefficients
@@ -320,7 +320,7 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
 
         return BinaryExpansion(coefs)
 
-    def __sub__(self, other):
+    def sub(self, other: MapElement) -> Optional[MapElement]:
         sign, other_elem = as_neg(other)
         if isinstance(other, BinaryExpansion):
 
@@ -328,27 +328,7 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
             if result is not None:
                 return result
 
-        return super().__sub__(other)
-
-        # result = None
-        #
-        # if isinstance(other, BinaryExpansion):
-        #     result = self.try_sub_binary_expansion(other)
-        #
-        # if isinstance(other, CompositionFunction) and other.function == Neg and other.entries[0] == BinaryExpansion:
-        #     result = self.try_add_binary_expansion(other.entries[0])
-        #
-        # return super().__sub__(other) if result is None else result
-
-    def __rsub__(self, other):
-        sign, other_elem = as_neg(other)
-        if isinstance(other, BinaryExpansion):
-
-            result = BinaryExpansion._combination(sign, other_elem, -1, self)
-            if result is not None:
-                return result
-
-        return super().__rsub__(other)
+        return super().sub(other)
 
     def shift(self, k: int) -> Optional['BinaryExpansion']:
         if k < 0:
@@ -363,9 +343,6 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
             return BinaryExpansion(self.coefficients[-k:])
 
         return BinaryExpansion([0] * k + list(self.coefficients))
-
-    def __rmul__(self, other):
-        return self * other
 
     # </editor-fold>
 
