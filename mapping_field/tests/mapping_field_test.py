@@ -1,7 +1,10 @@
-from typing import List
+from typing import List, Optional
 
 import pytest
-from mapping_field.mapping_field import Var, NamedFunc, Func, CompositionFunction, MapElementFromFunction, MapElement
+
+from mapping_field import MapElementConstant
+from mapping_field.mapping_field import Var, NamedFunc, Func, CompositionFunction, MapElementFromFunction, MapElement, \
+    VarDict
 
 
 @pytest.fixture(autouse=True)
@@ -101,6 +104,60 @@ def test_simplify():
     addition = MapElementFromFunction(name='Add', function=lambda a, b: a+b)
     assert str(addition(2, 3)) == '5'
     assert str(addition(2, 3, simplify=False)) == 'Add(2,3)'
+
+
+class DummyMapWithVar(MapElement):
+    def __init__(self, value=0):
+        self.x = Var('x')
+        super().__init__([self.x], f'DummyMap_{value}')
+        self.value = value
+
+    def __eq__(self, other):
+        return isinstance(other, DummyMap) and other.value == self.value
+
+    # Override when needed
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+        return MapElementConstant.zero if var_dict[self.x] == 0 else None
+
+
+class SpecialDummyVar(MapElement):
+    def __init__(self, value=0):
+        super().__init__([], f'SpecialDummyVar_{value}')
+        self.value = value
+
+    def _simplify_caller_function2(self, function: MapElement, position: int, var_dict: VarDict) -> Optional[MapElement]:
+        if isinstance(function, DummyMapWithVar) and self.value == function.value:
+            return MapElementConstant.one
+        return None
+
+
+def test_simplify2():
+    print(f'\n=-=-=-=-=-=-=')
+
+    dummy = DummyMapWithVar()
+    assert str(dummy) == 'DummyMap_0(x)'
+
+    # simplification from caller function
+
+    assigned = dummy(1)
+    assert str(assigned) == 'DummyMap_0(1)'
+
+    assigned = dummy(0, simplify=False)
+    assert str(assigned) == 'DummyMap_0(0)'
+
+    assigned = dummy(0)
+    assert assigned == 0
+
+    # simplification from variable behaviour
+
+    assigned = dummy(SpecialDummyVar(1))
+    assert str(assigned) == 'DummyMap_0(SpecialDummyVar_1)'
+
+    assigned = dummy(SpecialDummyVar(0), simplify=False)
+    assert str(assigned) == 'DummyMap_0(SpecialDummyVar_0)'
+
+    assigned = dummy(SpecialDummyVar(0))
+    assert assigned == 1
 
 
 

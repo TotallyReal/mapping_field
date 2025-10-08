@@ -63,6 +63,21 @@ def params_to_maps(f):
 
     return wrapper
 
+# Suppose that I have some function H(x,y), and we want to compute H(x0, y0) for some specific x0, y0. There
+# are 2 main ways how to simplify this expression. For example, consider the function H(x,y) = x + y, then:
+#  1. General simplification, independent of the choice of x, y. For example, for x0=0, we have
+#           H(0, y0) = 0 + y0 = y0.
+#  2. Specific simplification for the choice of x0, y0, for example:
+#         H(sin^2(x) , cos^2(x)) = sin^2(x) + cos^2(x) = 1
+#
+# Hence, in general the process of simplifying H(x0, y0) works as follows:
+#
+# 1. Simplify the entries x0 and y0.
+# 2. Check if there is a general simplification.
+# 3. If not, check is x0 knows how to simplify H (x0.special_simplification(H, position=0, y0)).
+# 4. If not, check is y0 knows how to simplify H (y0.special_simplification(H, position=1, x0)).
+# 5. If no simplification was found, save as generic (Composition) H(x0, y0).
+
 
 class MapElement:
     """
@@ -77,15 +92,17 @@ class MapElement:
     the _call_with_dict(var_dict, func_dict) method instead. (see description below)
     """
 
-    def __init__(self, variables: List['Var']):
+    def __init__(self, variables: List['Var'], name: Optional[str] = None):
         """
         The 'variables' are the ordered list used when calling the function, as in f(a_1,...,a_n).
         """
+        self.name = name or self.__class__.__name__
         var_names = set(v.name for v in variables)
         if len(variables) > len(var_names):
             raise Exception(f'Function must have distinct variables')
         self.vars = variables
         self.num_vars = len(variables)
+        self._simplification_id = ''
 
     def set_var_order(self, variables: List['Var']):
         """
@@ -108,13 +125,15 @@ class MapElement:
         vars_str_list = [var.name for var in self.vars]
         return self.to_string(vars_str_list)
 
-    @abstractmethod
     def to_string(self, vars_str_list: List[str]):
         """
         --------------- Override ---------------
         Represents the function, given the string representations of its variables
         """
-        pass
+        if len(vars_str_list) == 0:
+            return self.name
+        vars_str = ', '.join(vars_str_list)
+        return f'{self.name}({vars_str})'
 
     # </editor-fold>
 
@@ -183,14 +202,17 @@ class MapElement:
             raise Exception(f'Cannot assign new value to element which is not a variable of a named function : {key}')
 
         result = self._call_with_dict(var_dict, func_dict)
-        return result.simplify() if simplify else result
+        return result.simplify2() if simplify else result
 
     # Override when needed
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
         """
         Apply the map with the given values of the standard and function variables
         """
-        return self
+        if len(self.vars) == 0:
+            return self
+        entries = get_var_values(self.vars, var_dict)
+        return CompositionFunction(self, entries)
 
     def evaluate(self) -> ExtElement:
         """
@@ -212,7 +234,25 @@ class MapElement:
         The resulting function should compute the same function as the current one, on the same standard variables,
         and the same order. The only difference is how it is computed inside python
         """
+        raise Exception('Use _simplify2 instead')
         return self._simplify_with_var_values({v:v for v in self.vars})
+
+    # <editor-fold desc=" ------------------------ Simplify 2 ------------------------">
+
+    def simplify2(self) -> 'MapElement':
+        return self._simplify2() or self
+
+    def _simplify2(self) -> Optional['MapElement']:
+        return None
+
+    # Override when needed
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
+        return None
+
+    def _simplify_caller_function2(self, function_id, position: int, var_dict: VarDict) -> Optional['MapElement']:
+        return None
+
+    # </editor-fold>
 
     def _entry_list(self, var_dict: VarDict):
         return [var_dict.get(v, v) for v in self.vars]
@@ -376,8 +416,7 @@ class Var(MapElement):
         """
         if hasattr(self, 'initialized'):
             return
-        self.name = name
-        super().__init__([self])
+        super().__init__([self], name)
         self.initialized = True
 
     def to_string(self, vars_str_list: List[str]):
@@ -516,6 +555,31 @@ class CompositionFunction(MapElement):
 
         return CompositionFunction(function=eval_function, entries=eval_entries)
 
+    # TODO: When simplifying arithmetic function, e.g. a + b, after simplifying both a and b,
+    #       we should check if it has a new type of arithmetic function that we can call.
+
+    def _simplify2(self) -> Optional['MapElement']:
+        simplified_entries: List[MapElement] = {v : (entry._simplify2() or entry) for v, entry in zip(self.function.vars, self.entries)}
+        function: MapElement = (self.function._simplify2() or self.function)
+
+        result = function._simplify_with_var_values2(simplified_entries)
+        if result != None:
+            return result
+
+        for position, v in enumerate(self.function.vars):
+            result = simplified_entries[v]._simplify_caller_function2(function, position, simplified_entries)
+            if result != None:
+                return result
+
+        return CompositionFunction(function, [simplified_entries[v] for v in self.function.vars])
+
+    # Override when needed
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
+        return None
+
+    def _simplify_caller_function2(self, function: MapElement, position: int, var_dict: VarDict) -> Optional[MapElement]:
+        return None
+
     def _simplify_with_var_values(self, var_dict: VarDict) -> 'MapElement':
         # Compute the simplified entries, by supplying each with the simplified version
         # of its variables
@@ -558,12 +622,11 @@ class MapElementFromFunction(MapElement):
         The number of parameters to this function is the number of standard variables for this MapElement,
         and with the same order.
         """
-        self.name = name
         self.function = function
         self.num_parameters = len(inspect.signature(function).parameters)
         variables = [Var(f'X_{name}_{i}') for i in range(self.num_parameters)]
         # TODO: Maybe use the names of the variables of the original function
-        super().__init__(variables)
+        super().__init__(variables, name)
 
     def to_string(self, entries: List[str]):
         entries_str = ','.join(entries)
@@ -573,6 +636,15 @@ class MapElementFromFunction(MapElement):
         eval_entries = get_var_values(self.vars, var_dict)
 
         return self if eval_entries is None else CompositionFunction(function=self, entries=eval_entries)
+
+    # Override when needed
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
+        entries = self._entry_list(var_dict)
+        if all(isinstance(entry, MapElementConstant) for entry in entries):
+            result = self.function(*[entry.elem for entry in entries])
+            return MapElementConstant(result)
+
+        return None
 
     def _simplify_with_var_values(self, var_dict: VarDict) -> 'MapElement':
 
