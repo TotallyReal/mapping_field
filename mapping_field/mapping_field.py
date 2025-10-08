@@ -1,5 +1,6 @@
 from abc import abstractmethod
 import collections
+import functools
 import inspect
 from typing import Callable, Dict, List, Optional
 from mapping_field.field import FieldElement, ExtElement
@@ -53,6 +54,14 @@ def get_var_values(var_list: List['Var'], var_dict: VarDict) -> Optional[List['M
             trivial = False
 
     return None if trivial else eval_entries
+
+def params_to_maps(f):
+    @functools.wraps(f)
+    def wrapper(self, element):
+        value = convert_to_map(element)
+        return NotImplemented if value is NotImplemented else f(self, value)
+
+    return wrapper
 
 
 class MapElement:
@@ -242,14 +251,12 @@ class MapElement:
         """
         return NotImplemented
 
+    @params_to_maps
     def __add__(self, other) -> 'MapElement':
         """
         Override this method only for adding new type of objects other than:
         int, float, FieldElement and MapElement.
         """
-        other = convert_to_map(other)
-        if other is NotImplemented:
-            return NotImplemented
 
         # Some absolutely default behaviour
         if self == 0:
@@ -293,14 +300,12 @@ class MapElement:
         """
         return NotImplemented
 
+    @params_to_maps
     def __mul__(self, other) -> 'MapElement':
         """
         Override this method only for adding new type of objects other than:
         int, float, FieldElement and MapElement.
         """
-        other = convert_to_map(other)
-        if other is NotImplemented:
-            return NotImplemented
 
         # Some absolutely default behaviour
         if self == 0 or other == 0:
