@@ -606,6 +606,9 @@ class MapElementConstant(MapElement):
             return self.elem == other.elem
         return super().__eq__(other)
 
+    def __call__(self, *args, **kwargs):
+        return self
+
     def evaluate(self) -> ExtElement:
         return self.elem
 

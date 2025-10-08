@@ -40,7 +40,7 @@ def test_linear_generation():
     assert func == result
 
     func = 0*linear_dummy + 7
-    func = func.simplify()
+    func = func.simplify2()
     result = 7
     assert func == result
 
@@ -147,9 +147,9 @@ def addition_test(x, y, x_plus_y):
     addition = x + y
     assert addition == x_plus_y
     difference = x_plus_y - x
-    assert difference.simplify() == y.simplify()
+    assert difference.simplify2() == y.simplify2()
     difference = x_plus_y - y
-    assert difference.simplify() == x.simplify()
+    assert difference.simplify2() == x.simplify2()
 
 def test_linear_addition_of_binary_expansion():
     v = [BoolVar(f'v_{i}') for i in range(4)]
@@ -204,13 +204,13 @@ def test_linear_ranged_condition_subtraction():
     v1 = ReLU(xx-7)
     v2 = ReLU(xx-8)
     v = v1 - v2
-    v = v.simplify()
+    v = v.simplify2()
 
     assert v == x.coefficients[3]
 
     v = 8 * v
     u = ConditionalFunction.always(xx) - v
-    u = u.simplify()
+    u = u.simplify2()
 
     result = BinaryExpansion(vv[:3])
     assert u == result

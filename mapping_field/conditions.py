@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import operator
 
 from mapping_field import MapElement, Var, VarDict, FuncDict, ExtElement, MapElementConstant
@@ -402,15 +402,19 @@ class ConditionalFunction(MapElement):
                    for region in self.regions]
         return ConditionalFunction(regions)
 
+    def _simplify2(self) -> Optional['MapElement']:
+        return self._simplify_with_var_values2({v:v for v in self.vars})
+
     def _simplify_with_var_values2(self, var_dict: VarDict) -> 'MapElement':
         regions = []
         for condition, func in self.regions:
             condition = condition.simplify()
             if condition == FalseCondition:
                 continue
-            func = func._simplify_with_var_values2(var_dict)
+            func = func._simplify_with_var_values2(var_dict) or func
             if isinstance(condition, MapElementProcessor):
                 func = condition.process(func)
+                func = func._simplify_with_var_values2(var_dict) or func
 
             for i, (prev_cond, prev_func) in enumerate(regions):
                 if prev_func == func:

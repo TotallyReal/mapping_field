@@ -41,13 +41,17 @@ class Linear(MapElement, RangeTransformer):
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
         return Linear(self.a, self.elem._call_with_dict(var_dict, func_dict), self.b)
 
-    def _simplify_with_var_values(self, var_dict: VarDict) -> 'MapElement':
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
         if self.a == 0:
             return MapElementConstant(self.b)
 
-        elem = self.elem._simplify_with_var_values(var_dict)
-        if isinstance(elem, MapElementConstant):
-            return MapElementConstant(self.a * elem.evaluate() + self.b)
+        elem = self.elem._simplify_with_var_values2(var_dict) or self.elem
+
+        try:
+            n = elem.evaluate()
+            return MapElementConstant(self.a * n + self.b)
+        except:
+            pass
 
         if isinstance(elem, LinearTransformer):
             a, elem, b = elem.transform_linear(self.a, self.b)
@@ -59,15 +63,13 @@ class Linear(MapElement, RangeTransformer):
 
     # <editor-fold desc=" ------------------------ Arithmetics ------------------------">
 
-    def __neg__(self):
+    def neg(self) -> Optional[MapElement]:
         return Linear(-self.a, self.elem, -self.b)
 
     # The Linear addition always tries to return a "simplified" Linear map.
-    def add(self, other: MapElement) -> MapElement:
+    def add(self, other: MapElement) -> Optional[MapElement]:
         try:
             value = other.evaluate() if isinstance(other, MapElement) else other
-            if value == 0:
-                return self
             return Linear(self.a, self.elem, self.b + value)
         except:
             pass
@@ -104,22 +106,18 @@ class Linear(MapElement, RangeTransformer):
                         k, elem = result
                         return Linear(gcd * k, elem, b1 + b2)
 
+        return super().add(other)
 
-            # and self.elem == other.elem:
+    def radd(self, other: MapElement) -> Optional[MapElement]:
+        return self.add(other)
 
-        # result = self._try_add_binary_expansion(other)
-        return super().add(other) # if result is None else result
+    def sub(self, other: MapElement) -> Optional[MapElement]:
+        return self.add(-other)
 
-    def __radd__(self, other):
-        return self + other
+    def rsub(self, other: MapElement) -> Optional[MapElement]:
+        return (-self).add(other)
 
-    def __sub__(self, other):
-        return self + (-other)
-
-    def __rsub__(self, other):
-        return (-self) + other
-
-    def mul(self, other: MapElement) -> MapElement:
+    def mul(self, other: MapElement) -> Optional[MapElement]:
         if isinstance(other, MapElementConstant) and isinstance(other.elem, (int, float)):
             try:
                 n = other.evaluate()
@@ -128,15 +126,15 @@ class Linear(MapElement, RangeTransformer):
             return Linear(self.a * n, self.elem, self.b * n)
         return super().mul(other)
 
-    def __rmul__(self, other):
-        return self * other
+    def rmul(self, other: MapElement) -> Optional[MapElement]:
+        return self.mul(other)
 
-    def __truediv__(self, other):
+    def div(self, other: MapElement) -> Optional[MapElement]:
         if isinstance(other, MapElementConstant) and isinstance(other.elem, (int, float)):
             other = other.elem
         if isinstance(other, (int, float)):
             return Linear(self.a / other, self.elem, self.b / other)
-        return super().__truediv__(other)
+        return super().div(other)
 
     # </editor-fold>
 
