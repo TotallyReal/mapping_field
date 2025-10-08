@@ -1,7 +1,7 @@
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import pytest
-from mapping_field.mapping_field import Var, NamedFunc, Func, MapElement
+from mapping_field.mapping_field import Var, NamedFunc, Func, MapElement, VarDict
 
 
 @pytest.fixture(autouse=True)
@@ -11,40 +11,42 @@ def reset_static_variables():
 
 class DummyMap(MapElement):
     def __init__(self, value=0):
-        super().__init__([])
+        super().__init__([], f'DummyMap({value})')
         self.value = value
-
-    def to_string(self, vars_str_list: List[str]):
-        return f'DummyMap({self.value})'
 
     def __eq__(self, other):
         return isinstance(other, DummyMap) and other.value == self.value
-    
-    def add(self, other):
-        return super().add(other)
 
 class ImprovedDummyMap(MapElement):
     def __init__(self, value: Tuple =(0,)):
-        super().__init__([])
+        super().__init__([], f'ImprovedDummyMap({value})')
         self.value = value
-
-    def to_string(self, vars_str_list: List[str]):
-        return f'ImprovedDummyMap({self.value})'
 
     def __eq__(self, other):
         if isinstance(other, DummyMap):
             return len(self.value) == 1 and self.value[0] == other.value
         return isinstance(other, ImprovedDummyMap) and set(self.value) == set(other.value)
 
-    def add(self, other):
-        if isinstance(other, DummyMap):
-            return ImprovedDummyMap(self.value + (other.value,))
-        if isinstance(other, ImprovedDummyMap):
-            return ImprovedDummyMap(self.value + other.value)
-        return super().add(other)
+    def _simplify_caller_function2(self, function:MapElement, position: int, var_dict: VarDict) -> Optional['MapElement']:
+        elem2 = var_dict[function.vars[1 - position]]
+        if function in (MapElement.addition, MapElement.multiplication):
+            if isinstance(elem2, DummyMap):
+                return ImprovedDummyMap(self.value + (elem2.value,))
+            if isinstance(elem2, ImprovedDummyMap):
+                return ImprovedDummyMap(self.value + elem2.value)
+        return None
 
-    def mul(self, other):
-        return self.add(other)
+def test_arithmetic_premade_methods():
+    class DummyMapNeg(DummyMap):
+
+        def neg(self) -> Optional[MapElement]:
+            return DummyMap(-self.value) if self.value != 0 else None
+
+    dummy = DummyMapNeg(0)
+    assert str(-dummy) == '(-DummyMap(0))'
+
+    dummy = DummyMapNeg(1)
+    assert str(-dummy) == 'DummyMap(-1)'
 
 def test_addition_commutative_choice():
     elem1 = DummyMap(0)
@@ -152,3 +154,18 @@ def test_multiplication_rules():
     h = Func('h')(y, z)
 
     assert str(((-x)/y) / (g*(-h)/(x * (-f)))) == '(-( (x*(x*f(x,y)))/(y*(g(z)*h(y,z))) ))'
+
+# ----------------- assignment -----------------
+
+def test_simplification_after_assignment():
+    simple_addition = ImprovedDummyMap((0,)) + ImprovedDummyMap((1,))
+    result = ImprovedDummyMap((0,1))
+    assert simple_addition == result
+
+    x = Var('x')
+    y = ImprovedDummyMap((0,))
+    assigned_addition = x + y
+    print(assigned_addition)
+    assigned_addition = assigned_addition({x: ImprovedDummyMap((1,))})
+    assigned_addition = assigned_addition.simplify2()
+    assert assigned_addition == result

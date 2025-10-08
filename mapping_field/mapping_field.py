@@ -132,7 +132,7 @@ class MapElement:
         """
         if len(vars_str_list) == 0:
             return self.name
-        vars_str = ', '.join(vars_str_list)
+        vars_str = ','.join(vars_str_list)
         return f'{self.name}({vars_str})'
 
     # </editor-fold>
@@ -228,15 +228,6 @@ class MapElement:
         except:
             return False
 
-    def simplify(self) -> 'MapElement':
-        """
-        Try to simplify the given function (e.g. 1 + 0*x + y -> 1+y ).
-        The resulting function should compute the same function as the current one, on the same standard variables,
-        and the same order. The only difference is how it is computed inside python
-        """
-        raise Exception('Use _simplify2 instead')
-        return self._simplify_with_var_values({v:v for v in self.vars})
-
     # <editor-fold desc=" ------------------------ Simplify 2 ------------------------">
 
     def simplify2(self) -> 'MapElement':
@@ -247,18 +238,6 @@ class MapElement:
 
     # Override when needed
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
-        return None
-
-    def _simplify_caller_function2(self, function_id, position: int, var_dict: VarDict) -> Optional['MapElement']:
-        return None
-
-    # </editor-fold>
-
-    def _entry_list(self, var_dict: VarDict):
-        return [var_dict.get(v, v) for v in self.vars]
-
-    # Override when needed
-    def _simplify_with_var_values(self, var_dict: VarDict) -> 'MapElement':
         """
         --------------- Override when needed ---------------
         Try to simplify the given function, given assignment of the function standard variables.
@@ -268,63 +247,104 @@ class MapElement:
         cannot be simplified, but if we know that one of the entries is 0, then it can be simplified to zero,
         and if x=1, then it can be simplified to (x,y) -> y , and similarly with y=1.
         """
-        return self
+        return None
+
+    def _simplify_caller_function2(self, function:'MapElement', position: int, var_dict: VarDict) -> Optional['MapElement']:
+        return None
 
     # </editor-fold>
 
-    # Overriding the following functions in the arithmetics.py file.
-    # Adding them here to help the compiler know that they exist.
+    def _entry_list(self, var_dict: VarDict):
+        return [var_dict.get(v, v) for v in self.vars]
+
+    # </editor-fold>
 
     # <editor-fold desc=" ------------------------ Arithmetic functions ------------------------">
 
+    """
+    For ease of reading, all the arithmetic code is in arithmetic.py file. In particular the static functions:
+        addition, subtraction, multiplication, division and negation
+    are all overriden there, and _simplify_caller_function2 is updated there. 
+    They are defined here to help the compiler.
+    
+    Each arithmetic function has 3 versions:
+        - static method: (e.g. addition) Generates the actual map element for the given parameters.
+        - dunder methods: (e.g. __add__) To help the coding process, and convert objects into MapElements.
+        - "standard" methods: (e.g. add) Compute the function for special type of variables. These are called via
+          the _simplify_caller_function2.
+    In both the static and standard methods have MapElements as parameters, while the dunder methods can recieve
+    other types as well.    
+    
+    The static method generate the generic function with general simplifications (e.g. x+0 -> x).
+    Override the dunder methods only to add new types of object which can be converted into MapElements.
+    Override the standard methods if the arithmetic function has special behaviour for your class. For example,
+    if you class represents cos^2(x) you can check if the second summand is sin^2(x) to conclude that the sum is 1.
+    In case there is no special simplification, return None (or better, return the super() version of that function).
+    These methods can be also "overriden" direction in _simplify_caller_function2, e.g.:
+    
+        if function is MapElement.addition:
+          return ...
+    """
+
+    # <editor-fold desc=" ------------------------ Negation ------------------------">
+
     @staticmethod
-    def addition(elem1: 'MapElement' ,elem2: 'MapElement') -> 'MapElement':
-        """
-        A default implementation, overriden in arithmetics.py
-        """
+    def negation(elem: 'MapElement') -> 'MapElement':
         return NotImplemented
 
-    def add(self, other: 'MapElement') -> 'MapElement':
-        """
-        Tries to add this element with 'other', assuming it is a MapElement.
-        Override in subclass when it is not the default behaviour.
-        """
+    def __neg__(self) -> 'MapElement':
+        return MapElement.negation(self)
+
+    def neg(self) -> Optional['MapElement']:
+        return None
+
+    # </editor-fold>
+
+    # <editor-fold desc=" ------------------------ Addition ------------------------">
+
+    @staticmethod
+    def addition(elem1: 'MapElement' ,elem2: 'MapElement') -> 'MapElement':
         return NotImplemented
 
     @params_to_maps
     def __add__(self, other) -> 'MapElement':
-        """
-        Override this method only for adding new type of objects other than:
-        int, float, FieldElement and MapElement.
-        """
-
-        # Some absolutely default behaviour
-        if self == 0:
-            return other
-        if other == 0:
-            return self
-
-        result = self.add(other)
-        if result is not NotImplemented:
-            return result
-
-        result = other.add(self)
-        if result is not NotImplemented:
-            return result
-
         return MapElement.addition(self, other)
 
+    @params_to_maps
     def __radd__(self, other) -> 'MapElement':
-        return self.__add__(other)
+        return MapElement.addition(other, self)
 
-    def __neg__(self) -> 'MapElement':
+    def add(self, other: 'MapElement') -> Optional['MapElement']:
+        return None
+
+    def radd(self, other: 'MapElement') -> Optional['MapElement']:
+        return None
+
+    # </editor-fold>
+
+    # <editor-fold desc=" ------------------------ Subtraction ------------------------">
+
+    @staticmethod
+    def subtraction(elem1: 'MapElement' ,elem2: 'MapElement') -> 'MapElement':
         return NotImplemented
 
+    @params_to_maps
     def __sub__(self, other) -> 'MapElement':
-        return NotImplemented
+        return MapElement.subtraction(self, other)
 
+    @params_to_maps
     def __rsub__(self, other) -> 'MapElement':
-        return NotImplemented
+        return MapElement.subtraction(other, self)
+
+    def sub(self, other: 'MapElement') -> Optional['MapElement']:
+        return None
+
+    def rsub(self, other: 'MapElement') -> Optional['MapElement']:
+        return None
+
+    # </editor-fold>
+
+    # <editor-fold desc=" ------------------------ Multiplication ------------------------">
 
     @staticmethod
     def multiplication(elem1: 'MapElement' ,elem2: 'MapElement') -> 'MapElement':
@@ -333,48 +353,46 @@ class MapElement:
         """
         return NotImplemented
 
-    def mul(self, other: 'MapElement') -> 'MapElement':
+    @params_to_maps
+    def __mul__(self, other) -> 'MapElement':
+        return MapElement.multiplication(self, other)
+
+    @params_to_maps
+    def __rmul__(self, other) -> 'MapElement':
+        return MapElement.multiplication(other, self)
+
+    def mul(self, other: 'MapElement') -> Optional['MapElement']:
+        return None
+
+    def rmul(self, other: 'MapElement') -> Optional['MapElement']:
+        return None
+
+    # </editor-fold>
+
+    # <editor-fold desc=" ------------------------ Division ------------------------">
+
+    @staticmethod
+    def division(elem1: 'MapElement' ,elem2: 'MapElement') -> 'MapElement':
         """
-        Tries to multiply this element with 'other', assuming it is a MapElement.
-        Override in subclass when it is not the default behaviour.
+        A default implementation, overriden in arithmetics.py
         """
         return NotImplemented
 
     @params_to_maps
-    def __mul__(self, other) -> 'MapElement':
-        """
-        Override this method only for adding new type of objects other than:
-        int, float, FieldElement and MapElement.
-        """
-
-        # Some absolutely default behaviour
-        if self == 0 or other == 0:
-            return MapElementConstant.zero
-        if self == 1:
-            return other
-        if other == 1:
-            return self
-        # TODO: Consider processing multiplying by (-1) as taking the negative.
-        #       Make sure there are no infinite loops, if neg is defined by multiplying by (-1)
-
-        result = self.mul(other)
-        if result is not NotImplemented:
-            return result
-
-        result = other.mul(self)
-        if result is not NotImplemented:
-            return result
-
-        return MapElement.multiplication(self, other)
-
-    def __rmul__(self, other) -> 'MapElement':
-        return self.__mul__(other)
-
     def __truediv__(self, other) -> 'MapElement':
-        return NotImplemented
+        return MapElement.division(self, other)
 
+    @params_to_maps
     def __rtruediv__(self, other) -> 'MapElement':
-        return NotImplemented
+        return MapElement.division(other, self)
+
+    def div(self, other: 'MapElement') -> Optional['MapElement']:
+        return None
+
+    def rdiv(self, other: 'MapElement') -> Optional['MapElement']:
+        return None
+
+    # </editor-fold>
 
     # </editor-fold>
 
@@ -458,12 +476,7 @@ class NamedFunc(MapElement):
         return instance
 
     def __init__(self, func_name: str, variables: List[Var]):
-        super().__init__(variables)
-        self.name = func_name
-
-    def to_string(self, vars_str_list: List[str]):
-        vars_str = ','.join(vars_str_list)
-        return f'{self.name}({vars_str})'
+        super().__init__(variables, func_name)
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
 
@@ -471,10 +484,6 @@ class NamedFunc(MapElement):
         if func != self:
             return func._call_with_dict(var_dict, {})
 
-        eval_entries = get_var_values(self.vars, var_dict)
-        return self if eval_entries is None else CompositionFunction(function=self, entries=eval_entries)
-
-    def _simplify_with_var_values(self, var_dict: VarDict) -> 'MapElement':
         eval_entries = get_var_values(self.vars, var_dict)
         return self if eval_entries is None else CompositionFunction(function=self, entries=eval_entries)
 
@@ -580,13 +589,6 @@ class CompositionFunction(MapElement):
     def _simplify_caller_function2(self, function: MapElement, position: int, var_dict: VarDict) -> Optional[MapElement]:
         return None
 
-    def _simplify_with_var_values(self, var_dict: VarDict) -> 'MapElement':
-        # Compute the simplified entries, by supplying each with the simplified version
-        # of its variables
-        simplified_entries = { v : entry._simplify_with_var_values(var_dict)
-                               for v, entry in zip(self.function.vars, self.entries)}
-        return self.function._simplify_with_var_values(simplified_entries)
-
 
 class MapElementConstant(MapElement):
     """
@@ -594,11 +596,8 @@ class MapElementConstant(MapElement):
     """
 
     def __init__(self, elem: ExtElement):
-        super().__init__([])
+        super().__init__([], str(elem))
         self.elem = elem
-
-    def to_string(self, vars_str_list: List[str]):
-        return str(self.elem)
 
     def __eq__(self, other):
         if isinstance(other, int) or isinstance(other, FieldElement):
@@ -628,10 +627,6 @@ class MapElementFromFunction(MapElement):
         # TODO: Maybe use the names of the variables of the original function
         super().__init__(variables, name)
 
-    def to_string(self, entries: List[str]):
-        entries_str = ','.join(entries)
-        return f'{self.name}({entries_str})'
-
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
         eval_entries = get_var_values(self.vars, var_dict)
 
@@ -646,16 +641,3 @@ class MapElementFromFunction(MapElement):
 
         return None
 
-    def _simplify_with_var_values(self, var_dict: VarDict) -> 'MapElement':
-
-        entries = self._entry_list(var_dict)
-        if all(isinstance(entry, MapElementConstant) for entry in entries):
-            result = self.function(*[entry.elem for entry in entries])
-            return MapElementConstant(result)
-
-        return self._simplify_partial_constant(entries)
-
-    # override this method instead of '_simplify_with_entries' if needed, where you can assume that
-    # not all entries are constant.
-    def _simplify_partial_constant(self, entries: List['MapElement']) -> 'MapElement':
-        return CompositionFunction(self, entries)

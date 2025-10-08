@@ -1,5 +1,6 @@
-from mapping_field import MapElement, MapElementFromFunction, MapElementConstant, CompositionFunction, convert_to_map
-from typing import List, Tuple
+from mapping_field import (MapElement, MapElementFromFunction, MapElementConstant, CompositionFunction,
+                           convert_to_map, get_var_values, VarDict)
+from typing import List, Tuple, Optional
 
 """
 Implement arithmetics for the MapElement class.
@@ -35,9 +36,11 @@ class _Negative(MapElementFromFunction):
     def to_string(self, entries: List[str]):
         return f'(-{entries[0]})'
 
-    def _simplify_partial_constant(self, entries: List[MapElement]) -> MapElement:
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+        entries = [var_dict.get(v,v) for v in self.vars]
+
         if not isinstance(entries[0], CompositionFunction):
-            return super()._simplify_partial_constant(entries)
+            return super()._simplify_with_var_values2(var_dict)
         function = entries[0].function
         comp_entries = entries[0].entries
         if function == Neg:
@@ -45,7 +48,7 @@ class _Negative(MapElementFromFunction):
         if function == Sub:
             return Sub(comp_entries[1], comp_entries[0])
 
-        return super()._simplify_partial_constant(entries)
+        return super()._simplify_with_var_values2(var_dict)
 
 
 def as_neg(map_elem: MapElement) -> Tuple[int, MapElement]:
@@ -60,7 +63,9 @@ class _Add(MapElementFromFunction):
     def __init__(self):
         super().__init__('Add', lambda a, b: a + b)
 
-    def _simplify_partial_constant(self, entries: List[MapElement]) -> MapElement:
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+        entries = [var_dict.get(v,v) for v in self.vars]
+
         if entries[0] == 0:
             return entries[1]
         if entries[1] == 0:
@@ -68,20 +73,19 @@ class _Add(MapElementFromFunction):
 
         sign0, map0 = as_neg(entries[0])
         sign1, map1 = as_neg(entries[1])
-
-        if sign0 == 1 and sign1 == 1:
-            return super()._simplify_partial_constant(entries)
+        if sign0 == -1 and sign1 == -1:
+            return (-(map0+map1)).simplify2()
 
         if sign0 == 1 and sign1 == -1:
             # Remark: I would like to return map0 - map1, however, if any MapElement subclass defines
             #         __sub__(self, other) as self + (-other), where (-other) uses the default Neg function,
             #         this will cause an infinite loop.
-            return Sub(map0, map1)
+            return Sub(map0, map1)._simplify2()
         if sign0 == -1 and sign1 == 1:
-            return Sub(map1, map0)
+            return Sub(map1, map0)._simplify2()
 
-        # sign0 == sign1 == -1
-        return -(map0+map1)
+        # sign0 == sign1 == 1
+        return super()._simplify_with_var_values2(var_dict)
 
     def to_string(self, entries: List[str]):
         return f'({entries[0]}+{entries[1]})'
@@ -92,24 +96,26 @@ class _Sub(MapElementFromFunction):
     def __init__(self):
         super().__init__('Sub', lambda a, b: a - b)
 
-    def _simplify_partial_constant(self, entries: List[MapElement]) -> MapElement:
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+        entries = [var_dict.get(v,v) for v in self.vars]
+
         if entries[0] == 0:
-            return Neg(entries[1])
+            return Neg(entries[1]).simplify2()
         if entries[1] == 0:
             return entries[0]
 
         sign0, map0 = as_neg(entries[0])
         sign1, map1 = as_neg(entries[1])
 
-        if sign0 == 1 and sign1 == 1:
-            return super()._simplify_partial_constant(entries)
+        if sign0 == -1 and sign1 == -1:
+            return Sub(map1, map0)._simplify2()
         if sign0 == 1 and sign1 == -1:
-            return Add(map0, map1)
+            return Add(map0, map1)._simplify2()
         if sign0 == -1 and sign1 == 1:
-            return -Add(map1, map0)
+            return (-Add(map1, map0))._simplify2()
 
-        # sign0 == sign1 == -1
-        return Sub(map1, map0)
+        # sign0 == sign1 == 1
+        return super()._simplify_with_var_values2(var_dict)
 
     def to_string(self, entries: List[str]):
         return f'({entries[0]}-{entries[1]})'
@@ -144,31 +150,33 @@ class _Mult(MapElementFromFunction):
     def __init__(self):
         super().__init__('Mult', lambda a, b: a * b)
 
-    def _simplify_partial_constant(self, entries: List[MapElement]) -> MapElement:
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+        entries = [var_dict.get(v,v) for v in self.vars]
+
         # Multiplication by 0 and 1
         if entries[0] == 0:
-            return entries[0]
+            return MapElementConstant.zero
         if entries[0] == 1:
             return entries[1]
         if entries[0] == -1:
-            return Neg(entries[1])
+            return Neg(entries[1])._simplify2()
 
         if entries[1] == 0:
-            return entries[1]
+            return MapElementConstant.zero
         if entries[1] == 1:
             return entries[0]
         if entries[1] == -1:
-            return Neg(entries[0])
+            return Neg(entries[0])._simplify2()
 
         sign0, numerator0, denominator0 = _as_rational(entries[0])
         sign1, numerator1, denominator1 = _as_rational(entries[1])
         if entries[0] == numerator0 and entries[1] == numerator1:
-            return super()._simplify_partial_constant(entries)
+            return super()._simplify_with_var_values2(var_dict)
 
         numerator = numerator0 * numerator1
         denominator = denominator0 * denominator1
         abs_value = numerator / denominator
-        return abs_value if sign0 * sign1 == 1 else -abs_value
+        return abs_value._simplify2() if sign0 * sign1 == 1 else (-abs_value)._simplify2()
 
     def to_string(self, entries: List[str]):
         return f'({entries[0]}*{entries[1]})'
@@ -179,7 +187,9 @@ class _Div(MapElementFromFunction):
     def __init__(self):
         super().__init__('Div', lambda a, b: a / b)
 
-    def _simplify_partial_constant(self, entries: List[MapElement]) -> MapElement:
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+        entries = [var_dict.get(v,v) for v in self.vars]
+
         if entries[1] == 0:
             raise Exception('Cannot divide by zero')
         if entries[1] == 1:
@@ -191,7 +201,7 @@ class _Div(MapElementFromFunction):
         sign0, numerator0, denominator0 = _as_rational(entries[0])
         sign1, numerator1, denominator1 = _as_rational(entries[1])
         if entries[0] == numerator0 and entries[1] == numerator1:
-            return super()._simplify_partial_constant(entries)
+            return super()._simplify_with_var_values2(var_dict)
 
         abs_value = ((numerator0 * denominator1) / (denominator0 * numerator1))
         return abs_value if sign0 * sign1 == 1 else -abs_value
@@ -212,18 +222,39 @@ def params_to_maps(f):
 
 
 Neg = _Negative()
-MapElement.__neg__ = lambda self: Neg(self)
+MapElement.negation = Neg
 
 Add = _Add()
 MapElement.addition  = Add
 
 Sub = _Sub()
-MapElement.__sub__  = params_to_maps(lambda self, other: Sub(self, other))
-MapElement.__rsub__ = params_to_maps(lambda self, other: Sub(other, self))
+MapElement.subtraction  = Sub
 
 Mult = _Mult()
 MapElement.multiplication  = Mult
 
 Div = _Div()
-MapElement.__truediv__  = params_to_maps(lambda self, other: Div(self, other))
-MapElement.__rtruediv__ = params_to_maps(lambda self, other: Div(other, self))
+MapElement.division  = Div
+
+original_simplify_caller_function2 = MapElement._simplify_caller_function2
+def _simplify_caller_function2_arithmetics(
+        self: MapElement, function: 'MapElement', position: int, var_dict: VarDict) -> Optional['MapElement']:
+
+    entries = [var_dict[v] for v in function.vars]
+
+    if function is MapElement.negation:
+        return self.neg()
+
+    if function is MapElement.addition:
+        return self.add(entries[1 - position])
+    if function is MapElement.multiplication:
+        return self.mul(entries[1 - position])
+
+    if function is MapElement.subtraction:
+        return self.sub(entries[1]) if position == 0 else self.rsub(entries[0])
+    if function is MapElement.division:
+        return self.div(entries[1]) if position == 0 else self.rdiv(entries[0])
+
+    return original_simplify_caller_function2(self, function, position, var_dict)
+
+MapElement._simplify_caller_function2 = _simplify_caller_function2_arithmetics
