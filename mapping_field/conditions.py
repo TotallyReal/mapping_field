@@ -144,15 +144,26 @@ TrueCondition  = BinaryCondition(True)
 FalseCondition = BinaryCondition(False)
 
 
-class ListCondition(Condition):
+class _ListCondition(Condition):
+    # For intersection \ union of conditions
 
-    def __init_subclass__(cls, op_type, op_dunder_name: str, join_delim: str,
-                          zero_condition: Condition, one_condition: Condition):
-        cls.op_type = op_type
-        cls.join_delim = join_delim
-        cls.zero_condition = zero_condition
-        cls.one_condition = one_condition
-        setattr(cls, op_dunder_name, cls.op)
+    AND = 0
+    OR = 1
+
+    def __init_subclass__(cls, op_type: int):
+        cls.type = op_type
+
+        cls.op_types = [operator.and_, operator.or_]
+        cls.dunder_names = ['__and__', '__or__']
+        cls.trivials = [TrueCondition, FalseCondition]
+        cls.join_delims = [' & ', ' | ']
+
+        cls.op_type = cls.op_types[op_type]
+        cls.join_delim = cls.join_delims[op_type]
+        cls.one_condition = cls.trivials[op_type]
+        cls.zero_condition = cls.trivials[1-op_type]
+        setattr(cls, cls.dunder_names[op_type], cls.op)
+        setattr(cls, cls.dunder_names[1-op_type], cls.rev_op)
 
     def __init__(self, conditions: List[Condition], simplified: bool = False):
         super().__init__(
@@ -173,6 +184,53 @@ class ListCondition(Condition):
             return self.__class__([*self.conditions, *condition.conditions]), False
 
         return self.__class__([*self.conditions, condition]), False
+
+    def rev_op(self, condition) -> Tuple[Condition, bool]:
+
+        cls = self.__class__
+
+        if isinstance(condition, BinaryCondition):
+            return cls.op_types[1-cls.type](condition , self)
+
+        conditions1 = self.conditions.copy()
+        conditions2 = condition.conditions.copy() if isinstance(condition, cls) else [condition]
+
+        swapped = False
+        if len(conditions1) < len(conditions2):
+            conditions1, conditions2 = conditions2, conditions1
+            swapped = True
+
+        n1 = len(conditions1)
+        used_positions = [False] * n1
+        special_condition = None
+
+        for cond2 in conditions2:
+            for i in range(n1):
+                if not used_positions[i] and conditions1[i] == cond2:
+                    used_positions[i] = True
+                    break
+            else:
+                if special_condition is not None:
+                    return getattr(super(), cls.dunder_names[1-cls.type])(condition)
+                special_condition = cond2
+
+        if special_condition is None:
+            # Full containement
+            return (self if swapped else condition), True
+
+        if len(conditions1) == len(conditions2):
+            second_special_condition = None
+            for i in range(n1):
+                if not used_positions[i]:
+                    second_special_condition = conditions1[i]
+                    break
+
+            prod, is_simpler = cls.op_types[1-cls.type](special_condition , second_special_condition)
+            if is_simpler:
+                conditions = [c for flag, c in zip(used_positions, conditions1) if flag]
+                return cls(conditions + [prod]), True
+
+        return getattr(super(), cls.dunder_names[1-cls.type])(condition)
 
     def simplify(self):
         if self._simplified:
@@ -239,72 +297,16 @@ class ListCondition(Condition):
 
         return True
 
-class ConditionIntersection(ListCondition,
-                            op_type=operator.and_, op_dunder_name='__and__', join_delim=' & ',
-                            zero_condition = FalseCondition, one_condition = TrueCondition):
+class ConditionIntersection(_ListCondition, op_type = _ListCondition.AND):
 
     def __init__(self, conditions: List[Condition], simplified: bool = False):
         super().__init__(conditions, simplified)
 
-class ConditionUnion(ListCondition,
-                            op_type = operator.or_, op_dunder_name = '__or__', join_delim = ' | ',
-                            zero_condition = TrueCondition, one_condition = FalseCondition):
+
+class ConditionUnion(_ListCondition, op_type = _ListCondition.OR):
 
     def __init__(self, conditions: List[Condition], simplified: bool = False):
         super().__init__(conditions, simplified)
-
-    def __and__(self, condition: Condition) -> Tuple[Condition, bool]:
-        # We have two types of simplifications:
-        # 1. one condition is contained in the other
-        # 2. Both conditions are unions, of the form:
-        #       A_1 | A_2 | ... | A_n   ,   B_1 | A_2 | ... | A_n
-        #    and A_1 * B_1 can be simplified, in which case we return
-        #       (A_1 * B_1) | A_2 | A_3 | ... | A_n
-
-        if isinstance(condition, BinaryCondition):
-            return condition & self
-
-        conditions1 = self.conditions.copy()
-        conditions2 = condition.conditions.copy() if isinstance(condition, ConditionUnion) else [condition]
-
-        swapped = False
-        if len(conditions1) < len(conditions2):
-            conditions1, conditions2 = conditions2, conditions1
-            swapped = True
-
-        n1 = len(conditions1)
-        used_positions = [False] * n1
-        special_condition = None
-
-        for cond2 in conditions2:
-            for i in range(n1):
-                if not used_positions[i] and conditions1[i] == cond2:
-                    used_positions[i] = True
-                    break
-            else:
-                if special_condition is not None:
-                    return super().__and__(condition)
-                special_condition = cond2
-
-        if special_condition is None:
-            # Full containement
-            return (self if swapped else condition), True
-
-        if len(conditions1) == len(conditions2):
-            second_special_condition = None
-            for i in range(n1):
-                if not used_positions[i]:
-                    second_special_condition = conditions1[i]
-                    break
-
-            prod, is_simpler = special_condition & second_special_condition
-            if is_simpler:
-                conditions = [c for flag, c in zip(used_positions, conditions1) if flag]
-                return ConditionUnion(conditions + [prod]), True
-
-        return super().__and__(condition)
-
-
 
 
 # ========================================================================= #
