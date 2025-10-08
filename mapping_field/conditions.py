@@ -346,7 +346,7 @@ class ConditionalFunction(MapElement):
 
     def __eq__(self, other: MapElement) -> bool:
         if (isinstance(other, MapElement) or isinstance(other, int)):
-            return (self-other).simplify().is_zero()
+            return self._op(other, operator.sub).simplify2().is_zero()
         return super().__eq__(other)
 
     # <editor-fold desc=" ------------------------ arithmetics ------------------------">
@@ -367,27 +367,27 @@ class ConditionalFunction(MapElement):
     def add(self, other: MapElement) -> 'ConditionalFunction':
         return self._op(other, operator.add)
 
-    def __radd__(self, other: MapElement) -> 'ConditionalFunction':
-        return self + other
+    def radd(self, other: MapElement) -> 'ConditionalFunction':
+        return self._op(other, operator.add)
 
     def mul(self, other: MapElement) -> 'ConditionalFunction':
         return self._op(other, operator.mul)
 
-    def __rmul__(self, other: MapElement) -> 'ConditionalFunction':
-        return self * other
+    def rmul(self, other: MapElement) -> 'ConditionalFunction':
+        return self._op(other, operator.mul)
 
-    def __sub__(self, other: MapElement) -> 'ConditionalFunction':
+    def sub(self, other: MapElement) -> 'ConditionalFunction':
         if other == 0:
             return self
         return self._op(other, operator.sub)
 
-    def __rsub__(self, other: MapElement) -> 'ConditionalFunction':
+    def rsub(self, other: MapElement) -> 'ConditionalFunction':
         return ConditionalFunction.always(other)._op(self, operator.sub)
 
-    def __truediv__(self, other: MapElement) -> 'ConditionalFunction':
+    def div(self, other: MapElement) -> 'ConditionalFunction':
         return self._op(other, operator.truediv)
 
-    def __rtruediv__(self, other) -> 'ConditionalFunction':
+    def rdiv(self, other) -> 'ConditionalFunction':
         return ConditionalFunction.always(other)._op(self, operator.truediv)
 
     # </editor-fold>
@@ -402,13 +402,13 @@ class ConditionalFunction(MapElement):
                    for region in self.regions]
         return ConditionalFunction(regions)
 
-    def _simplify_with_var_values(self, var_dict: VarDict) -> 'MapElement':
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> 'MapElement':
         regions = []
         for condition, func in self.regions:
             condition = condition.simplify()
             if condition == FalseCondition:
                 continue
-            func = func._simplify_with_var_values(var_dict)
+            func = func._simplify_with_var_values2(var_dict)
             if isinstance(condition, MapElementProcessor):
                 func = condition.process(func)
 

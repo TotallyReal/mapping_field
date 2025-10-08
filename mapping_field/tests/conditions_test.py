@@ -22,11 +22,8 @@ class DummyCondition(Condition):
 
 class DummyMap(MapElement):
     def __init__(self, value=0):
-        super().__init__([])
+        super().__init__([], f'DummyMap({self.value})')
         self.value = value
-
-    def to_string(self, vars_str_list: List[str]):
-        return f'DummyMap({self.value})'
 
 
 # Test conditions

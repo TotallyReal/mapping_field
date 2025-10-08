@@ -48,9 +48,9 @@ def get_var_values(var_list: List['Var'], var_dict: VarDict) -> Optional[List['M
     eval_entries = []
     trivial = True
     for var in var_list:
-        eval_var = var_dict.get(var, var)
-        eval_entries.append(eval_var)
-        if eval_var != var:
+        eval_var = var_dict.get(var, None)
+        eval_entries.append(eval_var or var)
+        if eval_var is not None:
             trivial = False
 
     return None if trivial else eval_entries
