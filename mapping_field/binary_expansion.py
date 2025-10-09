@@ -81,8 +81,13 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer, Condition
             two_power *= 2
 
     def to_string(self, vars_str_list: List[str]):
+        indices = [i for i,v in enumerate(self.coefficients) if v!=0]
+        if len(indices) == 0:
+            return '0'
+        if indices[-1] == 0:
+            return str(self.coefficients[0])
         # TODO: use the vars_str_list
-        vars_str = ', '.join([str(v) for v in self.coefficients])
+        vars_str = ', '.join([str(v) for v in self.coefficients[:1+indices[-1]]])
         return f'[{vars_str}]'
 
     def evaluate(self) -> Optional[ExtElement]:
