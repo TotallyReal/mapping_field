@@ -144,9 +144,10 @@ class ConditionalFunction(MapElement):
                 other_regions.append((condition, func))
 
         for var_dict, condition, func in assignment_regions:
-            for other_cond, other_func in other_regions:
+            for other_region in other_regions:
+                other_cond, other_func = other_region
                 if other_func(var_dict) == func:
-                    other_regions = [region for region in regions if (region is not (other_cond, other_func))]
+                    other_regions = [region for region in other_regions if (region is not other_region)]
                     union_condition = (other_cond | condition).simplify()
                     other_regions.append((union_condition, other_func))
                     break

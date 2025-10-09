@@ -185,6 +185,19 @@ def test_simplification():
 
     assert cond_func == simplified
 
+    # Combine regions with assignemtns
+    x = Var('x')
+    xx = Linear.of(x)
+
+    cond_func = ConditionalFunction([
+        (RangeCondition(x, (0, 10)), xx + 3),
+        (SingleAssignmentCondition(x, 10), MapElementConstant(13)),
+    ])
+
+    cond_func = cond_func.simplify2()
+
+    assert cond_func == xx + 3
+
 
 def test_linear_ranged_condition_subtraction():
     vv = [BoolVar(f'x_{i}') for i in range(4)]
