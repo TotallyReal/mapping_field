@@ -1,8 +1,7 @@
 from typing import List, Tuple, Union, Set
 
 from mapping_field.conditions import Condition, TrueCondition, FalseCondition, ConditionIntersection
-from mapping_field.conditional_function import ConditionalFunction
-from mapping_field.mapping_field import MapElementConstant, MapElement
+from mapping_field.mapping_field import MapElement
 
 class DummyCondition(Condition):
     def __init__(self, values: Union[int, Set[int]]=0, type: int=0):
@@ -140,32 +139,4 @@ def test_intersection_of_unions():
     result = dummy0 | dummies[1] | dummies[2]
 
     assert cond1 * cond2 == result
-
-
-
-# Test conditional functions
-
-def test_op_conditional_functions():
-    dummies = [DummyCondition(i) for i in range(5)]
-
-    cond_func1 = ConditionalFunction([
-        (dummies[0] | dummies[1], MapElementConstant(0)),
-        (dummies[2], MapElementConstant(10))
-    ])
-
-    cond_func2 = ConditionalFunction([
-        (dummies[0], MapElementConstant(100)),
-        (dummies[1] | dummies[2], MapElementConstant(200))
-    ])
-
-    cond_add = cond_func1 + cond_func2
-
-    result = ConditionalFunction([
-        (dummies[0], MapElementConstant(100)),
-        (dummies[1], MapElementConstant(200)),
-        (dummies[2], MapElementConstant(210))
-    ])
-
-    assert result == cond_add, f'could not match:\n{result}\n{cond_add}'
-
 

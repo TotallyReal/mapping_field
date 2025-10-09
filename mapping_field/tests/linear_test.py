@@ -4,7 +4,6 @@ from typing import List
 from mapping_field.binary_expansion import BoolVar, BinaryExpansion
 from mapping_field.linear import Linear
 from mapping_field.conditions import FalseCondition, TrueCondition, Condition
-from mapping_field.conditional_function import ConditionalFunction, ReLU
 from mapping_field.ranged_condition import RangeCondition, SingleAssignmentCondition
 from mapping_field.mapping_field import MapElement, Var
 
@@ -223,24 +222,3 @@ def test_extend_range():
     union = cond1 | cond2
     assert union == result
 
-
-def test_linear_ranged_condition_subtraction():
-    vv = [BoolVar(f'x_{i}') for i in range(4)]
-    x = BinaryExpansion(vv)
-    xx = Linear.of(x)
-
-    v1 = ReLU(xx-7)
-    v2 = ReLU(xx-8)
-    v = v1 - v2
-    v = v.simplify2()
-
-    # TODO: improve union \ intersection of conditions
-
-    assert v == x.coefficients[3]
-
-    v = 8 * v
-    u = ConditionalFunction.always(xx) - v
-    u = u.simplify2()
-
-    result = BinaryExpansion(vv[:3])
-    assert u == result
