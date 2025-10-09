@@ -214,19 +214,15 @@ class MapElement:
         entries = get_var_values(self.vars, var_dict)
         return CompositionFunction(self, entries)
 
-    def evaluate(self) -> ExtElement:
+    def evaluate(self) -> Optional[ExtElement]:
         """
         Returns the constant this map defines. If it is not constant, raises an error.
         """
-        map_elem = self.simplify()
-        assert isinstance(map_elem, MapElementConstant)
-        return map_elem.evaluate()
+        map_elem = self.simplify2()
+        return map_elem.evaluate() if isinstance(map_elem, MapElementConstant) else None
 
     def is_zero(self) -> bool:
-        try:
-            return self.evaluate() == 0
-        except:
-            return False
+        return self.evaluate() == 0
 
     # <editor-fold desc=" ------------------------ Simplify 2 ------------------------">
 

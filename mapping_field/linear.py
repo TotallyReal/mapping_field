@@ -47,11 +47,9 @@ class Linear(MapElement, RangeTransformer):
 
         elem = self.elem._simplify_with_var_values2(var_dict) or self.elem
 
-        try:
-            n = elem.evaluate()
+        n = elem.evaluate()
+        if n is not None:
             return MapElementConstant(self.a * n + self.b)
-        except:
-            pass
 
         if isinstance(elem, LinearTransformer):
             a, elem, b = elem.transform_linear(self.a, self.b)
@@ -68,11 +66,9 @@ class Linear(MapElement, RangeTransformer):
 
     # The Linear addition always tries to return a "simplified" Linear map.
     def add(self, other: MapElement) -> Optional[MapElement]:
-        try:
-            value = other.evaluate() if isinstance(other, MapElement) else other
+        value = other.evaluate() if isinstance(other, MapElement) else other
+        if isinstance(value, int):
             return Linear(self.a, self.elem, self.b + value)
-        except:
-            pass
 
         if other == self.elem:
             return Linear(self.a + 1, self.elem, self.b)
@@ -118,11 +114,8 @@ class Linear(MapElement, RangeTransformer):
         return (-self).add(other)
 
     def mul(self, other: MapElement) -> Optional[MapElement]:
-        if isinstance(other, MapElementConstant) and isinstance(other.elem, (int, float)):
-            try:
-                n = other.evaluate()
-            except:
-                return super().mul(other)
+        n = other.evaluate()
+        if isinstance(n, int):
             return Linear(self.a * n, self.elem, self.b * n)
         return super().mul(other)
 
@@ -138,15 +131,12 @@ class Linear(MapElement, RangeTransformer):
 
     # </editor-fold>
 
-    def evaluate(self) -> ExtElement:
-        try:
-            n = self.elem.evaluate()
-            return self.a * n + self.b
-        except:
-            pass
+    def evaluate(self) -> Optional[ExtElement]:
+        if self.a == 0:
+            return self.b
 
-        assert self.a == 0
-        return self.b
+        n = self.elem.evaluate()
+        return None if (n is None) else self.a * n + self.b
 
     def __eq__(self, other: MapElement):
         if self.elem == other:
@@ -154,10 +144,7 @@ class Linear(MapElement, RangeTransformer):
         if not isinstance(other, Linear):
             return super().__eq__(other)
 
-        try:
-            return (self-other).evaluate() == 0
-        except:
-            return False
+        return (self-other).evaluate() == 0
 
 
     def transform_range(self, f_range:Tuple[float, float]) -> Condition:

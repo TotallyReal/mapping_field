@@ -154,11 +154,9 @@ class RangeCondition(Condition):
         if self.range[0] >= self.range[1]:
             return FalseCondition
 
-        try:
-            n = self.function.evaluate()
+        n = self.function.evaluate()
+        if n is not None:
             return (TrueCondition if self.range[0] <= n < self.range[1] else FalseCondition)
-        except:
-            pass
 
         condition = self
         while (isinstance(condition, RangeCondition) and (not condition._simplified) and

@@ -85,9 +85,8 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
         vars_str = ', '.join([str(v) for v in self.coefficients])
         return f'[{vars_str}]'
 
-    def evaluate(self) -> ExtElement:
-        assert self._bool_max_value[-1] == 0  # TODO: Change to return None?
-        return self._constant
+    def evaluate(self) -> Optional[ExtElement]:
+        return self._constant if (self._bool_max_value[-1] == 0) else None
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
         coefs = [(c if isinstance(c,int) else var_dict.get(c,c)) for c in self.coefficients]
@@ -108,13 +107,10 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
 
     def __eq__(self, other):
 
-        try:
-            value2 = other.evaluate() if isinstance(other, MapElement) else other
-            value1 = self.evaluate()
+        value2 = other.evaluate() if isinstance(other, MapElement) else other
+        value1 = self.evaluate()
+        if value1 is not None:
             return value1 == value2
-        except:
-            pass
-
 
         if not isinstance(other, BinaryExpansion):
             return super().__eq__(other)

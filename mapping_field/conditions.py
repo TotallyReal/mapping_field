@@ -368,11 +368,13 @@ class ConditionalFunction(MapElement):
         # TODO: fix this printing function
         return ' , '.join([f'( {repr(condition)} -> {repr(map)} )' for (condition, map) in self.regions])
 
-    def evaluate(self) -> ExtElement:
-        condition, func = self.regions[0]
-        value = func.evaluate()
-        assert all([value == func.evaluate() for _, func in self.regions])
-        return value
+    def evaluate(self) -> Optional[ExtElement]:
+        values = [func.evaluate() for _, func in self.regions]
+        if len(values) == 0:
+            raise Exception('Conditional Map should not be empty')
+        if values[0] is None:
+            return None
+        return values[0] if all([values[0] == v for v in values]) else None
 
     def __eq__(self, other: MapElement) -> bool:
         if (isinstance(other, MapElement) or isinstance(other, int)):
