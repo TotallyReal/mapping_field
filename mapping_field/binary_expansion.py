@@ -397,8 +397,10 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
                 continue
 
             break
+        else:
+            i = -1
 
-        if a <= 0 and self._bool_max_value[i] < b: # TODO: +1 ?
+        if a <= 0 and self._bool_max_value[i+1] < b: # TODO: +1 ?
             return condition
         else:
             return condition * RangeCondition(BinaryExpansion(coefs[:i+1]), (a, b), simplified=True)
