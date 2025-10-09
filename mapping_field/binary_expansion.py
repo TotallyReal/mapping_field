@@ -3,7 +3,7 @@ from typing import List, Union, Optional, Tuple
 from mapping_field.arithmetics import as_neg
 from mapping_field.mapping_field import Var, MapElement, MapElementConstant, ExtElement, VarDict, FuncDict
 from mapping_field.conditions import Range, Condition, FalseCondition, TrueCondition
-from mapping_field.ranged_condition import AssignmentCondition, RangeCondition, RangeTransformer
+from mapping_field.ranged_condition import SingleAssignmentCondition, RangeCondition, RangeTransformer
 from mapping_field.linear import LinearTransformer
 
 
@@ -25,7 +25,7 @@ class BoolVar(Var, RangeTransformer):
 
         if a == 0 and b == 2:
             return TrueCondition
-        return AssignmentCondition({self: 1 if a == 1 else 0})
+        return SingleAssignmentCondition(self, 1 if a == 1 else 0)
 
 def _two_power(k):
     k = abs(k)
@@ -383,13 +383,13 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
 
             # BoolVar
             if self._bool_max_value[i] < a:
-                condition *= AssignmentCondition({c: 1})
+                condition *= SingleAssignmentCondition(c, 1)
                 a -= two_power
                 b -= two_power
                 continue
 
             if b <= two_power:
-                condition *= AssignmentCondition({c: 0})
+                condition *= SingleAssignmentCondition(c, 0)
                 continue
 
             break

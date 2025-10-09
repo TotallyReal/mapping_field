@@ -1,7 +1,7 @@
 from typing import List
 
 from mapping_field.conditions import FalseCondition, ConditionalFunction
-from mapping_field.ranged_condition import RangeCondition, AssignmentCondition
+from mapping_field.ranged_condition import RangeCondition, SingleAssignmentCondition
 from mapping_field.mapping_field import MapElementConstant, MapElement, Var
 
 
@@ -33,7 +33,7 @@ def test_range_condition_union():
     cond12 = RangeCondition(dummy_var, (0,15))
     assert cond1 | cond2 == cond12
 
-    cond2 = AssignmentCondition({dummy_var: 10})
+    cond2 = SingleAssignmentCondition(dummy_var, 10)
     cond12 = RangeCondition(dummy_var, (0,11))
     assert cond1 | cond2 == cond12
 

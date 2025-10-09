@@ -4,7 +4,7 @@ from typing import List
 from mapping_field.binary_expansion import BoolVar, BinaryExpansion
 from mapping_field.linear import Linear
 from mapping_field.conditions import FalseCondition, TrueCondition, Condition, ConditionalFunction
-from mapping_field.ranged_condition import RangeCondition, AssignmentCondition, ReLU
+from mapping_field.ranged_condition import RangeCondition, SingleAssignmentCondition, ReLU
 from mapping_field.mapping_field import MapElement, Var
 
 @pytest.fixture(autouse=True)
@@ -95,22 +95,22 @@ def test_assignment_condition():
     x, y, z = Var('x'), Var('y'), Var('z')
 
     # disjoint
-    cond1 = AssignmentCondition({x:1, y:2})
-    cond2 = AssignmentCondition({z:3})
+    cond1 = SingleAssignmentCondition.from_dict({x:1, y:2})
+    cond2 = SingleAssignmentCondition.from_dict({z:3})
     prod = cond1 * cond2
-    result = AssignmentCondition({x:1, y:2, z:3})
+    result = SingleAssignmentCondition.from_dict({x:1, y:2, z:3})
     assert prod == result
 
     # valid intersection
-    cond1 = AssignmentCondition({x:1, y:2})
-    cond2 = AssignmentCondition({y:2, z:3})
+    cond1 = SingleAssignmentCondition.from_dict({x:1, y:2})
+    cond2 = SingleAssignmentCondition.from_dict({y:2, z:3})
     prod = cond1 * cond2
-    result = AssignmentCondition({x:1, y:2, z:3})
+    result = SingleAssignmentCondition.from_dict({x:1, y:2, z:3})
     assert prod == result
 
     # invalid intersection
-    cond1 = AssignmentCondition({x:1, y:2})
-    cond2 = AssignmentCondition({y:5, z:3})
+    cond1 = SingleAssignmentCondition.from_dict({x:1, y:2})
+    cond2 = SingleAssignmentCondition.from_dict({y:5, z:3})
     prod = cond1 * cond2
     result = FalseCondition
     assert prod == result
@@ -181,7 +181,7 @@ def test_me():
     cond2 = xx - 8 < 0
     prod = cond1 * cond2
     prod = prod.simplify()
-    assert prod == AssignmentCondition({vv[0]:1, vv[1]:1, vv[2]: 1, vv[3]:0})
+    assert prod == SingleAssignmentCondition.from_dict({vv[0]:1, vv[1]:1, vv[2]: 1, vv[3]:0})
 
     cond1 = xx - 7 < 0
     cond2 = xx - 8 >= 0
@@ -206,7 +206,7 @@ def test_assignment_range_condition():
 
     cond1 = (xx-7<0).simplify()
     cond2 = (yy-7<0).simplify()
-    cond2 = cond2 & AssignmentCondition({vv[3]: 0})
+    cond2 = cond2 & SingleAssignmentCondition(vv[3], 0)
     assert cond1 == cond2
 
 def test_linear_ranged_condition_subtraction():

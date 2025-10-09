@@ -1,6 +1,6 @@
 from mapping_field import MapElementConstant
 from mapping_field.binary_expansion import BinaryExpansion, BoolVar
-from mapping_field.ranged_condition import RangeCondition, AssignmentCondition
+from mapping_field.ranged_condition import RangeCondition, SingleAssignmentCondition
 
 
 def test_equality_constant():
@@ -125,6 +125,6 @@ def test_simplify_range_condition():
     condition2 = RangeCondition(v[3], (1, 2)).simplify()
     assert condition1 == condition2
 
-    condition2 = AssignmentCondition({v[3] : 1})
+    condition2 = SingleAssignmentCondition(v[3] , 1)
     assert condition1 == condition2
 

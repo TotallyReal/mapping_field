@@ -1,12 +1,13 @@
 from abc import abstractmethod
 from typing import Tuple, Optional
 
-from mapping_field import VarDict, MapElement, MapElementConstant
+from mapping_field import VarDict, MapElement, MapElementConstant, Var
 from mapping_field.conditions import Condition, FalseCondition, ConditionIntersection, Range, ConditionalFunction, \
     MapElementProcessor, TrueCondition
 
 
-class AssignmentCondition(Condition, MapElementProcessor):
+class _AssignmentCondition(Condition, MapElementProcessor):
+    # TODO: to delete?
 
     def __init__(self, var_dict: VarDict):
         super().__init__(list(var_dict.keys()))
@@ -16,20 +17,20 @@ class AssignmentCondition(Condition, MapElementProcessor):
         return repr(self.var_dict)
 
     def _eq_simplified(self, condition: 'Condition') -> bool:
-        if isinstance(condition, AssignmentCondition):
+        if isinstance(condition, _AssignmentCondition):
             return self.var_dict == condition.var_dict
         return super()._eq_simplified(condition)
 
-    def process(self, func: MapElement) -> MapElement:
+    def process_function(self, func: MapElement) -> MapElement:
         return func(self.var_dict)
 
     def and_simpler(self, condition: Condition) -> Tuple[Condition, bool]:
-        if isinstance(condition, AssignmentCondition):
+        if isinstance(condition, _AssignmentCondition):
             # Combine the dictionaries, if there are no different assignments for the same variables
             for key, value in self.var_dict.items():
                 if condition.var_dict.get(key, value) != value:
                     return FalseCondition, True
-            return AssignmentCondition({**self.var_dict, **condition.var_dict}), True
+            return _AssignmentCondition({**self.var_dict, **condition.var_dict}), True
 
         return super().and_simpler(condition)
 
@@ -40,7 +41,7 @@ class AssignmentCondition(Condition, MapElementProcessor):
         cond1 = self
         cond2 = condition
 
-        if isinstance(condition, AssignmentCondition):
+        if isinstance(condition, _AssignmentCondition):
             assignments1 = self.var_dict
             assignments2 = condition.var_dict
 
@@ -77,9 +78,61 @@ class AssignmentCondition(Condition, MapElementProcessor):
                 if special_key is None:
                     return self, True
 
-                assign_cond = AssignmentCondition({k: v for k,v in assignments1.items() if k != special_key})
+                assign_cond = _AssignmentCondition({k: v for k,v in assignments1.items() if k != special_key})
                 range_cond = RangeCondition(special_key, range)
                 return ConditionIntersection([assign_cond, range_cond]), True
+
+        return super().or_simpler(condition)
+
+    def simplify(self) -> 'Condition':
+        if len(self.var_dict) == 0:
+            return TrueCondition
+        return self
+
+
+class SingleAssignmentCondition(Condition, MapElementProcessor):
+
+    @staticmethod
+    def from_dict(var_dict: VarDict) -> Condition:
+        condition = TrueCondition
+        for v, value in var_dict.items():
+            condition &= SingleAssignmentCondition(v, value)
+        return condition
+
+    def __init__(self, v: Var, value: int):
+        super().__init__([v])
+        self.var = v
+        self.value = value
+        self.var_dict = {v: value}
+
+    def __repr__(self):
+        return repr(self.var_dict)
+
+    def _eq_simplified(self, condition: 'Condition') -> bool:
+        if isinstance(condition, SingleAssignmentCondition) or isinstance(condition, _AssignmentCondition):
+            return self.var_dict == condition.var_dict
+        return super()._eq_simplified(condition)
+
+    def process_function(self, func: MapElement) -> MapElement:
+        return func(self.var_dict)
+
+    def and_simpler(self, condition: Condition) -> Tuple[Condition, bool]:
+        if isinstance(condition, SingleAssignmentCondition) and self.var == condition.var:
+            return (self if (self.value == condition.value) else FalseCondition), True
+
+        return super().and_simpler(condition)
+
+    def or_simpler(self, condition: Condition) -> Tuple[Condition, bool]:
+        if isinstance(condition, RangeCondition):
+            return condition.or_simpler(self)
+
+        if isinstance(condition, SingleAssignmentCondition) and self.var == condition.var:
+            a = min(self.value, condition.value)
+            b = max(self.value, condition.value)
+            if a == b:
+                return self, True
+            if a + 1 == b:
+                return RangeCondition(self.var, (a,b+1)), True
 
         return super().or_simpler(condition)
 
@@ -118,7 +171,7 @@ class RangeCondition(Condition):
                     return FalseCondition, True
                 return RangeCondition(self.function, (low, high)), True
 
-        if isinstance(condition, AssignmentCondition):
+        if isinstance(condition, SingleAssignmentCondition):
             function = self.function(condition.var_dict)
             if function != self.function:
                 # TODO: beware of infinite loops...
@@ -129,14 +182,13 @@ class RangeCondition(Condition):
     def or_simpler(self, condition: Condition) -> Tuple[Condition, bool]:
 
         # TODO: For now I assume that we only deal with integers
-        if isinstance(condition, AssignmentCondition) and len(condition.var_dict) == 1:
-            key, value = list(condition.var_dict.items())[0]
-            if key == self.function:
-                if value == self.range[0] - 1:
+        if isinstance(condition, SingleAssignmentCondition):
+            if condition.var == self.function:
+                if condition.value == self.range[0] - 1:
                     return RangeCondition(self.function, (self.range[0]-1, self.range[1])), True
-                if value == self.range[1]:
+                if condition.value == self.range[1]:
                     return RangeCondition(self.function, (self.range[0], self.range[1]+1)), True
-                if self.range[0] <= value < self.range[1]:
+                if self.range[0] <= condition.value < self.range[1]:
                     return self, True
 
 

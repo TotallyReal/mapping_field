@@ -165,6 +165,12 @@ TrueCondition  = BinaryCondition(True)
 FalseCondition = BinaryCondition(False)
 
 
+class MapElementProcessor:
+
+    @abstractmethod
+    def process_function(self, func: MapElement) -> MapElement:
+        pass
+
 class _ListCondition(Condition):
     # For intersection \ union of conditions
 
@@ -325,10 +331,16 @@ class _ListCondition(Condition):
 
         return True
 
-class ConditionIntersection(_ListCondition, op_type = _ListCondition.AND):
+class ConditionIntersection(_ListCondition, MapElementProcessor, op_type = _ListCondition.AND):
 
     def __init__(self, conditions: List[Condition], simplified: bool = False):
         super().__init__(conditions, simplified)
+
+    def process_function(self, func: MapElement) -> MapElement:
+        for condition in self.conditions:
+            if isinstance(condition, MapElementProcessor):
+                func = condition.process_function(func)
+        return func
 
 
 class ConditionUnion(_ListCondition, op_type = _ListCondition.OR):
@@ -338,12 +350,6 @@ class ConditionUnion(_ListCondition, op_type = _ListCondition.OR):
 
 
 # ========================================================================= #
-
-class MapElementProcessor:
-
-    @abstractmethod
-    def process(self, func: MapElement) -> MapElement:
-        pass
 
 class ConditionalFunction(MapElement):
     """
@@ -445,7 +451,7 @@ class ConditionalFunction(MapElement):
                 continue
             func = func._simplify_with_var_values2(var_dict) or func
             if isinstance(condition, MapElementProcessor):
-                func = condition.process(func)
+                func = condition.process_function(func)
                 func = func._simplify_with_var_values2(var_dict) or func
 
             for i, (prev_cond, prev_func) in enumerate(regions):
