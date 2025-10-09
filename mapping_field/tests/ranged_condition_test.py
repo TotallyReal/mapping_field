@@ -1,6 +1,7 @@
 from typing import List
 
-from mapping_field.conditions import FalseCondition, ConditionalFunction
+from mapping_field.conditions import FalseCondition
+from mapping_field.conditional_function import ConditionalFunction
 from mapping_field.ranged_condition import RangeCondition, SingleAssignmentCondition
 from mapping_field.mapping_field import MapElementConstant, MapElement, Var
 

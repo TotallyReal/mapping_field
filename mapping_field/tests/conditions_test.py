@@ -1,7 +1,7 @@
 from typing import List, Tuple, Union, Set
 
-from mapping_field.conditions import (
-    Condition, TrueCondition, FalseCondition, ConditionIntersection, ConditionalFunction)
+from mapping_field.conditions import Condition, TrueCondition, FalseCondition, ConditionIntersection
+from mapping_field.conditional_function import ConditionalFunction
 from mapping_field.mapping_field import MapElementConstant, MapElement
 
 class DummyCondition(Condition):
