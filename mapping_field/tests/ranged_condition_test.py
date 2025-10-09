@@ -31,14 +31,14 @@ def test_range_condition_union():
     cond1 = RangeCondition(dummy_var, (0,10))
     cond2 = RangeCondition(dummy_var, (5,15))
     cond12 = RangeCondition(dummy_var, (0,15))
-    assert (cond1 | cond2)[0] == cond12
+    assert cond1 | cond2 == cond12
 
     cond2 = AssignmentCondition({dummy_var: 10})
     cond12 = RangeCondition(dummy_var, (0,11))
-    assert (cond1 | cond2)[0] == cond12
+    assert cond1 | cond2 == cond12
 
     cond3 = RangeCondition(dummy_var, [15,25])
-    assert (cond1 | cond3)[1] == False
+    assert cond1.or_simpler(cond3)[1] == False
 
 # Test conditional functions
 

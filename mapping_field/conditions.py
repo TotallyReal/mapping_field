@@ -1,10 +1,25 @@
 from abc import abstractmethod
 from typing import List, Tuple, Optional
 import operator
+import functools
 
 from mapping_field import MapElement, Var, VarDict, FuncDict, ExtElement, MapElementConstant
 
 Range = Tuple[float, float]
+
+def _param_to_condition(f):
+    @functools.wraps(f)
+    def wrapper(self, other):
+        if isinstance(other, bool):
+            other = TrueCondition if other else FalseCondition
+
+        if not isinstance(other, Condition):
+            return NotImplemented
+
+        return f(self, other)
+
+    return wrapper
+
 
 class Condition:
 
@@ -23,6 +38,7 @@ class Condition:
         self.vars = variables
         self.num_vars = len(variables)
 
+    @_param_to_condition
     def __eq__(self, other: 'Condition'):
         '''
         Checks if both conditions are "possibly" equal.
@@ -54,12 +70,12 @@ class Condition:
             intersection( 0<x+y<10 , x=5    ) = ConditionIntersection((-5<y<5), ( x=5 ) ), True
             intersection( 0<x<10   , 5<y<15 ) = ConditionIntersection((0<x<10), (5<y<15)), False
         """
-        condition, is_simpler = condition1 & condition2
+        condition, is_simpler = condition1.and_simpler(condition2)
         if is_simpler:
             return condition, is_simpler
         return condition2 & condition1
 
-    def __and__(self, condition: 'Condition') -> Tuple['Condition', bool]:
+    def and_simpler(self, condition: 'Condition') -> Tuple['Condition', bool]:
         """
         Tries to intersect this condition with the condition in the argument, and returns the result.
         The second value returned by this function is True if the intersection is "simpler" than just
@@ -69,47 +85,52 @@ class Condition:
         while cond2 & cond1 not. Hence, if you really want to check if it can be simpler, check both, or use
         Condition.intersection(...) directly.
         """
-        if not isinstance(condition, Condition):
-            return NotImplemented
-
         if isinstance(condition, BinaryCondition) or isinstance(condition, ConditionIntersection):
-            return condition & self
+            return condition.and_simpler(self)
 
         if self == condition:
             return self, True
 
         return ConditionIntersection([self, condition]), False
 
+    @_param_to_condition
+    def __and__(self, condition) -> 'Condition':
+        return self.and_simpler(condition)[0]
+
     @classmethod
     def union(cls, condition1: 'Condition', condition2: 'Condition') -> Tuple['Condition', bool]:
         """
         Similar to Condition.intersection(...), but with union.
         """
-        condition, is_simpler = condition1 | condition2
+        condition, is_simpler = condition1.or_simpler(condition2)
         if is_simpler:
             return condition, is_simpler
-        return condition2 | condition1
+        return condition2.or_simpler(condition1)
 
-    def __or__(self, condition: 'Condition') -> Tuple['Condition', bool]:
+    def or_simpler(self, condition: 'Condition') -> Tuple['Condition', bool]:
         """
-        Similar to __and__, but for __or__
+        Similar to and_simpler, but for __or__
         """
-        if not isinstance(condition, Condition):
-            return NotImplemented
-
         if isinstance(condition, BinaryCondition) or isinstance(condition, ConditionUnion):
-            return condition | self
+            return condition.or_simpler(self)
 
         if self == condition:
             return self, True
 
         return ConditionUnion([self, condition]), False
 
+    @_param_to_condition
+    def __or__(self, condition) -> 'Condition':
+        """
+        Similar to __and__, but for __or__
+        """
+        return self.or_simpler(condition)[0]
+
     def __mul__(self, condition: 'Condition'):
         """
-        Same as __and__, but does not return the second bool argument
+        Same as __and__
         """
-        return (self & condition)[0]
+        return self & condition
 
     def simplify(self) -> 'Condition':
         return self
@@ -134,10 +155,10 @@ class BinaryCondition(Condition):
             return other == self.value
         return False
 
-    def __and__(self, condition: Condition) -> Tuple[Condition, bool]:
+    def and_simpler(self, condition: Condition) -> Tuple[Condition, bool]:
         return (condition if self.value else FalseCondition), True
 
-    def __or__(self, condition: 'Condition') -> Tuple['Condition', bool]:
+    def or_simpler(self, condition: 'Condition') -> Tuple['Condition', bool]:
         return (condition if not self.value else TrueCondition), True
 
 TrueCondition  = BinaryCondition(True)
@@ -154,7 +175,7 @@ class _ListCondition(Condition):
         cls.type = op_type
 
         cls.op_types = [operator.and_, operator.or_]
-        cls.dunder_names = ['__and__', '__or__']
+        cls.method_names = ['and_simpler', 'or_simpler']
         cls.trivials = [TrueCondition, FalseCondition]
         cls.join_delims = [' & ', ' | ']
 
@@ -162,8 +183,8 @@ class _ListCondition(Condition):
         cls.join_delim = cls.join_delims[op_type]
         cls.one_condition = cls.trivials[op_type]
         cls.zero_condition = cls.trivials[1-op_type]
-        setattr(cls, cls.dunder_names[op_type], cls.op)
-        setattr(cls, cls.dunder_names[1-op_type], cls.rev_op)
+        setattr(cls, cls.method_names[op_type], cls.op)
+        setattr(cls, cls.method_names[1 - op_type], cls.rev_op)
 
     def __init__(self, conditions: List[Condition], simplified: bool = False):
         super().__init__(
@@ -176,21 +197,31 @@ class _ListCondition(Condition):
         conditions_rep = self.__class__.join_delim.join(repr(condition) for condition in self.conditions)
         return f'[{conditions_rep}]'
 
+    @classmethod
+    def _op_simpler_between(cls, condition1: Condition, condition2: Condition) -> Tuple[Condition, bool]:
+        return getattr(condition1, cls.method_names[cls.type])(condition2)
+
+    @classmethod
+    def _rev_op_simpler_between(cls, condition1: Condition, condition2: Condition) -> Tuple[Condition, bool]:
+        return getattr(condition1, cls.method_names[1-cls.type])(condition2)
+
     def op(self, condition: Condition) -> Tuple[Condition, bool]:
+        cls = self.__class__
+
         if isinstance(condition, BinaryCondition):
-            return self.__class__.op_type(condition , self)
+            return cls._op_simpler_between(condition , self)
 
         if isinstance(condition, self.__class__):
-            return self.__class__([*self.conditions, *condition.conditions]), False
+            return cls([*self.conditions, *condition.conditions]), False
 
-        return self.__class__([*self.conditions, condition]), False
+        return cls([*self.conditions, condition]), False
 
     def rev_op(self, condition) -> Tuple[Condition, bool]:
 
         cls = self.__class__
 
         if isinstance(condition, BinaryCondition):
-            return cls.op_types[1-cls.type](condition , self)
+            return cls._rev_op_simpler_between(condition , self)
 
         conditions1 = self.conditions.copy()
         conditions2 = condition.conditions.copy() if isinstance(condition, cls) else [condition]
@@ -211,7 +242,7 @@ class _ListCondition(Condition):
                     break
             else:
                 if special_condition is not None:
-                    return getattr(super(), cls.dunder_names[1-cls.type])(condition)
+                    return cls._rev_op_simpler_between(super(), condition)
                 special_condition = cond2
 
         if special_condition is None:
@@ -225,12 +256,12 @@ class _ListCondition(Condition):
                     second_special_condition = conditions1[i]
                     break
 
-            prod, is_simpler = cls.op_types[1-cls.type](special_condition , second_special_condition)
+            prod, is_simpler = cls._rev_op_simpler_between(special_condition, second_special_condition)
             if is_simpler:
                 conditions = [c for flag, c in zip(used_positions, conditions1) if flag]
                 return cls(conditions + [prod]), True
 
-        return getattr(super(), cls.dunder_names[1-cls.type])(condition)
+        return cls._rev_op_simpler_between(super(), condition)
 
     def simplify(self):
         if self._simplified:
@@ -260,15 +291,12 @@ class _ListCondition(Condition):
                     return cls.zero_condition
 
                 for existing_condition in final_conditions:
-                    prod_cond, is_simpler = cls.op_type(existing_condition, condition)
-                    if is_simpler:
-                        final_conditions = [cond for cond in final_conditions if cond != existing_condition]
-                        condition = prod_cond.simplify()
-                        break
+                    prod_cond, is_simpler = cls._op_simpler_between(existing_condition, condition)
+                    if not is_simpler:
+                        prod_cond, is_simpler = cls._op_simpler_between(condition, existing_condition)
 
-                    prod_cond, is_simpler = self.__class__.op_type(condition, existing_condition)
                     if is_simpler:
-                        final_conditions = [cond for cond in final_conditions if cond != existing_condition]
+                        final_conditions = [cond for cond in final_conditions if (cond is not existing_condition)]
                         condition = prod_cond.simplify()
                         break
 
@@ -420,7 +448,7 @@ class ConditionalFunction(MapElement):
 
             for i, (prev_cond, prev_func) in enumerate(regions):
                 if prev_func == func:
-                    condition_union = (prev_cond | condition)[0]
+                    condition_union = prev_cond | condition
                     condition_union = condition_union.simplify()
                     regions[i][0] = condition_union
                     break

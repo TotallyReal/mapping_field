@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Union, Set
 
 from mapping_field.conditions import (
     Condition, TrueCondition, FalseCondition, ConditionIntersection, ConditionalFunction)
@@ -13,17 +13,17 @@ class DummyCondition(Condition):
     def __repr__(self):
         return f'DummyCond_{self.type}({self.values})'
 
-    def __and__(self, condition: Condition) -> Tuple['Condition', bool]:
+    def and_simpler(self, condition: Condition) -> Tuple['Condition', bool]:
         if isinstance(condition, DummyCondition) and self.type == condition.type:
             intersection = self.values.intersection(condition.values)
             return DummyCondition(intersection) if len(intersection) > 0 else FalseCondition, True
-        return super().__and__(condition)
+        return super().and_simpler(condition)
 
-    def __or__(self, condition: Condition) -> Tuple['Condition', bool]:
+    def or_simpler(self, condition: Condition) -> Tuple['Condition', bool]:
         if isinstance(condition, DummyCondition) and self.type == condition.type:
             union = self.values.union(condition.values)
             return DummyCondition(union), True
-        return super().__or__(condition)
+        return super().or_simpler(condition)
 
     def _eq_simplified(self, other: Condition) -> bool:
         return (isinstance(other, DummyCondition) and
@@ -93,14 +93,14 @@ def test_union_of_intersections():
     cond2 = dummies[2] * dummies[0]
     cond3 = dummies[2]
 
-    assert (cond1 | cond2)[0] == cond2
-    assert (cond2 | cond1)[0] == cond2
+    assert cond1 | cond2 == cond2
+    assert cond2 | cond1 == cond2
 
-    assert (cond1 | cond3)[0] == cond3
-    assert (cond3 | cond1)[0] == cond3
+    assert cond1 | cond3 == cond3
+    assert cond3 | cond1 == cond3
 
-    assert (cond2 | cond3)[0] == cond3
-    assert (cond3 | cond2)[0] == cond3
+    assert cond2 | cond3 == cond3
+    assert cond3 | cond2 == cond3
 
     # One Union
 
@@ -110,14 +110,14 @@ def test_union_of_intersections():
     dummy_union = DummyCondition(values = {0,1}, type = 0)
 
     result = dummies[1] * dummy_union * dummies[2]
-    assert (cond1 | cond2)[0] == result
+    assert cond1 | cond2 == result
 
 def test_intersection_of_unions():
     dummies = [DummyCondition(i) for i in range(5)]
 
     # containment:
-    cond1 = ((dummies[0] | dummies[1])[0] | dummies[2])[0]
-    cond2 = (dummies[2] | dummies[0])[0]
+    cond1 = dummies[0] | dummies[1] | dummies[2]
+    cond2 = dummies[2] | dummies[0]
     cond3 = dummies[2]
 
     assert cond1 * cond2 == cond2
@@ -135,9 +135,9 @@ def test_intersection_of_unions():
     dummy02 = DummyCondition(values={0,2}, type = 0)
     dummy0  = DummyCondition(values={0}, type = 0)
 
-    cond1 = ((dummy01 | dummies[1])[0] | dummies[2])[0]
-    cond2 = ((dummy02 | dummies[1])[0] | dummies[2])[0]
-    result = ((dummy0 | dummies[1])[0] | dummies[2])[0]
+    cond1 = dummy01 | dummies[1] | dummies[2]
+    cond2 = dummy02 | dummies[1] | dummies[2]
+    result = dummy0 | dummies[1] | dummies[2]
 
     assert cond1 * cond2 == result
 
@@ -149,13 +149,13 @@ def test_op_conditional_functions():
     dummies = [DummyCondition(i) for i in range(5)]
 
     cond_func1 = ConditionalFunction([
-        ((dummies[0] | dummies[1])[0], MapElementConstant(0)),
+        (dummies[0] | dummies[1], MapElementConstant(0)),
         (dummies[2], MapElementConstant(10))
     ])
 
     cond_func2 = ConditionalFunction([
         (dummies[0], MapElementConstant(100)),
-        ((dummies[1] | dummies[2])[0], MapElementConstant(200))
+        (dummies[1] | dummies[2], MapElementConstant(200))
     ])
 
     cond_add = cond_func1 + cond_func2

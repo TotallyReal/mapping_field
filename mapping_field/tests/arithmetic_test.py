@@ -165,7 +165,7 @@ def test_simplification_after_assignment():
     x = Var('x')
     y = ImprovedDummyMap((0,))
     assigned_addition = x + y
-    print(assigned_addition)
+
     assigned_addition = assigned_addition({x: ImprovedDummyMap((1,))})
     assigned_addition = assigned_addition.simplify2()
     assert assigned_addition == result

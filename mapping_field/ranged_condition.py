@@ -23,7 +23,7 @@ class AssignmentCondition(Condition, MapElementProcessor):
     def process(self, func: MapElement) -> MapElement:
         return func(self.var_dict)
 
-    def __and__(self, condition: Condition) -> Tuple[Condition, bool]:
+    def and_simpler(self, condition: Condition) -> Tuple[Condition, bool]:
         if isinstance(condition, AssignmentCondition):
             # Combine the dictionaries, if there are no different assignments for the same variables
             for key, value in self.var_dict.items():
@@ -31,11 +31,11 @@ class AssignmentCondition(Condition, MapElementProcessor):
                     return FalseCondition, True
             return AssignmentCondition({**self.var_dict, **condition.var_dict}), True
 
-        return super().__and__(condition)
+        return super().and_simpler(condition)
 
-    def __or__(self, condition: 'Condition') -> Tuple['Condition', bool]:
+    def or_simpler(self, condition: Condition) -> Tuple[Condition, bool]:
         if isinstance(condition, RangeCondition):
-            return condition | self
+            return condition.or_simpler(self)
 
         cond1 = self
         cond2 = condition
@@ -52,7 +52,7 @@ class AssignmentCondition(Condition, MapElementProcessor):
             if len(assignments1) < len(assignments2):
                 for key, value in assignments1.items():
                     if (key not in assignments2) or assignments1[key] != assignments2[key]:
-                        return super().__or__(condition)
+                        return super().or_simpler(condition)
                 return cond1, True
 
             # same key, only one differ in value, and they are consecutive integers
@@ -61,16 +61,16 @@ class AssignmentCondition(Condition, MapElementProcessor):
                 range = (0,0)
                 for key, value in assignments1.items():
                     if key not in assignments2:
-                        return super().__or__(condition)
+                        return super().or_simpler(condition)
 
                     value2 = assignments2[key]
                     if value2 == value:
                         continue
                     if special_key is not None:
-                        return super().__or__(condition)
+                        return super().or_simpler(condition)
 
                     if abs(value - value2) != 1:
-                        return super().__or__(condition)
+                        return super().or_simpler(condition)
                     special_key = key
                     range = (min(value, value2), max(value, value2) + 1)
 
@@ -81,7 +81,7 @@ class AssignmentCondition(Condition, MapElementProcessor):
                 range_cond = RangeCondition(special_key, range)
                 return ConditionIntersection([assign_cond, range_cond]), True
 
-        return super().__or__(condition)
+        return super().or_simpler(condition)
 
     def simplify(self) -> 'Condition':
         if len(self.var_dict) == 0:
@@ -109,7 +109,7 @@ class RangeCondition(Condition):
             return self.function == condition.function and self.range == condition.range
         return super()._eq_simplified(condition)
 
-    def __and__(self, condition: Condition) -> Tuple[Condition, bool]:
+    def and_simpler(self, condition: Condition) -> Tuple[Condition, bool]:
         if isinstance(condition, RangeCondition):
             if self.function == condition.function:
                 low = max(self.range[0], condition.range[0])
@@ -124,9 +124,9 @@ class RangeCondition(Condition):
                 # TODO: beware of infinite loops...
                 return ConditionIntersection([RangeCondition(function, self.range), condition]), True
 
-        return super().__and__(condition)
+        return super().and_simpler(condition)
 
-    def __or__(self, condition: Condition) -> Tuple[Condition, bool]:
+    def or_simpler(self, condition: Condition) -> Tuple[Condition, bool]:
 
         # TODO: For now I assume that we only deal with integers
         if isinstance(condition, AssignmentCondition) and len(condition.var_dict) == 1:
@@ -142,12 +142,12 @@ class RangeCondition(Condition):
 
         if isinstance(condition, RangeCondition) and condition.function == self.function:
             if self.range[1] < condition.range[0] or condition.range[1] < self.range[0]:
-                return super().__or__(condition)
+                return super().or_simpler(condition)
             a = min(self.range[0], condition.range[0])
             b = max(self.range[1], condition.range[1])
             return RangeCondition(self.function, (a, b)), True
 
-        return super().__or__(condition)
+        return super().or_simpler(condition)
 
 
     def simplify(self) -> 'Condition':
