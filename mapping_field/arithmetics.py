@@ -175,7 +175,7 @@ class _Mult(MapElementFromFunction):
 
         sign0, numerator0, denominator0 = _as_rational(entries[0])
         sign1, numerator1, denominator1 = _as_rational(entries[1])
-        if entries[0] == numerator0 and entries[1] == numerator1:
+        if entries[0] is numerator0 and entries[1] is numerator1:
             return super()._simplify_with_var_values2(var_dict)
 
         numerator = numerator0 * numerator1
@@ -205,7 +205,7 @@ class _Div(MapElementFromFunction):
 
         sign0, numerator0, denominator0 = _as_rational(entries[0])
         sign1, numerator1, denominator1 = _as_rational(entries[1])
-        if entries[0] == numerator0 and entries[1] == numerator1:
+        if entries[0] is numerator0 and entries[1] is numerator1:
             return super()._simplify_with_var_values2(var_dict)
 
         abs_value = ((numerator0 * denominator1) / (denominator0 * numerator1))
