@@ -134,7 +134,26 @@ class ConditionalFunction(MapElement):
         # If there is a region (assignment -> func1) and another region (cond -> func2), such that
         # func2(assignment) = func, then we can combine them.
 
-        return ConditionalFunction([tuple(region) for region in regions])
+        assignment_regions = []
+        other_regions = []
+        for condition, func in regions:
+            var_dict = SingleAssignmentCondition.as_dict(condition)
+            if var_dict is not None:
+                assignment_regions.append((var_dict, condition, func))
+            else:
+                other_regions.append((condition, func))
+
+        for var_dict, condition, func in assignment_regions:
+            for other_cond, other_func in other_regions:
+                if other_func(var_dict) == func:
+                    other_regions = [region for region in regions if (region is not (other_cond, other_func))]
+                    union_condition = (other_cond | condition).simplify()
+                    other_regions.append((union_condition, other_func))
+                    break
+            else:
+                other_regions.append((condition, func))
+
+        return ConditionalFunction([tuple(region) for region in other_regions])
 
 
 def ReLU(map_elem: MapElement):

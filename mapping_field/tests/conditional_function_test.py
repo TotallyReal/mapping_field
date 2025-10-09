@@ -82,6 +82,26 @@ def test_equality_to_standard_function():
     assert cond_func == dummy_map
 
 
+def test_equality_to_conditional_function():
+
+    dummies = [DummyCondition(i) for i in range(3)]
+    cc = [MapElementConstant(i) for i in range(3)]
+
+
+    cond_func1 = ConditionalFunction([
+        (dummies[0], cc[0]),
+        (dummies[1], cc[1]),
+        (dummies[2], cc[2]),
+    ])
+    cond_func2 = ConditionalFunction([
+        (dummies[0], cc[0]),
+        (dummies[1], cc[1]),
+        (dummies[2], cc[2]),
+    ])
+
+    assert cond_func1 == cond_func2
+
+
 def test_equality_region_wise():
     x = Var('x')
 
@@ -94,7 +114,7 @@ def test_equality_region_wise():
     assert cond_func == x
 
 
-def test_op_conditional_functions():
+def test_addition():
     dummies = [DummyCondition(i) for i in range(5)]
 
     cond_func1 = ConditionalFunction([
@@ -118,7 +138,7 @@ def test_op_conditional_functions():
     assert result == cond_add, f'could not match:\n{result}\n{cond_add}'
 
 
-def test_op_conditional_functions_ranges():
+def test_addition_with_ranges():
     dummy_map = DummyMap(0)
 
     def ranged(low, high):
@@ -143,6 +163,27 @@ def test_op_conditional_functions_ranges():
     ])
 
     assert  result == cond_add
+
+
+def test_simplification():
+
+    # combine regions with the same function
+    dummy_cond = [DummyCondition(i) for i in range(5)]
+    dummy_func = [DummyMap(i) for i in range(5)]
+
+    cond_func = ConditionalFunction([
+        (dummy_cond[0], dummy_func[0]),
+        (dummy_cond[1], dummy_func[1]),
+        (dummy_cond[2], dummy_func[0]),
+    ])
+    cond_func = cond_func.simplify2()
+
+    simplified = ConditionalFunction([
+        (dummy_cond[0] | dummy_cond[2], dummy_func[0]),
+        (dummy_cond[1], dummy_func[1]),
+    ])
+
+    assert cond_func == simplified
 
 
 def test_linear_ranged_condition_subtraction():
