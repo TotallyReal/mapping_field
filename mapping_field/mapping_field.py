@@ -2,7 +2,7 @@ from abc import abstractmethod
 import collections
 import functools
 import inspect
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 from mapping_field.field import FieldElement, ExtElement
 
 
@@ -181,22 +181,14 @@ class MapElement:
         # Split assignments into variables and functions
         for key, value in kwargs.items():
 
-            v = key if isinstance(key, Var) else None
-            if isinstance(key, str):
-                v = Var.try_get(key)
-            if v is not None:
-                var_dict[v] = convert_to_map(value)
+            key_value_pair = Var.try_get_valid_assignment(key, value)
+            if key_value_pair is not None:
+                var_dict[key_value_pair[0]] = key_value_pair[1]
                 continue
 
-            f = key if isinstance(key, NamedFunc) else None
-            f = NamedFunc.try_get(key)
-            if f is not None:
-                assigned_function = convert_to_map(value)
-                if f.num_vars != assigned_function.num_vars:
-                    raise Exception(
-                        f'Cannot assign function {f} with {f.num_vars} variables to '
-                        f'{assigned_function} with {assigned_function.num_vars} variables')
-                func_dict[f] = assigned_function
+            key_value_pair = NamedFunc.try_get_valid_assignment(key, value)
+            if key_value_pair is not None:
+                func_dict[key_value_pair[0]] = key_value_pair[1]
                 continue
 
             raise Exception(f'Cannot assign new value to element which is not a variable of a named function : {key}')
@@ -412,6 +404,18 @@ class Var(MapElement):
     # TODO: Consider using __class_getitem__ for the try_get method
 
     @classmethod
+    def try_get_valid_assignment(cls, key, value) -> Optional[Tuple['Var', MapElement]]:
+        value = convert_to_map(value)
+        if value is NotImplemented:
+            return None
+        if isinstance(key, Var):
+            return key, value
+        if isinstance(key, str):
+            key = cls.try_get(key)
+            return None if (key is None) else (key, value)
+        return None
+
+    @classmethod
     def clear_vars(cls):
         cls._instances = {}
 
@@ -457,6 +461,27 @@ class NamedFunc(MapElement):
     @classmethod
     def try_get(cls, func_name: str) -> Optional['NamedFunc']:
         return cls._instances.get(func_name, None)
+
+    @classmethod
+    def try_get_valid_assignment(cls, key, value) -> Optional[Tuple['NamedFunc', MapElement]]:
+        value = convert_to_map(value)
+        if value is NotImplemented:
+            return None
+
+        func = None
+        if isinstance(key, NamedFunc):
+            func = key
+        if isinstance(key, str):
+            func = NamedFunc.try_get(key)
+        if func is None:
+            return None
+
+        if func.num_vars != value.num_vars:
+            raise Exception(
+                f'Cannot assign function {func} with {func.num_vars} variables to '
+                f'{value} with {value.num_vars} variables.')
+
+        return func, value
 
     @classmethod
     def clear_vars(cls):
