@@ -1,8 +1,9 @@
 import operator
 from typing import List, Tuple, Optional
 
-from mapping_field import MapElement, ExtElement, MapElementConstant, VarDict, FuncDict
+from mapping_field import MapElement, ExtElement, MapElementConstant, VarDict, FuncDict, params_to_maps
 from mapping_field.conditions import TrueCondition, Condition, FalseCondition, MapElementProcessor
+from mapping_field.ranged_condition import SingleAssignmentCondition
 
 
 class ConditionalFunction(MapElement):
@@ -36,10 +37,20 @@ class ConditionalFunction(MapElement):
             return None
         return values[0] if all([values[0] == v for v in values]) else None
 
+    @params_to_maps
     def __eq__(self, other: MapElement) -> bool:
-        if (isinstance(other, MapElement) or isinstance(other, int)):
+        if isinstance(other, ConditionalFunction):
             return self._op(other, operator.sub).simplify2().is_zero()
-        return super().__eq__(other)
+
+        for cond, func in self.regions:
+            if isinstance(cond, MapElementProcessor):
+                if cond.process_function(func) != cond.process_function(other):
+                    return False
+            else:
+                if func != other:
+                    return False
+
+        return True
 
     # <editor-fold desc=" ------------------------ arithmetics ------------------------">
 

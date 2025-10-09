@@ -1,12 +1,16 @@
 from typing import List, Tuple, Union, Set
 
+from sympy.codegen import Assignment
+
 from mapping_field.binary_expansion import BoolVar, BinaryExpansion
 from mapping_field.conditions import Condition, FalseCondition
 from mapping_field.conditional_function import ConditionalFunction, ReLU
 from mapping_field.linear import Linear
-from mapping_field.mapping_field import MapElementConstant, MapElement
-from mapping_field.ranged_condition import RangeCondition
+from mapping_field.mapping_field import MapElementConstant, MapElement, Var
+from mapping_field.ranged_condition import RangeCondition, SingleAssignmentCondition
 
+
+# <editor-fold desc=" ------------------------ Dummy objects ------------------------">
 
 class DummyMap(MapElement):
     def __init__(self, value=0):
@@ -43,6 +47,53 @@ class DummyCondition(Condition):
                 len(self.values) == len(other.values) and
                 all([v in other.values for v in self.values]))
 
+# </editor-fold>
+
+
+def test_equality_to_standard_function():
+    dummies = [DummyCondition(i) for i in range(3)]
+    cc = [MapElementConstant(i) for i in range(3)]
+
+    cond_func = ConditionalFunction([
+        (dummies[0], cc[0]),
+        (dummies[1], cc[1]),
+        (dummies[2], cc[2]),
+    ])
+
+    assert cond_func.evaluate() is None
+
+    cond_func = ConditionalFunction([
+        (dummies[0], cc[1]),
+        (dummies[1], cc[1]),
+        (dummies[2], cc[1]),
+    ])
+
+    assert cond_func.evaluate() == 1
+    assert cond_func == 1
+
+    dummy_map = DummyMap(0)
+
+    cond_func = ConditionalFunction([
+        (dummies[0], dummy_map),
+        (dummies[1], dummy_map),
+        (dummies[2], dummy_map),
+    ])
+
+    assert cond_func == dummy_map
+
+
+def test_equality_region_wise():
+    x = Var('x')
+
+    cond_func = ConditionalFunction([
+        (SingleAssignmentCondition(x, 0), MapElementConstant(0)),
+        (SingleAssignmentCondition(x, 2), MapElementConstant(2)),
+        (RangeCondition(x, (7, 17)), x),
+    ])
+
+    assert cond_func == x
+
+
 def test_op_conditional_functions():
     dummies = [DummyCondition(i) for i in range(5)]
 
@@ -65,6 +116,7 @@ def test_op_conditional_functions():
     ])
 
     assert result == cond_add, f'could not match:\n{result}\n{cond_add}'
+
 
 def test_op_conditional_functions_ranges():
     dummy_map = DummyMap(0)
@@ -91,7 +143,6 @@ def test_op_conditional_functions_ranges():
     ])
 
     assert  result == cond_add
-
 
 
 def test_linear_ranged_condition_subtraction():
