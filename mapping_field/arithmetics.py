@@ -80,9 +80,9 @@ class _Add(MapElementFromFunction):
             # Remark: I would like to return map0 - map1, however, if any MapElement subclass defines
             #         __sub__(self, other) as self + (-other), where (-other) uses the default Neg function,
             #         this will cause an infinite loop.
-            return Sub(map0, map1)._simplify2()
+            return Sub(map0, map1).simplify2()
         if sign0 == -1 and sign1 == 1:
-            return Sub(map1, map0)._simplify2()
+            return Sub(map1, map0).simplify2()
 
         # sign0 == sign1 == 1
         return super()._simplify_with_var_values2(var_dict)
@@ -103,16 +103,21 @@ class _Sub(MapElementFromFunction):
             return Neg(entries[1]).simplify2()
         if entries[1] == 0:
             return entries[0]
+        if (entries[0] is entries[1]):
+            # TODO:
+            #   I do not use entries[0] == entries[1], because some places might use the definition for x == y
+            #   as  x - y == 0. Consider adding 'equality' function that forbids this definition
+            return MapElementConstant.zero
 
         sign0, map0 = as_neg(entries[0])
         sign1, map1 = as_neg(entries[1])
 
         if sign0 == -1 and sign1 == -1:
-            return Sub(map1, map0)._simplify2()
+            return Sub(map1, map0).simplify2()
         if sign0 == 1 and sign1 == -1:
-            return Add(map0, map1)._simplify2()
+            return Add(map0, map1).simplify2()
         if sign0 == -1 and sign1 == 1:
-            return (-Add(map1, map0))._simplify2()
+            return (-Add(map1, map0)).simplify2()
 
         # sign0 == sign1 == 1
         return super()._simplify_with_var_values2(var_dict)

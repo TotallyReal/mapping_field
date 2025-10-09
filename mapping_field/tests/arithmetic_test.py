@@ -96,6 +96,13 @@ def test_zero_subtraction():
     assert str(0 - x) == '(-DummyMap(0))'
 
 
+def test_addition_inverse():
+    x = DummyMap(0)
+    assert x - x == 0
+    assert x + (-x) == 0
+    assert (-x) + x == 0
+
+
 def test_zero_multiplication():
     x = DummyMap(0)
     assert x * 0 == 0

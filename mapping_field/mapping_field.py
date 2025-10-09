@@ -589,7 +589,12 @@ class CompositionFunction(MapElement):
     #       we should check if it has a new type of arithmetic function that we can call.
 
     def _simplify2(self) -> Optional['MapElement']:
-        simplified_entries: List[MapElement] = {v : (entry._simplify2() or entry) for v, entry in zip(self.function.vars, self.entries)}
+        return self._simplify_with_var_values2({v: v for v in self.vars})
+
+    # Override when needed
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
+        simplified_entries: List[MapElement] = {v : (entry._simplify_with_var_values2(var_dict) or entry)
+                                                for v, entry in zip(self.function.vars, self.entries)}
         function: MapElement = (self.function._simplify2() or self.function)
 
         result = function._simplify_with_var_values2(simplified_entries)
@@ -602,10 +607,6 @@ class CompositionFunction(MapElement):
                 return result
 
         return CompositionFunction(function, [simplified_entries[v] for v in self.function.vars])
-
-    # Override when needed
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
-        return None
 
     def _simplify_caller_function2(self, function: MapElement, position: int, var_dict: VarDict) -> Optional[MapElement]:
         return None
