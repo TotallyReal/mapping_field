@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import Tuple, Optional
 
 from mapping_field import VarDict, MapElement, MapElementConstant, Var
-from mapping_field.conditions import Condition, FalseCondition, ConditionIntersection, Range, ConditionalFunction, \
+from mapping_field.conditions import Condition, FalseCondition, ConditionIntersection, ConditionalFunction, \
     MapElementProcessor, TrueCondition
 
 
@@ -99,6 +99,18 @@ class SingleAssignmentCondition(Condition, MapElementProcessor):
             condition &= SingleAssignmentCondition(v, value)
         return condition
 
+    @staticmethod
+    def as_dict(condition: Condition) -> Optional[VarDict]:
+        """
+        Tries to convert the condition into an assignment, and if so returns it, otherwise returns None.
+        """
+        if isinstance(condition, SingleAssignmentCondition):
+            return condition.var_dict
+        if (isinstance(condition, ConditionIntersection) and
+            all([isinstance(cond, SingleAssignmentCondition) for cond in condition.conditions])):
+            return {cond.var: cond.value for cond in condition.conditions}
+        return None
+
     def __init__(self, v: Var, value: int):
         super().__init__([v])
         self.var = v
@@ -141,8 +153,41 @@ class SingleAssignmentCondition(Condition, MapElementProcessor):
             return TrueCondition
         return self
 
+Range = Tuple[float, float]
 
-class RangeCondition(Condition):
+class AsRange:
+
+    # TODO: find a better way to arrange this whole process
+
+    @staticmethod
+    def dict_as_range(function: MapElement, var_dict: VarDict) -> Optional[Range]:
+        if not all([isinstance(value, int) for value in var_dict.values()]):
+            return None
+        if isinstance(function, Var) and len(var_dict) == 1 and (function in var_dict):
+            value: int = var_dict[function]
+            return (value, value+1)
+
+        return None
+
+    @abstractmethod
+    def as_range(self, function: MapElement) -> Optional[Range]:
+        """
+        Tries to convert this object (should be a condition) to a RangedCondition over the given function.
+        If possible, returns that condition, otherwise returns None.
+        """
+        pass
+
+class ConditionToRangeTransformer:
+
+    @abstractmethod
+    def as_range(self, condition: Condition) -> Optional[Range]:
+        """
+        Assuming self is a MapElement, tries to convert the given condition into a range condition.
+        If possible, returns that condition, otherwise returns None.
+        """
+
+
+class RangeCondition(Condition, AsRange):
 
     def __init__(self, function: MapElement, f_range: Range, simplified: bool = False):
         super().__init__(function.vars)
@@ -161,6 +206,9 @@ class RangeCondition(Condition):
         if isinstance(condition, RangeCondition):
             return self.function == condition.function and self.range == condition.range
         return super()._eq_simplified(condition)
+
+    def as_range(self, function: MapElement) -> Optional[Range]:
+        return self.range if self.function == function else None
 
     def and_simpler(self, condition: Condition) -> Tuple[Condition, bool]:
         if isinstance(condition, RangeCondition):
@@ -191,12 +239,17 @@ class RangeCondition(Condition):
                 if self.range[0] <= condition.value < self.range[1]:
                     return self, True
 
+        f_range = None
+        if isinstance(condition, AsRange):
+            f_range = condition.as_range(self.function)
+        elif isinstance(self.function, ConditionToRangeTransformer):
+            f_range = self.function.as_range(condition)
 
-        if isinstance(condition, RangeCondition) and condition.function == self.function:
-            if self.range[1] < condition.range[0] or condition.range[1] < self.range[0]:
+        if f_range is not None:
+            if self.range[1] < f_range[0] or f_range[1] < self.range[0]:
                 return super().or_simpler(condition)
-            a = min(self.range[0], condition.range[0])
-            b = max(self.range[1], condition.range[1])
+            a = min(self.range[0], f_range[0])
+            b = max(self.range[1], f_range[1])
             return RangeCondition(self.function, (a, b)), True
 
         return super().or_simpler(condition)

@@ -5,8 +5,6 @@ import functools
 
 from mapping_field import MapElement, Var, VarDict, FuncDict, ExtElement, MapElementConstant
 
-Range = Tuple[float, float]
-
 def _param_to_condition(f):
     @functools.wraps(f)
     def wrapper(self, other):
@@ -255,17 +253,20 @@ class _ListCondition(Condition):
             # Full containement
             return (self if swapped else condition), True
 
-        if len(conditions1) == len(conditions2):
-            second_special_condition = None
-            for i in range(n1):
-                if not used_positions[i]:
-                    second_special_condition = conditions1[i]
-                    break
+        remaining_conditions = [cond1 for cond1, used in zip(conditions1, used_positions) if not used]
+        if len(remaining_conditions) == 1:
+            second_special_condition = remaining_conditions[0]
 
             prod, is_simpler = cls._rev_op_simpler_between(special_condition, second_special_condition)
             if is_simpler:
                 conditions = [c for flag, c in zip(used_positions, conditions1) if flag]
                 return cls(conditions + [prod]), True
+        elif len(remaining_conditions) < n1: # there was some simplification
+            prod, is_simpler = cls._rev_op_simpler_between(special_condition, cls(remaining_conditions))
+            if is_simpler:
+                conditions = [c for flag, c in zip(used_positions, conditions1) if flag]
+                return cls(conditions + [prod]), True
+
 
         return cls._rev_op_simpler_between(super(), condition)
 

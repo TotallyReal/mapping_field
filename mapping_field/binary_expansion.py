@@ -2,8 +2,8 @@ from typing import List, Union, Optional, Tuple
 
 from mapping_field.arithmetics import as_neg
 from mapping_field.mapping_field import Var, MapElement, MapElementConstant, ExtElement, VarDict, FuncDict
-from mapping_field.conditions import Range, Condition, FalseCondition, TrueCondition
-from mapping_field.ranged_condition import SingleAssignmentCondition, RangeCondition, RangeTransformer
+from mapping_field.conditions import Condition, FalseCondition, TrueCondition
+from mapping_field.ranged_condition import SingleAssignmentCondition, RangeCondition, RangeTransformer, Range, ConditionToRangeTransformer
 from mapping_field.linear import LinearTransformer
 
 
@@ -35,7 +35,7 @@ def _two_power(k):
         m += 1
     return m
 
-class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
+class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer, ConditionToRangeTransformer):
 
     @staticmethod
     def generate(var_name: str, num_digits: int):
@@ -400,3 +400,36 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer):
             return condition
         else:
             return condition * RangeCondition(BinaryExpansion(coefs[:i+1]), (a, b), simplified=True)
+
+    def as_range(self, condition: Condition) -> Optional[Range]:
+        var_dict = SingleAssignmentCondition.as_dict(condition)
+        if var_dict is None:
+            return None
+
+        if not all([isinstance(value_, int) for value_ in var_dict.values()]):
+            return None
+
+        var_dict = var_dict.copy()
+        a = 0
+        b = 0
+        two_power = 2 ** len(self.coefficients)
+        for c in reversed(self.coefficients):
+            two_power //= 2
+            if isinstance(c, int):
+                a += c * two_power
+                b += c * two_power
+                continue
+
+            if c in var_dict:
+                value = var_dict[c]
+                del var_dict[c]
+                a += value * two_power
+                b += value * two_power
+                continue
+
+            if len(var_dict) > 0:
+                # TODO: split to assignment + range?
+                return None
+            b += two_power
+
+        return (a,b+1)
