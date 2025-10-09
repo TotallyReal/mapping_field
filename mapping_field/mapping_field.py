@@ -222,7 +222,7 @@ class MapElement:
         return self._simplify2() or self
 
     def _simplify2(self) -> Optional['MapElement']:
-        return None
+        return self._simplify_with_var_values2({v: v for v in self.vars})
 
     # Override when needed
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
@@ -587,9 +587,6 @@ class CompositionFunction(MapElement):
 
     # TODO: When simplifying arithmetic function, e.g. a + b, after simplifying both a and b,
     #       we should check if it has a new type of arithmetic function that we can call.
-
-    def _simplify2(self) -> Optional['MapElement']:
-        return self._simplify_with_var_values2({v: v for v in self.vars})
 
     # Override when needed
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:

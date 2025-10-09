@@ -132,8 +132,6 @@ class SpecialDummyVar(MapElement):
 
 
 def test_simplify2():
-    print(f'\n=-=-=-=-=-=-=')
-
     dummy = DummyMapWithVar()
     assert str(dummy) == 'DummyMap_0(x)'
 
