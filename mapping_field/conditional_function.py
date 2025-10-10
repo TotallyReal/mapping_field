@@ -128,7 +128,7 @@ class ConditionalFunction(MapElement):
             else:
                 regions.append([condition, func])
 
-        if len(regions) == 1 and regions[0][0] == TrueCondition:
+        if len(regions) == 1 and regions[0][0] is TrueCondition:
             return regions[0][1]
 
         # If there is a region (assignment -> func1) and another region (cond -> func2), such that

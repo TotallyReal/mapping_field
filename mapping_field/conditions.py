@@ -134,10 +134,23 @@ class Condition:
         return self
 
 
+TrueCondition = None
+FalseCondition = None
+
 class BinaryCondition(Condition):
     """
     An always True \ False condition.
     """
+
+    def __new__(cls, value: bool):
+        if value:
+            if TrueCondition is not None:
+                return TrueCondition
+        else:
+            if FalseCondition is not None:
+                return FalseCondition
+
+        return super(BinaryCondition, cls).__new__(cls)
 
     def __init__(self, value: bool):
         super().__init__(variables=[])
@@ -283,7 +296,7 @@ class _ListCondition(Condition):
 
             condition = condition.simplify()
 
-            if condition == cls.one_condition:
+            if condition is cls.one_condition:
                 continue
 
             if isinstance(condition, cls):
@@ -294,7 +307,7 @@ class _ListCondition(Condition):
                 # Check if this new condition intersects in a special way with an existing condition.
                 # Each time this loop repeats itself, the conditions array's size must decrease by 1, so it cannot
                 # continue forever.
-                if condition == cls.zero_condition:
+                if condition is cls.zero_condition:
                     return cls.zero_condition
 
                 for existing_condition in final_conditions:
