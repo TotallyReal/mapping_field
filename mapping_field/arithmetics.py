@@ -163,13 +163,14 @@ class _Mult(MapElementFromFunction):
             return MapElementConstant.zero
         if entries[0] == 1:
             return entries[1]
-        if entries[0] == -1:
-            return Neg(entries[1])._simplify2()
 
         if entries[1] == 0:
             return MapElementConstant.zero
         if entries[1] == 1:
             return entries[0]
+
+        if entries[0] == -1:
+            return Neg(entries[1])._simplify2()
         if entries[1] == -1:
             return Neg(entries[0])._simplify2()
 
