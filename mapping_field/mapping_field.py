@@ -102,7 +102,7 @@ class MapElement:
             raise Exception(f'Function must have distinct variables')
         self.vars = variables
         self.num_vars = len(variables)
-        self._simplification_id = ''
+        self._simplified = False
 
     def set_var_order(self, variables: List['Var']):
         """
@@ -219,10 +219,17 @@ class MapElement:
     # <editor-fold desc=" ------------------------ Simplify 2 ------------------------">
 
     def simplify2(self) -> 'MapElement':
+        if self._simplified:
+            return self
         return self._simplify2() or self
 
     def _simplify2(self) -> Optional['MapElement']:
-        return self._simplify_with_var_values2({v: v for v in self.vars})
+        simplified_version = self._simplify_with_var_values2({v: v for v in self.vars})
+        if simplified_version is not None:
+            simplified_version._simplified = True
+        else:
+            self._simplified = True
+        return simplified_version
 
     # Override when needed
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
@@ -436,6 +443,7 @@ class Var(MapElement):
             return
         super().__init__([self], name)
         self.initialized = True
+        self._simplified = True
 
     def to_string(self, vars_str_list: List[str]):
         return self.name
@@ -498,6 +506,7 @@ class NamedFunc(MapElement):
 
     def __init__(self, func_name: str, variables: List[Var]):
         super().__init__(variables, func_name)
+        self._simplified = True
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
 
@@ -617,6 +626,7 @@ class MapElementConstant(MapElement):
     def __init__(self, elem: ExtElement):
         super().__init__([], str(elem))
         self.elem = elem
+        self._simplified = True
 
     def __eq__(self, other):
         if isinstance(other, int) or isinstance(other, FieldElement):
