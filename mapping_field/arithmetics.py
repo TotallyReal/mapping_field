@@ -1,5 +1,6 @@
 from mapping_field import (MapElement, MapElementFromFunction, MapElementConstant, CompositionFunction,
                            convert_to_map, VarDict, ExtElement)
+from mapping_field.serializable import DefaultSerializable
 from typing import List, Tuple, Optional, Callable
 
 """
@@ -26,7 +27,7 @@ When simplifying map with arithmetics I use the following rules:
 
 # --------------------- MapElements for arithmetic operator ---------------------
 
-class _ArithmeticMapFromFunction(MapElementFromFunction):
+class _ArithmeticMapFromFunction(MapElementFromFunction, DefaultSerializable):
     # Create a singleton for each arithmetic function
 
     _instance = None

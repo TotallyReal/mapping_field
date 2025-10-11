@@ -1,5 +1,6 @@
 from typing import List, Union, Optional, Tuple
 
+from mapping_field.serializable import DefaultSerializable
 from mapping_field.arithmetics import as_neg
 from mapping_field.mapping_field import Var, MapElement, MapElementConstant, ExtElement, VarDict, FuncDict
 from mapping_field.conditions import Condition, FalseCondition, TrueCondition
@@ -7,13 +8,17 @@ from mapping_field.ranged_condition import SingleAssignmentCondition, RangeCondi
 from mapping_field.linear import LinearTransformer
 
 
-class BoolVar(Var, RangeTransformer):
+class BoolVar(Var, RangeTransformer, DefaultSerializable):
 
     def __new__(cls, var_name: str):
         return super(BoolVar, cls).__new__(cls, var_name)
 
     def __init__(self, var_name: str):
         super().__init__(var_name)
+
+    @classmethod
+    def serialization_name_conversion(self):
+        return {'var_name' : 'name'}
 
     def transform_range(self, range_values: Range) -> Optional[Condition]:
         a, b = range_values
@@ -35,7 +40,7 @@ def _two_power(k):
         m += 1
     return m
 
-class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer, ConditionToRangeTransformer):
+class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer, ConditionToRangeTransformer, DefaultSerializable):
 
     @staticmethod
     def generate(var_name: str, num_digits: int):

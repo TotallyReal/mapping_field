@@ -2,7 +2,8 @@ from abc import abstractmethod
 import math
 from typing import List, Tuple, Optional
 
-from mapping_field import MapElement, VarDict, FuncDict, MapElementConstant, ExtElement
+from mapping_field.serializable import DefaultSerializable
+from mapping_field.mapping_field import MapElement, VarDict, FuncDict, MapElementConstant, ExtElement
 from mapping_field.conditions import Condition, TrueCondition, FalseCondition
 from mapping_field.ranged_condition import RangeCondition, RangeTransformer
 
@@ -17,7 +18,7 @@ class LinearTransformer:
         pass
 
 
-class Linear(MapElement, RangeTransformer):
+class Linear(MapElement, RangeTransformer, DefaultSerializable):
 
     @staticmethod
     def of(elem: MapElement):

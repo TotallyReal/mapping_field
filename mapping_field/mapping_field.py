@@ -4,6 +4,7 @@ import functools
 import inspect
 from typing import Callable, Dict, List, Optional, Tuple
 from mapping_field.field import FieldElement, ExtElement
+from mapping_field.serializable import DefaultSerializable
 
 
 # def _to_constant(elem):
@@ -396,7 +397,7 @@ class MapElement:
     # </editor-fold>
 
 
-class Var(MapElement):
+class Var(MapElement, DefaultSerializable):
     """
     A single variable. Can be thought of as the projection map on a variable, namely (x_1,...,x_i,...,x_n) -> x_i.
     The variable projected on is given by the name in the constructor.
@@ -462,7 +463,7 @@ class Var(MapElement):
         return hash(('Var', self.name))
 
 
-class NamedFunc(MapElement):
+class NamedFunc(MapElement, DefaultSerializable):
     """
     A named function, which can be assigned later to another function.
 
@@ -518,6 +519,13 @@ class NamedFunc(MapElement):
         self.initialized = True
         self._simplified = True
 
+    @classmethod
+    def serialization_name_conversion(cls) -> Dict:
+        return {
+            'func_name': 'name',
+            'variables': 'vars'
+        }
+
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
 
         func = func_dict.get(self, self)
@@ -561,7 +569,7 @@ class Func:
         return self.assigned
 
 
-class CompositionFunction(MapElement):
+class CompositionFunction(MapElement, DefaultSerializable):
 
     def __init__(self, function: MapElement, entries: List[MapElement]):
         """
@@ -628,7 +636,7 @@ class CompositionFunction(MapElement):
         return None
 
 
-class MapElementConstant(MapElement):
+class MapElementConstant(MapElement, DefaultSerializable):
     """
     Used for constant maps, and for casting elements into maps.
     """
