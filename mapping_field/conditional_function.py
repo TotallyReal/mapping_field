@@ -162,8 +162,15 @@ def ReLU(map_elem: MapElement):
     if isinstance(map_elem, ConditionalFunction):
         regions = []
         for condition, func in map_elem.regions:
-            regions.append( (condition * (func >= 0), func) )
-            regions.append( (condition * (func < 0), zero) )
+            non_negative = (func >= 0)
+            if non_negative == TrueCondition:
+                # Make your and my life a little bit simpler
+                regions.append( (condition, func) )
+            elif non_negative == FalseCondition:
+                regions.append( (condition, zero) )
+            else:
+                regions.append( (condition * non_negative, func) )
+                regions.append( (condition * (func < 0), zero) )
         regions = [(cond, func) for cond, func in regions if FalseCondition != cond]
         return ConditionalFunction(regions)
     return ConditionalFunction([
