@@ -1,6 +1,7 @@
 from abc import abstractmethod
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 
+from mapping_field import CompositionFunction
 from mapping_field.mapping_field import VarDict, MapElement, Var
 from mapping_field.conditions import Condition, FalseCondition, ConditionIntersection, \
     MapElementProcessor, TrueCondition
@@ -192,7 +193,19 @@ class ConditionToRangeTransformer:
         """
 
 
+class RangeConditionSimplifier:
+
+    @abstractmethod
+    def range_condition_simplify(self, function: MapElement, f_range: Range) -> Optional[Condition]:
+        pass
+
 class RangeCondition(Condition, AsRange, DefaultSerializable):
+
+    _simplifiers: List[RangeConditionSimplifier] = []
+
+    @classmethod
+    def register_simplifier(cls, simplifier: RangeConditionSimplifier):
+        cls._simplifiers.append(simplifier)
 
     def __init__(self, function: MapElement, f_range: Range, simplified: bool = False):
         super().__init__(function.vars)
@@ -265,20 +278,20 @@ class RangeCondition(Condition, AsRange, DefaultSerializable):
 
 
     def simplify(self) -> 'Condition':
-        if self.range[0] >= self.range[1]:
-            return FalseCondition
-
-        n = self.function.evaluate()
-        if n is not None:
-            return (TrueCondition if self.range[0] <= n < self.range[1] else FalseCondition)
-
         condition = self
-        while (isinstance(condition, RangeCondition) and (not condition._simplified) and
-               isinstance(condition.function, RangeTransformer)):
-            new_condition = condition.function.transform_range(condition.range)
-            if new_condition is None:
+        while True:
+
+            for transformer in self.__class__._simplifiers:
+                new_condition = transformer.range_condition_simplify(condition.function, condition.range)
+                if new_condition is None:
+                    continue
+                condition = new_condition
+                break
+            else:
                 return condition
-            condition = new_condition
+
+            if (not isinstance(condition, RangeCondition)) or condition._simplified:
+                break
 
         return condition
 
@@ -315,6 +328,58 @@ class RangeCondition(Condition, AsRange, DefaultSerializable):
         return self.__ge__(other - 1)
 
     # </editor-fold>
+
+
+# TODO: switch later to registering just the function without an object
+
+class RangeTransformerSimplifier(RangeConditionSimplifier):
+
+    def range_condition_simplify(self, function: MapElement, f_range: Range) -> Optional[Condition]:
+        if isinstance(function, RangeTransformer):
+            return function.transform_range(f_range)
+
+
+class RangeEvaluatorSimplifier(RangeConditionSimplifier):
+
+    def range_condition_simplify(self, function: MapElement, f_range: Range) -> Optional[Condition]:
+        if f_range[1] <= f_range[0]:
+            return FalseCondition
+        n = function.evaluate()
+        if n is not None:
+            return (TrueCondition if f_range[0] <= n < f_range[1] else FalseCondition)
+        return None
+
+RangeCondition.register_simplifier(RangeTransformerSimplifier())
+RangeCondition.register_simplifier(RangeEvaluatorSimplifier())
+
+
+class RangeAdditiveSimplifier(RangeConditionSimplifier):
+
+    def range_condition_simplify(self, function: MapElement, f_range: Range) -> Optional[Condition]:
+        if not isinstance(function, CompositionFunction):
+            return None
+
+        f = function.function
+        if f not in (MapElement.addition, MapElement.subtraction, MapElement.multiplication, MapElement.division):
+            return None
+
+        entries = function.entries
+        n = entries[0].evaluate()
+        if n is not None:
+            if f in (MapElement.addition, MapElement.subtraction):
+                return RangeCondition(entries[1],(f_range[0] - n, f_range[1] - n))
+
+        n = entries[1].evaluate()
+        if n is not None:
+            if f is MapElement.addition:
+                return RangeCondition(entries[0],(f_range[0] - n, f_range[1] - n))
+            if f is MapElement.subtraction:
+                return RangeCondition(entries[0],(f_range[0] + n, f_range[1] + n))
+
+        return None
+
+RangeCondition.register_simplifier(RangeAdditiveSimplifier())
+
 
 
 def _ranged(elem: MapElement, low: int, high: int) -> RangeCondition:

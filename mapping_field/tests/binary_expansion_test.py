@@ -135,3 +135,14 @@ def test_simplify_range_condition():
     condition2 = SingleAssignmentCondition(v[3] , 1)
     assert condition1 == condition2
 
+def test_sum_of_bool():
+    x, y = BoolVar('x'), BoolVar('y')
+    condition = (0 < (x+y)-1)
+    condition = condition.simplify()
+
+    result = (x << 1) & (y << 1)
+
+    assert condition == result
+
+
+

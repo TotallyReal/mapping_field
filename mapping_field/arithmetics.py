@@ -43,6 +43,16 @@ class _ArithmeticMapFromFunction(MapElementFromFunction, DefaultSerializable):
         super().__init__(name, function)
         self._initialized = True
 
+    @classmethod
+    def try_get_entries(cls, elem: MapElement) -> Optional[Tuple[MapElement, MapElement]]:
+        if not isinstance(elem, CompositionFunction):
+            return None
+
+        if elem.function is not cls._instance:
+            return None
+
+        return tuple(elem.entries)
+
 class _Negative(_ArithmeticMapFromFunction):
 
     # TODO: consider transform constant(-1) into -constant(1)

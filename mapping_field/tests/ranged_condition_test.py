@@ -118,3 +118,12 @@ def test_extend_range_by_assignment():
         union = cond2 | cond1
         assert union == next_cond
         cond1 = next_cond
+
+
+def test_simplifier():
+    x = Var('x')
+    cond1 = (0 <= x - 1)
+    cond1 = cond1.simplify()
+    cond2 = (1 <= x)
+
+    assert cond1 == cond2
