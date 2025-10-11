@@ -140,6 +140,38 @@ class MapElement:
 
     # <editor-fold desc=" ------------------------ Call and Simplify function ------------------------">
 
+    def _extract_var_dicts(self, args, kwargs) -> Tuple[VarDict, FuncDict]:
+        if len(args) != 0 and len(kwargs) != 0:
+            raise Exception(f'When calling a function use just args or just kwargs, not both.')
+
+        var_dict = {}
+        func_dict = {}
+        if len(kwargs) == 0:
+            if len(args) == 1 and isinstance(args[0], Dict):
+                kwargs = args[0]
+            else:
+                if len(args) != self.num_vars:
+                    raise Exception(f'Function needs to get {self.num_vars} values, and instead got {len(args)}.')
+                var_dict = {v: convert_to_map(value) for v, value in zip(self.vars, args)}
+                return var_dict, dict()
+
+        # Split assignments into variables and functions
+        for key, value in kwargs.items():
+
+            key_value_pair = Var.try_get_valid_assignment(key, value)
+            if key_value_pair is not None:
+                var_dict[key_value_pair[0]] = key_value_pair[1]
+                continue
+
+            key_value_pair = NamedFunc.try_get_valid_assignment(key, value)
+            if key_value_pair is not None:
+                func_dict[key_value_pair[0]] = key_value_pair[1]
+                continue
+
+            raise Exception(f'Cannot assign new value to element which is not a variable of a named function : {key}')
+
+        return var_dict, func_dict
+
     def __call__(self, *args, **kwargs) -> 'MapElement':
         """
         There are three ways to apply this function:
@@ -164,35 +196,7 @@ class MapElement:
                 raise Exception(f'The "simplify" flag must be a boolean, instead got {simplify}')
             del kwargs['simplify']
 
-        if len(args) != 0 and len(kwargs) != 0:
-            raise Exception(f'When calling a function use just args or just kwargs, not both.')
-
-        var_dict = {}
-        func_dict = {}
-        if len(kwargs) == 0:
-            if len(args) == 1 and isinstance(args[0], Dict):
-                kwargs = args[0]
-                args = []
-            else:
-                if len(args) != self.num_vars:
-                    raise Exception(f'Function needs to get {self.num_vars} values, and instead got {len(args)}.')
-                var_dict = {v: convert_to_map(value) for v, value in zip(self.vars, args)}
-
-        # Split assignments into variables and functions
-        for key, value in kwargs.items():
-
-            key_value_pair = Var.try_get_valid_assignment(key, value)
-            if key_value_pair is not None:
-                var_dict[key_value_pair[0]] = key_value_pair[1]
-                continue
-
-            key_value_pair = NamedFunc.try_get_valid_assignment(key, value)
-            if key_value_pair is not None:
-                func_dict[key_value_pair[0]] = key_value_pair[1]
-                continue
-
-            raise Exception(f'Cannot assign new value to element which is not a variable of a named function : {key}')
-
+        var_dict, func_dict = self._extract_var_dicts(args, kwargs)
         result = self._call_with_dict(var_dict, func_dict)
         return result.simplify2() if simplify else result
 
