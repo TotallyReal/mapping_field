@@ -1,6 +1,6 @@
 from mapping_field import (MapElement, MapElementFromFunction, MapElementConstant, CompositionFunction,
-                           convert_to_map, get_var_values, VarDict)
-from typing import List, Tuple, Optional
+                           convert_to_map, VarDict, ExtElement)
+from typing import List, Tuple, Optional, Callable
 
 """
 Implement arithmetics for the MapElement class.
@@ -26,8 +26,23 @@ When simplifying map with arithmetics I use the following rules:
 
 # --------------------- MapElements for arithmetic operator ---------------------
 
+class _ArithmeticMapFromFunction(MapElementFromFunction):
+    # Create a singleton for each arithmetic function
 
-class _Negative(MapElementFromFunction):
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __init__(self, name: str, function: Callable[[List[ExtElement]], ExtElement]):
+        if hasattr(self, '_initialized'):
+            return
+        super().__init__(name, function)
+        self._initialized = True
+
+class _Negative(_ArithmeticMapFromFunction):
 
     # TODO: consider transform constant(-1) into -constant(1)
     def __init__(self):
@@ -58,7 +73,7 @@ def as_neg(map_elem: MapElement) -> Tuple[int, MapElement]:
     return 1, map_elem
 
 
-class _Add(MapElementFromFunction):
+class _Add(_ArithmeticMapFromFunction):
 
     def __init__(self):
         super().__init__('Add', lambda a, b: a + b)
@@ -91,7 +106,7 @@ class _Add(MapElementFromFunction):
         return f'({entries[0]}+{entries[1]})'
 
 
-class _Sub(MapElementFromFunction):
+class _Sub(_ArithmeticMapFromFunction):
 
     def __init__(self):
         super().__init__('Sub', lambda a, b: a - b)
@@ -150,7 +165,7 @@ def _as_rational(map_elem: MapElement) -> (int, MapElement, MapElement):
     return sign, map_elem, MapElementConstant.one
 
 
-class _Mult(MapElementFromFunction):
+class _Mult(_ArithmeticMapFromFunction):
 
     def __init__(self):
         super().__init__('Mult', lambda a, b: a * b)
@@ -188,7 +203,7 @@ class _Mult(MapElementFromFunction):
         return f'({entries[0]}*{entries[1]})'
 
 
-class _Div(MapElementFromFunction):
+class _Div(_ArithmeticMapFromFunction):
 
     def __init__(self):
         super().__init__('Div', lambda a, b: a / b)
