@@ -1,12 +1,13 @@
 import operator
 from typing import List, Tuple, Optional
 
-from mapping_field import MapElement, ExtElement, MapElementConstant, VarDict, FuncDict, params_to_maps
+from mapping_field.mapping_field import MapElement, ExtElement, MapElementConstant, VarDict, FuncDict, params_to_maps
 from mapping_field.conditions import TrueCondition, Condition, FalseCondition, MapElementProcessor
 from mapping_field.ranged_condition import SingleAssignmentCondition
+from mapping_field.serializable import DefaultSerializable
 
 
-class ConditionalFunction(MapElement):
+class ConditionalFunction(MapElement, DefaultSerializable):
     """
     A conditional function of the form:
        1_(cond_1) * f_1 + 1_(cond_2) * f_2 + ... + 1_(cond_n) * f_n

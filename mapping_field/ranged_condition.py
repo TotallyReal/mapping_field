@@ -1,9 +1,10 @@
 from abc import abstractmethod
 from typing import Tuple, Optional
 
-from mapping_field import VarDict, MapElement, MapElementConstant, Var
+from mapping_field.mapping_field import VarDict, MapElement, Var
 from mapping_field.conditions import Condition, FalseCondition, ConditionIntersection, \
     MapElementProcessor, TrueCondition
+from mapping_field.serializable import DefaultSerializable
 
 
 class _AssignmentCondition(Condition, MapElementProcessor):
@@ -90,7 +91,7 @@ class _AssignmentCondition(Condition, MapElementProcessor):
         return self
 
 
-class SingleAssignmentCondition(Condition, MapElementProcessor):
+class SingleAssignmentCondition(Condition, MapElementProcessor, DefaultSerializable):
 
     @staticmethod
     def from_assignment_dict(var_dict: VarDict) -> Condition:
@@ -116,6 +117,10 @@ class SingleAssignmentCondition(Condition, MapElementProcessor):
         self.var = v
         self.value = value
         self.var_dict = {v: value}
+
+    @classmethod
+    def serialization_name_conversion(self):
+        return {'v' : 'var'}
 
     def __repr__(self):
         return repr(self.var_dict)
@@ -187,13 +192,17 @@ class ConditionToRangeTransformer:
         """
 
 
-class RangeCondition(Condition, AsRange):
+class RangeCondition(Condition, AsRange, DefaultSerializable):
 
     def __init__(self, function: MapElement, f_range: Range, simplified: bool = False):
         super().__init__(function.vars)
         self.function = function
         self.range = f_range
         self._simplified = simplified
+
+    @classmethod
+    def serialization_name_conversion(self):
+        return {'f_range' : 'range', 'simplified' : '_simplified'}
 
     def __repr__(self):
         lower = '' if self.range[0] == float('-inf') else f'{self.range[0]} <= '

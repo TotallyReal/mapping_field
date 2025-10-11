@@ -3,7 +3,10 @@ from typing import List, Tuple, Optional
 import operator
 import functools
 
-from mapping_field import MapElement, Var, VarDict, FuncDict, ExtElement, MapElementConstant
+from mapping_field.mapping_field import MapElement, Var
+from mapping_field.serializable import DefaultSerializable
+
+
 
 def _param_to_condition(f):
     @functools.wraps(f)
@@ -137,7 +140,7 @@ class Condition:
 TrueCondition = None
 FalseCondition = None
 
-class BinaryCondition(Condition):
+class BinaryCondition(Condition, DefaultSerializable):
     """
     An always True \ False condition.
     """
@@ -182,7 +185,7 @@ class MapElementProcessor:
     def process_function(self, func: MapElement) -> MapElement:
         pass
 
-class _ListCondition(Condition):
+class _ListCondition(Condition, DefaultSerializable):
     # For intersection \ union of conditions
 
     AND = 0
@@ -194,7 +197,8 @@ class _ListCondition(Condition):
     trivials = [TrueCondition, FalseCondition]
     join_delims = [' & ', ' | ']
 
-    def __init_subclass__(cls, op_type: int):
+    def __init_subclass__(cls, op_type: int, **kwargs):
+        super().__init_subclass__(**kwargs)
         cls.type = op_type
 
         _ListCondition.list_classes[op_type] = cls
@@ -212,6 +216,10 @@ class _ListCondition(Condition):
         )
         self.conditions = conditions
         self._simplified = simplified
+
+    @classmethod
+    def serialization_name_conversion(self):
+        return {'simplified': '_simplified'}
 
     def __repr__(self):
         conditions_rep = self.__class__.join_delim.join(repr(condition) for condition in self.conditions)
@@ -356,8 +364,6 @@ class _ListCondition(Condition):
             new_cls_condition = cls(prod_0_conditions).simplify()
             return rev_cls([new_cls_condition, sp_condition])
 
-
-
     def simplify(self):
         if self._simplified:
             return self
@@ -430,7 +436,6 @@ class ConditionIntersection(_ListCondition, MapElementProcessor, op_type = _List
             if isinstance(condition, MapElementProcessor):
                 func = condition.process_function(func)
         return func
-
 
 class ConditionUnion(_ListCondition, op_type = _ListCondition.OR):
 
