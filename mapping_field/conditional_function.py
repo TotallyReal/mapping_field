@@ -66,7 +66,7 @@ class ConditionalFunction(MapElement, DefaultSerializable):
                 cond_prod = (cond1 * cond2).simplify()
                 if cond_prod != FalseCondition:
                     regions.append((cond_prod, op_func(elem1, elem2)))
-        return ConditionalFunction(regions)
+        return ConditionalFunction(regions).simplify2()
 
     def add(self, other: MapElement) -> 'ConditionalFunction':
         return self._op(other, operator.add)

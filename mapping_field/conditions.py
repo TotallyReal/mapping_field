@@ -142,7 +142,7 @@ FalseCondition = None
 
 class BinaryCondition(Condition, DefaultSerializable):
     """
-    An always True \ False condition.
+    An always True / False condition.
     """
 
     def __new__(cls, value: bool):
@@ -214,7 +214,19 @@ class _ListCondition(Condition, DefaultSerializable):
         super().__init__(
             list(set(sum([condition.vars for condition in conditions],[])))
         )
-        self.conditions = conditions
+        self.conditions: List[Condition] = []
+
+        conditions = conditions.copy()
+        cls = self.__class__
+        index = 0
+        while index < len(conditions):
+            condition = conditions[index]
+            index += 1
+            if isinstance(condition, cls):
+                conditions.extend(condition.conditions)
+                continue
+            self.conditions.append(condition)
+
         self._simplified = simplified
 
     @classmethod
@@ -289,7 +301,7 @@ class _ListCondition(Condition, DefaultSerializable):
         prod, is_simpler = cls._rev_op_simpler_between(special_condition, cls(remaining_conditions))
         if is_simpler:
             conditions = [c for flag, c in zip(used_positions, conditions1) if flag]
-            return cls(conditions + [prod]), True
+            return cls(conditions + [prod]) if len(conditions) > 0 else prod, True
 
         result = cls._rev_op_against_single_condition(remaining_conditions, special_condition)
 
@@ -306,7 +318,7 @@ class _ListCondition(Condition, DefaultSerializable):
     @classmethod
     def _rev_op_against_single_condition(cls, conditions: List[Condition], sp_condition: Condition) -> Optional[Condition]:
 
-        assert not isinstance(sp_condition, cls)
+        assert not isinstance(sp_condition, cls), f'{sp_condition} cannot be of type {cls.__name__}'
 
         rev_cls = cls.list_classes[1 - cls.type]
 
@@ -373,14 +385,21 @@ class _ListCondition(Condition, DefaultSerializable):
         final_conditions = []
         conditions = self.conditions.copy()
 
+        is_whole_simpler = False
+
         for condition in conditions:
 
-            condition = condition.simplify()
+            simplified_condition = condition.simplify()
+            if simplified_condition is not condition:
+                is_whole_simpler = True
+            condition = simplified_condition
 
             if condition is cls.one_condition:
+                is_whole_simpler = True
                 continue
 
             if isinstance(condition, cls):
+                is_whole_simpler = True
                 conditions.extend(condition.conditions)
                 continue
 
@@ -397,6 +416,7 @@ class _ListCondition(Condition, DefaultSerializable):
                         prod_cond, is_simpler = cls._op_simpler_between(condition, existing_condition)
 
                     if is_simpler:
+                        is_whole_simpler = True
                         final_conditions = [cond for cond in final_conditions if (cond is not existing_condition)]
                         condition = prod_cond.simplify()
                         break
@@ -411,6 +431,10 @@ class _ListCondition(Condition, DefaultSerializable):
 
         if len(final_conditions) == 1:
             return final_conditions[0]
+
+        if not is_whole_simpler:
+            self._simplified = True
+            return self
 
         return cls(final_conditions, simplified = True)
 

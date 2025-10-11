@@ -45,8 +45,19 @@ def test_binary_conditions():
     assert dummy * FalseCondition == FalseCondition
     assert FalseCondition * dummy == FalseCondition
 
+def test_unpack_intersections():
+    dummies = [DummyCondition(type = i) for i in range(5)]
+
+    cond1 = ConditionIntersection([dummies[0], dummies[1]])
+
+    cond2 = ConditionIntersection([cond1, dummies[2]])
+    assert isinstance(cond2, ConditionIntersection) and len(cond2.conditions) == 3
+
+    cond2 = ConditionIntersection([dummies[2], cond1])
+    assert isinstance(cond2, ConditionIntersection) and len(cond2.conditions) == 3
+
 def test_simplify_intersection():
-    dummies = [DummyCondition(i) for i in range(5)]
+    dummies = [DummyCondition(i) for i in range(5)] # TODO: type = i ?
 
     cond1 = ConditionIntersection([dummies[0], dummies[1], dummies[2]])
     cond2 = ConditionIntersection([dummies[2], dummies[0], dummies[1]])
