@@ -1,6 +1,19 @@
+import yaml
+
 from abc import ABC, abstractmethod
 import inspect
 from typing import Dict, Type, List
+
+def tuple_representer(dumper, data):
+    """Tell YAML how to represent a Python tuple."""
+    return dumper.represent_sequence('tag:yaml.org,2002:python/tuple', data)
+
+def tuple_constructor(loader, node):
+    """Tell YAML how to construct a tuple safely."""
+    return tuple(loader.construct_sequence(node))
+
+yaml.SafeDumper.add_representer(tuple, tuple_representer)
+yaml.SafeLoader.add_constructor('tag:yaml.org,2002:python/tuple', tuple_constructor)
 
 _type = '_serialization_type'
 _ref = '_serialization_reference'

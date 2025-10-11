@@ -1,4 +1,5 @@
 import pytest
+import yaml
 
 from mapping_field import Var, DefaultSerializable, NamedFunc, CompositionFunction, MapElement, MapElementConstant
 from mapping_field.binary_expansion import BoolVar, BinaryExpansion
@@ -14,26 +15,28 @@ def reset_static_variables():
     Var.clear_vars()
     NamedFunc.clear_vars()
 
+def process(elem: Serializable):
 
-def simple_equality(elem: Serializable):
-    serialization = elem.to_dict()
+    orig_data = elem.to_dict()
+    yaml_rep = yaml.dump(orig_data)
+    result_data = yaml.safe_load(yaml_rep)
 
     cls = elem.__class__
-    assert cls == DefaultSerializable.get_class(serialization)
-    result = cls.from_dict(serialization)
+    assert cls == DefaultSerializable.get_class(result_data)
+    result = cls.from_dict(result_data)
 
-    assert result == elem
+    return result
 
 
 def test_var_serialization():
     x = Var('x')
-    simple_equality(x)
+    assert x == process(x)
 
 def test_named_func_serialization():
     x, y = Var('x'), Var('y')
     f = NamedFunc('f',[x,y])
 
-    simple_equality(f)
+    assert f == process(f)
 
 def test_negative():
     x= Var('x')
@@ -61,27 +64,28 @@ def test_binary_expansion():
     vv = [BoolVar(f'x_{i}') for i in range(4)]
     x = BinaryExpansion(vv)
 
-    simple_equality(x)
+    x == process(x)
 
 def test_linear():
     x = Var('x')
     elem = Linear(5, x, 7)
 
-    simple_equality(elem)
+    elem == process(elem)
 
 
 def test_assignment_condition():
     x = Var('x')
     condition = SingleAssignmentCondition(x, 10)
 
-    simple_equality(condition)
+    condition == process(condition)
 
 
 def test_ranged_condition():
     x = Var('x')
     condition = (x < 10)
+    condition = RangeCondition(x, (3,10))
 
-    simple_equality(condition)
+    condition == process(condition)
 
 
 def test_union_condition():
