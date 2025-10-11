@@ -1,10 +1,16 @@
+import pytest
 from typing import List
 
 from mapping_field.binary_expansion import BoolVar, BinaryExpansion
 from mapping_field.conditions import FalseCondition, TrueCondition
 from mapping_field.ranged_condition import RangeCondition, SingleAssignmentCondition
-from mapping_field.mapping_field import MapElement, Var
+from mapping_field.mapping_field import MapElement, Var, NamedFunc
 
+
+@pytest.fixture(autouse=True)
+def reset_static_variables():
+    Var.clear_vars()
+    NamedFunc.clear_vars()
 
 class DummyMap(MapElement):
     def __init__(self, value=0):

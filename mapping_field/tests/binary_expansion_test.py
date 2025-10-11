@@ -1,7 +1,14 @@
-from mapping_field import MapElementConstant
+import pytest
+
+from mapping_field import MapElementConstant, Var, NamedFunc
 from mapping_field.binary_expansion import BinaryExpansion, BoolVar
 from mapping_field.ranged_condition import RangeCondition, SingleAssignmentCondition
 
+
+@pytest.fixture(autouse=True)
+def reset_static_variables():
+    Var.clear_vars()
+    NamedFunc.clear_vars()
 
 def test_equality_constant():
     x1 = BinaryExpansion([1, 0, 1, 1])

@@ -1,3 +1,5 @@
+import pytest
+
 from typing import List, Tuple, Union, Set
 
 from sympy.codegen import Assignment
@@ -6,9 +8,14 @@ from mapping_field.binary_expansion import BoolVar, BinaryExpansion
 from mapping_field.conditions import Condition, FalseCondition
 from mapping_field.conditional_function import ConditionalFunction, ReLU
 from mapping_field.linear import Linear
-from mapping_field.mapping_field import MapElementConstant, MapElement, Var
+from mapping_field.mapping_field import MapElementConstant, MapElement, Var, NamedFunc
 from mapping_field.ranged_condition import RangeCondition, SingleAssignmentCondition
 
+
+@pytest.fixture(autouse=True)
+def reset_static_variables():
+    Var.clear_vars()
+    NamedFunc.clear_vars()
 
 # <editor-fold desc=" ------------------------ Dummy objects ------------------------">
 
