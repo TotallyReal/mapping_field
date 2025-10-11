@@ -1,4 +1,5 @@
 import yaml
+from pathlib import Path
 
 from abc import ABC, abstractmethod
 import inspect
@@ -40,6 +41,19 @@ class Serializable(ABC):
     def from_dict(cls, data: Dict):
         """Reconstruct object from a dictionary."""
         raise Exception(f'Method \'from_dict\' is not implemented in {cls}')
+
+    def save_element(self, path):
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w") as f:
+            yaml.safe_dump(self.to_dict(), f)
+
+    @staticmethod
+    def load_element(path):
+        with open(path) as f:
+            data = yaml.safe_load(f)
+        cls: Serializable = DefaultSerializable.get_class(data)
+        return cls.from_dict(data)
 
 class DefaultSerializable(Serializable):
 
