@@ -93,14 +93,14 @@ class _AssignmentCondition(Condition, MapElementProcessor):
 class SingleAssignmentCondition(Condition, MapElementProcessor):
 
     @staticmethod
-    def from_dict(var_dict: VarDict) -> Condition:
+    def from_assignment_dict(var_dict: VarDict) -> Condition:
         condition = TrueCondition
         for v, value in var_dict.items():
             condition &= SingleAssignmentCondition(v, value)
         return condition
 
     @staticmethod
-    def as_dict(condition: Condition) -> Optional[VarDict]:
+    def as_assignment_dict(condition: Condition) -> Optional[VarDict]:
         """
         Tries to convert the condition into an assignment, and if so returns it, otherwise returns None.
         """

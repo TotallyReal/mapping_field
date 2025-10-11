@@ -415,7 +415,7 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer, Condition
             return condition * RangeCondition(BinaryExpansion(coefs[:i+1]), (a, b), simplified=True)
 
     def as_range(self, condition: Condition) -> Optional[Range]:
-        var_dict = SingleAssignmentCondition.as_dict(condition)
+        var_dict = SingleAssignmentCondition.as_assignment_dict(condition)
         if var_dict is None:
             return None
 

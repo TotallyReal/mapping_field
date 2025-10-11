@@ -95,22 +95,22 @@ def test_assignment_condition():
     x, y, z = Var('x'), Var('y'), Var('z')
 
     # disjoint
-    cond1 = SingleAssignmentCondition.from_dict({x:1, y:2})
-    cond2 = SingleAssignmentCondition.from_dict({z:3})
+    cond1 = SingleAssignmentCondition.from_assignment_dict({x:1, y:2})
+    cond2 = SingleAssignmentCondition.from_assignment_dict({z:3})
     prod = cond1 * cond2
-    result = SingleAssignmentCondition.from_dict({x:1, y:2, z:3})
+    result = SingleAssignmentCondition.from_assignment_dict({x:1, y:2, z:3})
     assert prod == result
 
     # valid intersection
-    cond1 = SingleAssignmentCondition.from_dict({x:1, y:2})
-    cond2 = SingleAssignmentCondition.from_dict({y:2, z:3})
+    cond1 = SingleAssignmentCondition.from_assignment_dict({x:1, y:2})
+    cond2 = SingleAssignmentCondition.from_assignment_dict({y:2, z:3})
     prod = cond1 * cond2
-    result = SingleAssignmentCondition.from_dict({x:1, y:2, z:3})
+    result = SingleAssignmentCondition.from_assignment_dict({x:1, y:2, z:3})
     assert prod == result
 
     # invalid intersection
-    cond1 = SingleAssignmentCondition.from_dict({x:1, y:2})
-    cond2 = SingleAssignmentCondition.from_dict({y:5, z:3})
+    cond1 = SingleAssignmentCondition.from_assignment_dict({x:1, y:2})
+    cond2 = SingleAssignmentCondition.from_assignment_dict({y:5, z:3})
     prod = cond1 * cond2
     result = FalseCondition
     assert prod == result
@@ -181,7 +181,7 @@ def test_me():
     cond2 = xx - 8 < 0
     prod = cond1 * cond2
     prod = prod.simplify()
-    assert prod == SingleAssignmentCondition.from_dict({vv[0]:1, vv[1]:1, vv[2]: 1, vv[3]:0})
+    assert prod == SingleAssignmentCondition.from_assignment_dict({vv[0]:1, vv[1]:1, vv[2]: 1, vv[3]:0})
 
     cond1 = xx - 7 < 0
     cond2 = xx - 8 >= 0

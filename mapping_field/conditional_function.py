@@ -137,7 +137,7 @@ class ConditionalFunction(MapElement):
         assignment_regions = []
         other_regions = []
         for condition, func in regions:
-            var_dict = SingleAssignmentCondition.as_dict(condition)
+            var_dict = SingleAssignmentCondition.as_assignment_dict(condition)
             if var_dict is not None:
                 assignment_regions.append((var_dict, condition, func))
             else:
