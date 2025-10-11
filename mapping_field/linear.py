@@ -40,6 +40,9 @@ class Linear(MapElement, RangeTransformer, DefaultSerializable):
         return f'{a_str}{self.elem}{b_str}'
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
+        elem = self.elem._call_with_dict(var_dict, func_dict)
+        if elem is self.elem:
+            return self
         return Linear(self.a, self.elem._call_with_dict(var_dict, func_dict), self.b)
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:

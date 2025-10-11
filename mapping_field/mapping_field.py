@@ -198,7 +198,9 @@ class MapElement:
             del kwargs['simplify']
 
         var_dict, func_dict = self._extract_var_dicts(args, kwargs)
-        result = self._call_with_dict(var_dict, func_dict)
+        result = self
+        if len(func_dict) > 0 or any([v in var_dict for v in self.vars]):
+            result = self._call_with_dict(var_dict, func_dict)
         return result.simplify2() if simplify else result
 
     # Override when needed
@@ -611,6 +613,8 @@ class CompositionFunction(MapElement, DefaultSerializable):
             return self
         eval_function = self.function._call_with_dict({}, func_dict)
         eval_entries = [entry._call_with_dict(var_dict, func_dict) for entry in self.entries]
+        if (eval_function is self.function) and all([e1 is e2 for e1, e2 in zip(self.entries, eval_entries)]):
+            return self
 
         return CompositionFunction(function=eval_function, entries=eval_entries)
 
