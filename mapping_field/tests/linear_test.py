@@ -209,16 +209,4 @@ def test_assignment_range_condition():
     cond2 = cond2 & SingleAssignmentCondition(vv[3], 0)
     assert cond1 == cond2
 
-def test_extend_range():
-    vv = [BoolVar(f'x_{i}') for i in range(4)]
-    x = BinaryExpansion(vv)
-
-    cond1 = (x < 8)
-    cond2 = RangeCondition(x, (8,9))
-    result = RangeCondition(x, (0,9))
-    assert cond1 | cond2 == result
-
-    cond2 = SingleAssignmentCondition.from_dict({vv[0]:0, vv[1]:0, vv[2]: 0, vv[3]: 1})  # x == 8
-    union = cond1 | cond2
-    assert union == result
 

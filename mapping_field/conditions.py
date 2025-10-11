@@ -234,7 +234,9 @@ class _ListCondition(Condition):
         if isinstance(condition, self.__class__):
             return cls([*self.conditions, *condition.conditions]), False
 
-        return cls([*self.conditions, condition]), False
+        result = cls([*self.conditions, condition])
+        simplified_result = result.simplify()
+        return simplified_result, (simplified_result is not result)
 
     def rev_op(self, condition) -> Tuple[Condition, bool]:
 
@@ -255,6 +257,7 @@ class _ListCondition(Condition):
         used_positions = [False] * n1
         special_condition = None
 
+        # check to see if there is at most one condition in conditions2 that doesn't appear in conditions1.
         for cond2 in conditions2:
             for i in range(n1):
                 if not used_positions[i] and conditions1[i] == cond2:
@@ -269,22 +272,91 @@ class _ListCondition(Condition):
             # Full containement
             return (self if swapped else condition), True
 
+        used_conditions = [cond1 for cond1, used in zip(conditions1, used_positions) if used]
         remaining_conditions = [cond1 for cond1, used in zip(conditions1, used_positions) if not used]
-        if len(remaining_conditions) == 1:
-            second_special_condition = remaining_conditions[0]
 
-            prod, is_simpler = cls._rev_op_simpler_between(special_condition, second_special_condition)
-            if is_simpler:
-                conditions = [c for flag, c in zip(used_positions, conditions1) if flag]
-                return cls(conditions + [prod]), True
-        elif len(remaining_conditions) < n1: # there was some simplification
-            prod, is_simpler = cls._rev_op_simpler_between(special_condition, cls(remaining_conditions))
-            if is_simpler:
-                conditions = [c for flag, c in zip(used_positions, conditions1) if flag]
-                return cls(conditions + [prod]), True
+        # # combined simpler:
+        # TODO: I don't like this call, since if the other condition tries to flip this call back, we will get
+        #       an infinite loop. Search for a way to avoid it (maybe like with function simplification?)
+        prod, is_simpler = cls._rev_op_simpler_between(special_condition, cls(remaining_conditions))
+        if is_simpler:
+            conditions = [c for flag, c in zip(used_positions, conditions1) if flag]
+            return cls(conditions + [prod]), True
+
+        result = cls._rev_op_against_single_condition(remaining_conditions, special_condition)
+
+        if result is None:
+            return cls._rev_op_simpler_between(super(), condition)
+        else:
+            if len(used_conditions) == 0:
+                return result, True
+            if isinstance(result, cls):
+                return cls(used_conditions + result.conditions).simplify(), True
+            else:
+                return cls(used_conditions + [result]).simplify(), True
+
+    @classmethod
+    def _rev_op_against_single_condition(cls, conditions: List[Condition], sp_condition: Condition) -> Optional[Condition]:
+
+        assert not isinstance(sp_condition, cls)
+
+        rev_cls = cls.list_classes[1 - cls.type]
+
+        # Use the fact that
+        #   (A | B | C) & D = (A & D) | (B & D) | (C & D)
+        # If intersection with D simplified one of A,B,C, we should change them.
+        # There are two possibilities:
+        #       1. A & D = A_0 & D where A_0 is simpler than A, however we cannot remove the intersection with D.
+        #       2. A & D = A_0     where A_0 is not computed as intersection of something with D
+        #
+        # If all (but one) can be written as in type (2), we return
+        #       A_0 | B_0 | C_0      or     (A_0 & D) | B_0 | C_0
+        # Otherwise return:
+        #       ( A_0 | B_0 | C_0 ) & D
+        prod_conditions = []
+        prod_0_conditions = []
+        need_prod = []
+        is_simpler = False
+
+        for remaining_cond in conditions:
+            prod, is_prod_simpler = cls._rev_op_simpler_between(remaining_cond, sp_condition)
+            prod_conditions.append(prod)
+            if prod is remaining_cond or prod == remaining_cond:
+                need_prod.append(False)
+                continue
+            is_simpler |= is_prod_simpler
+
+            if not is_prod_simpler:
+                prod_0_conditions.append(remaining_cond)
+                need_prod.append(True)
+                continue
+
+            if prod is sp_condition or prod == sp_condition:
+                return sp_condition
+
+            if isinstance(prod, rev_cls):
+                fewer_conditions = [cc for cc in prod.conditions if cc is not sp_condition]
+                if len(fewer_conditions) == len(prod.conditions):
+                    prod_0_conditions.append(prod)
+                    need_prod.append(False)
+                    continue
+
+                prod_0_conditions.append(rev_cls(fewer_conditions) if len(fewer_conditions) > 1 else fewer_conditions[0])
+                need_prod.append(True)
+            else:
+                prod_0_conditions.append(prod)
+                need_prod.append(False)
+
+        if not is_simpler:
+            return None
+
+        if sum(need_prod) <= 1:
+            return cls(prod_conditions).simplify()
+        else:
+            new_cls_condition = cls(prod_0_conditions).simplify()
+            return rev_cls([new_cls_condition, sp_condition])
 
 
-        return cls._rev_op_simpler_between(super(), condition)
 
     def simplify(self):
         if self._simplified:

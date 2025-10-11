@@ -15,13 +15,13 @@ class DummyCondition(Condition):
     def and_simpler(self, condition: Condition) -> Tuple['Condition', bool]:
         if isinstance(condition, DummyCondition) and self.type == condition.type:
             intersection = self.values.intersection(condition.values)
-            return DummyCondition(intersection) if len(intersection) > 0 else FalseCondition, True
+            return DummyCondition(intersection, type=self.type) if len(intersection) > 0 else FalseCondition, True
         return super().and_simpler(condition)
 
     def or_simpler(self, condition: Condition) -> Tuple['Condition', bool]:
         if isinstance(condition, DummyCondition) and self.type == condition.type:
             union = self.values.union(condition.values)
-            return DummyCondition(union), True
+            return DummyCondition(union, type=self.type), True
         return super().or_simpler(condition)
 
     def _eq_simplified(self, other: Condition) -> bool:
@@ -140,3 +140,100 @@ def test_intersection_of_unions():
 
     assert cond1 * cond2 == result
 
+def single_containment(cond_small: Condition, cond_large: Condition):
+
+    # TODO: Make sure that the reverse works as well
+    intersection = cond_small & cond_large
+    assert intersection == cond_small
+    intersection = cond_large & cond_small
+    assert intersection == cond_small
+
+def test_containment_in_union():
+
+    dummies1 = [DummyCondition(values={1},type = i) for i in range(5)]
+    dummies3 = [DummyCondition(values={1,2,3},type = i) for i in range(5)]
+
+    condition = dummies3[0] | dummies3[1] | dummies3[2] | dummies3[3]
+
+    # Exactly one of the element of the union
+    single_containment(dummies3[1], condition)
+
+    # Contained in one of the elements in the union
+    single_containment(dummies1[1], dummies3[1])  # make sure that dummies1 is inside dummies3 first
+    single_containment(dummies1[1], condition)
+
+    # Exactly two elements the same
+    single_containment(dummies3[1] | dummies3[3], condition)
+
+    # One element the same, and another contained
+    single_containment(dummies3[1] | dummies1[3], condition)
+
+def test_containment_in_intersection():
+
+    dummies1 = [DummyCondition(values={1},type = i) for i in range(5)]
+    dummies3 = [DummyCondition(values={1,2,3},type = i) for i in range(5)]
+
+    condition = dummies1[0] & dummies1[1] & dummies1[2] & dummies1[3]
+
+    # Exactly one of the element of the intersection
+    single_containment(condition, dummies1[1])
+
+    # Containing one of the elements from the intersection
+    single_containment(dummies1[1], dummies3[1])  # make sure that dummies1 is inside dummies3 first
+    single_containment(condition, dummies3[1])
+
+    # Exactly two elements the same
+    single_containment(condition, dummies1[1] & dummies1[3])
+
+    # One element the same, and another contained
+    single_containment(condition, dummies3[1] & dummies1[3])
+
+def test_simplified_intersection_list():
+
+    dummies12 = [DummyCondition(values={1,2}, type = i) for i in range(5)]
+    dummies13 = [DummyCondition(values={1,3}, type = i) for i in range(5)]
+    dummies1  = [DummyCondition(values={1  }, type = i) for i in range(5)]
+
+    # condition = dummies12[0] | dummies12[1] | dummies12[2] | dummies12[3]
+    #
+    # # Exactly one of the element of the intersection
+    condition = (dummies12[0] | dummies1[1] | dummies12[2] | dummies12[3]) & dummies13[1]
+    result = condition & dummies13[1]
+    print('\n^^^^^^^^^^^^^^^^^^^')
+    print(condition)
+    print(result)
+    assert str(condition) == str(result)
+
+
+def test_intersection_of_union_component_simplification():
+    # If A1 and A2 has some nontrivial intersection, then
+    #   (A1 | B | C) & A2 = (A1 & A2) | (B & A2) | (C & A2)
+    #                     = (A1 & A2 & A2) | (B & A2) | (C & A2)
+    #                     = ((A1 & A2) | B | C ) & A2
+    # In particular, if A1 and A2 do not intersect, we are left with
+    #                     = (B | C) & A2
+
+    dummies1 = [DummyCondition(values={1},type = i) for i in range(5)]
+    dummies3 = [DummyCondition(values={1,2,3},type = i) for i in range(5)]
+
+    condition1 = dummies3[0] | dummies3[1] | dummies3[2] | dummies3[3]
+    condition2 = dummies3[0] | dummies3[1]
+
+    # assert condition1 & condition2 == condition2
+
+    # small_dummy is contained in each of the dummies3[i]
+    small_dummy = dummies1[0] & dummies1[1] & dummies1[2] & dummies1[3]
+
+    intersection = small_dummy & dummies3[0]
+    assert intersection == small_dummy
+
+    union = small_dummy | dummies3[0]
+    assert union == dummies3[0]
+
+    intersection = small_dummy & ( dummies3[0] | dummies3[1] )
+    assert intersection == small_dummy
+
+    intersection = (dummies3[0] | small_dummy) & ( dummies3[0] | dummies3[1] )
+    assert intersection == (dummies3[0] | small_dummy)
+    #
+    # assert intersection == small_dummy
