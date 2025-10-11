@@ -131,6 +131,9 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer, Condition
                 all([c1 == 0 for c1 in coef1[n:]]) and
                 all([c2 == 0 for c2 in coef2[n:]]) )
 
+    def as_assignment(self, k: int) -> Condition:
+        return RangeCondition(self, (k, k+1)).simplify()
+
     # <editor-fold desc=" ------------------------ Arithmetic ------------------------">
 
     def linear_combination(self, k1: int, k2: int, elem2: MapElement) -> Optional[Tuple[int, MapElement]]:
