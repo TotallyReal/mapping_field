@@ -188,13 +188,16 @@ class _ListCondition(Condition):
     AND = 0
     OR = 1
 
+    list_classes = [None, None]
+    op_types = [operator.and_, operator.or_]
+    method_names = ['and_simpler', 'or_simpler']
+    trivials = [TrueCondition, FalseCondition]
+    join_delims = [' & ', ' | ']
+
     def __init_subclass__(cls, op_type: int):
         cls.type = op_type
 
-        cls.op_types = [operator.and_, operator.or_]
-        cls.method_names = ['and_simpler', 'or_simpler']
-        cls.trivials = [TrueCondition, FalseCondition]
-        cls.join_delims = [' & ', ' | ']
+        _ListCondition.list_classes[op_type] = cls
 
         cls.op_type = cls.op_types[op_type]
         cls.join_delim = cls.join_delims[op_type]
