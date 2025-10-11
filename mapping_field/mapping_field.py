@@ -433,7 +433,9 @@ class Var(MapElement, DefaultSerializable):
 
     def __new__(cls, name: str):
         if name in cls._instances:
-            return cls._instances[name]
+            v = cls._instances[name]
+            assert v.__class__ == cls, f'Attempted to create two variables of different classes with the same name {name}'
+            return v
 
         instance = super(Var, cls).__new__(cls)
         cls._instances[name] = instance
