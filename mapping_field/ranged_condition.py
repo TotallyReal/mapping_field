@@ -338,3 +338,5 @@ class RangeTransformer:
         """
         pass
 
+Var.__lshift__ = lambda self, n: SingleAssignmentCondition(self, n)
+
