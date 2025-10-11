@@ -53,8 +53,13 @@ def test_var_assignment():
 def test_named_function_double_generation():
     x, y = Var('x'), Var('y')
     f = NamedFunc('f', [x, y])
+
+    # Trying to create the same function with the same exact variables is fine:
+    g = NamedFunc('f', [x, y])
+
+    # different variables will raise an exception
     with pytest.raises(Exception) as ex:
-        g = NamedFunc('f', [x, y])
+        g = NamedFunc('f', [y, x])
 
 
 def test_named_function_try_get():

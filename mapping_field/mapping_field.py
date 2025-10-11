@@ -501,15 +501,21 @@ class NamedFunc(MapElement):
 
     def __new__(cls, func_name: str, variables: List[Var]):
         if func_name in cls._instances:
-            # TODO: Consider creating a specified exception
-            raise Exception(f'Cannot create two functions with the same name {func_name}')
+            cur_instance = cls._instances[func_name]
+            if cur_instance.vars != variables:
+                # TODO: Consider creating a specified exception
+                raise Exception(f'Cannot create two functions with the same name {func_name}')
+            return cur_instance
 
         instance = super(NamedFunc, cls).__new__(cls)
         cls._instances[func_name] = instance
         return instance
 
     def __init__(self, func_name: str, variables: List[Var]):
+        if hasattr(self, 'initialized'):
+            return
         super().__init__(variables, func_name)
+        self.initialized = True
         self._simplified = True
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
