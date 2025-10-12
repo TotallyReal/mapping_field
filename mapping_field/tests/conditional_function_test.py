@@ -2,8 +2,6 @@ import pytest
 
 from typing import List, Tuple, Union, Set
 
-from sympy.codegen import Assignment
-
 from mapping_field.binary_expansion import BoolVar, BinaryExpansion
 from mapping_field.conditions import Condition, FalseCondition
 from mapping_field.conditional_function import ConditionalFunction, ReLU
