@@ -6,7 +6,7 @@ from mapping_field.mapping_field import Var, MapElement, MapElementConstant, Ext
 from mapping_field.conditions import Condition, FalseCondition, TrueCondition, ConditionUnion
 from mapping_field.ranged_condition import SingleAssignmentCondition, RangeCondition, RangeTransformer, Range, \
     ConditionToRangeTransformer, RangeConditionSimplifier
-from mapping_field.linear import LinearTransformer
+from mapping_field.linear import LinearTransformer, Linear
 
 
 class BoolVar(Var, RangeTransformer, DefaultSerializable):
@@ -38,9 +38,19 @@ def _range_sum_bools_simplifier(function: MapElement, f_range: Range) -> Optiona
     if entries is None:
         return None
 
-    if not (isinstance(entries[0], BoolVar) and isinstance(entries[1], BoolVar)):
+    def extract_bool_var(element: MapElement):
+        if isinstance(element, Linear) and element.a == 1 and element.b == 0:
+            element = element.elem
+        if isinstance(element, BinaryExpansion) and all([v==0 for v in element.coefficients[1:]]):
+            element = element.coefficients[0]
+        if isinstance(element, BoolVar):
+            return element
         return None
-    if entries[0] is entries[1]:
+
+    var0 = extract_bool_var(entries[0])
+    var1 = extract_bool_var(entries[1])
+
+    if (var0 is None) or (var1 is None) or (entries[0] is entries[1]):
         return None
 
     a, b = f_range
@@ -53,10 +63,10 @@ def _range_sum_bools_simplifier(function: MapElement, f_range: Range) -> Optiona
     for k0 in (0,1):
         for k1 in (0,1):
             if a <= k0 + k1 < b:
-                conditions.append((entries[0] << k0) & (entries[1] << k1))
+                conditions.append((var0 << k0) & (var1 << k1))
 
     if len(conditions) == 0:
-        # not possible, but for completeness sake
+        # not possible, but for completeness’s sake
         return False
     if len(conditions) == 1:
         return conditions[0]
