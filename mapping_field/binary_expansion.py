@@ -33,38 +33,36 @@ class BoolVar(Var, RangeTransformer, DefaultSerializable):
             return TrueCondition
         return SingleAssignmentCondition(self, 1 if a == 1 else 0)
 
-class RangeSumBoolsSimplifier(RangeConditionSimplifier):
+def _range_sum_bools_simplifier(function: MapElement, f_range: Range) -> Optional[Condition]:
+    entries = MapElement.addition.__class__.try_get_entries(function)
+    if entries is None:
+        return None
 
-    def range_condition_simplify(self, function: MapElement, f_range: Range) -> Optional[Condition]:
-        entries = MapElement.addition.__class__.try_get_entries(function)
-        if entries is None:
-            return None
+    if not (isinstance(entries[0], BoolVar) and isinstance(entries[1], BoolVar)):
+        return None
+    if entries[0] is entries[1]:
+        return None
 
-        if not (isinstance(entries[0], BoolVar) and isinstance(entries[1], BoolVar)):
-            return None
-        if entries[0] is entries[1]:
-            return None
+    a, b = f_range
+    a = max(a, 0)
+    b = min(b, 3)
+    if b <= a:
+        return FalseCondition
 
-        a, b = f_range
-        a = max(a, 0)
-        b = min(b, 3)
-        if b <= a:
-            return FalseCondition
+    conditions = []
+    for k0 in (0,1):
+        for k1 in (0,1):
+            if a <= k0 + k1 < b:
+                conditions.append((entries[0] << k0) & (entries[1] << k1))
 
-        conditions = []
-        for k0 in (0,1):
-            for k1 in (0,1):
-                if a <= k0 + k1 < b:
-                    conditions.append((entries[0] << k0) & (entries[1] << k1))
+    if len(conditions) == 0:
+        # not possible, but for completeness sake
+        return False
+    if len(conditions) == 1:
+        return conditions[0]
+    return ConditionUnion(conditions, simplified = True)
 
-        if len(conditions) == 0:
-            # not possible, but for completeness sake
-            return False
-        if len(conditions) == 1:
-            return conditions[0]
-        return ConditionUnion(conditions, simplified = True)
-
-RangeCondition.register_simplifier(RangeSumBoolsSimplifier())
+RangeCondition.register_simplifier(_range_sum_bools_simplifier)
 
 def _two_power(k):
     k = abs(k)
