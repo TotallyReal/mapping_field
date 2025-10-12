@@ -35,3 +35,11 @@ follow it visually, since it will look something like "(x-( (( 1/x )-( f(x)/y ))
 More over, it will require a simple interface that us mere humans can use, for example, moving element from both sides of the
 equation to the other side (and thus simplifying the formula manually), isolating functions, automatically adding in exercises like the one above
 that $f(x)$ is actually a function of both $x,y$ (though we think of $y$ as "fixed" and then find $f$), etc.
+
+---
+
+**My homepage**: [https://prove-me-wrong.com/](https://prove-me-wrong.com/)
+
+**Contact**:	 [totallyRealField@gmail.com](mailto:totallyRealField@gmail.com)
+
+**Ofir David**
