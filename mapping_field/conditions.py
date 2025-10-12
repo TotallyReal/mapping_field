@@ -237,6 +237,14 @@ class _ListCondition(Condition, DefaultSerializable):
         conditions_rep = self.__class__.join_delim.join(repr(condition) for condition in self.conditions)
         return f'[{conditions_rep}]'
 
+    def pretty_str(self, tab_count: int = 0):
+        tabs = '\t' * tab_count
+        delim = self.__class__.join_delim + '\n'
+        inner_str = delim.join([
+            condition.pretty_str(tab_count+1) if isinstance(condition, _ListCondition) else (tabs + str(condition))
+            for condition in self.conditions])
+        return f'{tabs}[\n{inner_str}\n{tabs}]'
+
     @classmethod
     def _op_simpler_between(cls, condition1: Condition, condition2: Condition) -> Tuple[Condition, bool]:
         return getattr(condition1, cls.method_names[cls.type])(condition2)

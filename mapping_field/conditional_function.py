@@ -2,7 +2,7 @@ import operator
 from typing import List, Tuple, Optional
 
 from mapping_field.mapping_field import MapElement, ExtElement, MapElementConstant, VarDict, FuncDict, params_to_maps
-from mapping_field.conditions import TrueCondition, Condition, FalseCondition, MapElementProcessor
+from mapping_field.conditions import TrueCondition, Condition, FalseCondition, MapElementProcessor, _ListCondition
 from mapping_field.ranged_condition import SingleAssignmentCondition
 from mapping_field.serializable import DefaultSerializable
 
@@ -29,6 +29,12 @@ class ConditionalFunction(MapElement, DefaultSerializable):
     def to_string(self, vars_str_list: List[str]):
         # TODO: fix this printing function
         return ' , '.join([f'( {repr(condition)} -> {repr(map)} )' for (condition, map) in self.regions])
+
+    def pretty_str(self):
+        return '\n  @@       +      @@  \n'.join([
+            f'Given:  \n{condition.pretty_str() if isinstance(condition, _ListCondition) else repr(condition)} \n -->  {repr(map)}'
+            for condition, map in self.regions
+        ])
 
     def evaluate(self) -> Optional[ExtElement]:
         values = [func.evaluate() for _, func in self.regions]
