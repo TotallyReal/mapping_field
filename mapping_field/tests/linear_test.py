@@ -76,7 +76,7 @@ def test_linear_ranged_condition():
 
     # test negative coefficient
     condition = ranged_condition(a=-2, b=3, low=5, high=15)
-    result = RangeCondition(dummy, (-6,-1))
+    result = RangeCondition(dummy, (-5,0))
     assert condition == result
 
     # test zero coefficient - False

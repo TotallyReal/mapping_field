@@ -158,5 +158,5 @@ class Linear(MapElement, RangeTransformer, DefaultSerializable):
 
         f_range = ((l-self.b)/self.a, (h-self.b)/self.a)
         if self.a < 0:
-            f_range = (f_range[1], f_range[0])
+            f_range = (f_range[1]+1, f_range[0]+1)
         return RangeCondition(self.elem, f_range)
