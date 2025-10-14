@@ -156,6 +156,11 @@ def test_subtraction_rules():
 
 def test_multiplication_rules():
     x, y, z = Var('x'), Var('y'), Var('z')
+
+    assert str(x * (-y)) == '(-(x*y))'
+    assert str((-x) * y) == '(-(x*y))'
+    assert str((-x) * (-y)) == '(x*y)'
+
     f = Func('f')(x, y)
     g = Func('g')(z)
     h = Func('h')(y, z)

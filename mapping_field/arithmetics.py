@@ -208,7 +208,7 @@ class _Mult(_ArithmeticMapFromFunction):
         numerator = numerator0 * numerator1
         denominator = denominator0 * denominator1
         abs_value = numerator / denominator
-        return abs_value._simplify2() if sign0 * sign1 == 1 else (-abs_value)._simplify2()
+        return abs_value.simplify2() if sign0 * sign1 == 1 else (-abs_value).simplify2()
 
     def to_string(self, entries: List[str]):
         return f'({entries[0]}*{entries[1]})'
