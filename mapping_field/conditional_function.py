@@ -70,7 +70,7 @@ class ConditionalFunction(MapElement, DefaultSerializable):
         for (cond1, elem1) in self.regions:
             for (cond2, elem2) in other.regions:
                 cond_prod = (cond1 * cond2).simplify()
-                if cond_prod != FalseCondition:
+                if cond_prod is not FalseCondition:
                     regions.append((cond_prod, op_func(elem1, elem2)))
         return ConditionalFunction(regions).simplify2()
 
@@ -113,11 +113,12 @@ class ConditionalFunction(MapElement, DefaultSerializable):
         return ConditionalFunction(regions)
 
     def _simplify2(self) -> Optional['MapElement']:
-        return self._simplify_with_var_values2({v: v for v in self.vars})
+        return self._simplify_with_var_values2({})
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> 'MapElement':
         regions = []
         for condition, func in self.regions:
+            # TODO: use var_dict to simplify the conditions
             condition = condition.simplify()
             if condition == FalseCondition:
                 continue
@@ -170,17 +171,17 @@ def ReLU(map_elem: MapElement):
         regions = []
         for condition, func in map_elem.regions:
             non_negative = (func >= 0)
-            if non_negative == TrueCondition:
+            if (func >= 0) == TrueCondition:
                 # Make your and my life a little bit simpler
                 regions.append( (condition, func) )
-            elif non_negative == FalseCondition:
+            elif (func <= 0) == FalseCondition:
                 regions.append( (condition, zero) )
             else:
-                regions.append( (condition * non_negative, func) )
-                regions.append( (condition * (func < 0), zero) )
+                regions.append( (condition * (func > 0), func) )
+                regions.append( (condition * (func <= 0), zero) )
         regions = [(cond, func) for cond, func in regions if FalseCondition != cond]
         return ConditionalFunction(regions)
     return ConditionalFunction([
-        ((map_elem >= 0), map_elem),
-        ((map_elem < 0), zero)
+        ((map_elem > 0), map_elem),
+        ((map_elem <= 0), zero)
     ])
