@@ -122,7 +122,7 @@ class DummyMapWithVar(MapElement):
 
     # Override when needed
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
-        return MapElementConstant.zero if var_dict[self.x] == 0 else None
+        return MapElementConstant.zero if (var_dict.get(self.x, None) == 0) else None
 
 
 class SpecialDummyVar(MapElement):
