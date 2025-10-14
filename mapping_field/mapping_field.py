@@ -310,10 +310,16 @@ class MapElement:
 
     @params_to_maps
     def __add__(self, other) -> 'MapElement':
+        # Very quick simplifiers:
+        if other == 0:
+            return self
         return MapElement.addition(self, other)
 
     @params_to_maps
     def __radd__(self, other) -> 'MapElement':
+        # Very quick simplifiers:
+        if other == 0:
+            return self
         return MapElement.addition(other, self)
 
     def add(self, other: 'MapElement') -> Optional['MapElement']:
@@ -339,6 +345,9 @@ class MapElement:
         return MapElement.subtraction(other, self)
 
     def sub(self, other: 'MapElement') -> Optional['MapElement']:
+        # Very quick simplifiers:
+        if other == 0:
+            return self
         return None
 
     def rsub(self, other: 'MapElement') -> Optional['MapElement']:
@@ -357,10 +366,20 @@ class MapElement:
 
     @params_to_maps
     def __mul__(self, other) -> 'MapElement':
+        # Very quick simplifiers:
+        if other == 1:
+            return self
+        if other == 0:
+            return MapElementConstant.zero
         return MapElement.multiplication(self, other)
 
     @params_to_maps
     def __rmul__(self, other) -> 'MapElement':
+        # Very quick simplifiers:
+        if other == 1:
+            return self
+        if other == 0:
+            return MapElementConstant.zero
         return MapElement.multiplication(other, self)
 
     def mul(self, other: 'MapElement') -> Optional['MapElement']:
