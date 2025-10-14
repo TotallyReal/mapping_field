@@ -1,4 +1,5 @@
 from typing import List, Union, Optional, Tuple
+import math
 
 from mapping_field.serializable import DefaultSerializable
 from mapping_field.arithmetics import as_neg
@@ -7,6 +8,58 @@ from mapping_field.conditions import Condition, FalseCondition, TrueCondition, C
 from mapping_field.ranged_condition import SingleAssignmentCondition, RangeCondition, RangeTransformer, Range, \
     ConditionToRangeTransformer, RangeConditionSimplifier
 from mapping_field.linear import LinearTransformer, Linear
+
+
+class IntVar(Var, RangeTransformer, DefaultSerializable):
+
+    def __new__(cls, var_name: str):
+        return super(IntVar, cls).__new__(cls, var_name)
+
+    def __init__(self, var_name: str):
+        super().__init__(var_name)
+
+    @classmethod
+    def serialization_name_conversion(cls):
+        return {'var_name' : 'name'}
+
+    def transform_range(self, range_values: Range) -> Optional[Condition]:
+        a, b = range_values
+        if a != float('-inf'):
+            a = math.ceil(a)
+        if b != float('inf'):
+            b = math.ceil(b)
+
+        if b == a + 1:
+            return SingleAssignmentCondition(self, a)
+        return None
+
+class BoundedIntVar(IntVar):
+
+    def __new__(cls, var_name: str, min_value: int, max_value: int):
+        return super(IntVar, cls).__new__(cls, var_name)
+
+    def __init__(self, var_name: str, min_value: int, max_value: int):
+        super().__init__(var_name)
+        self.min_value = min_value
+        self.max_value = max_value
+
+    def transform_range(self, range_values: Range) -> Optional[Condition]:
+        a, b = range_values
+        if a != float('-inf'):
+            a = math.ceil(a)
+        if b != float('inf'):
+            b = math.ceil(b)
+
+        a = max(a, self.min_value)
+        b = min(b, self.max_value)
+
+        if b == a + 1:
+            return SingleAssignmentCondition(self, a)
+
+        if a != range_values[0] or b != range_values[1]:
+            return RangeCondition(self, (a, b))
+
+        return None
 
 
 class BoolVar(Var, RangeTransformer, DefaultSerializable):
