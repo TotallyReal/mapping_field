@@ -716,7 +716,10 @@ class MapElementFromFunction(MapElement):
 
     # Override when needed
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
-        entries = self._entry_list(var_dict)
+        entries = get_var_values(self.vars, var_dict)
+        if entries is None:
+            return None
+
         if all(isinstance(entry, MapElementConstant) for entry in entries):
             result = self.function(*[entry.elem for entry in entries])
             return MapElementConstant(result)
