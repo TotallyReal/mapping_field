@@ -231,7 +231,7 @@ class MapElement:
         return self._simplify2() or self
 
     def _simplify2(self) -> Optional['MapElement']:
-        simplified_version = self._simplify_with_var_values2({v: v for v in self.vars})
+        simplified_version = self._simplify_with_var_values2({})
         if simplified_version is not None:
             simplified_version._simplified = True
         else:
@@ -641,21 +641,28 @@ class CompositionFunction(MapElement, DefaultSerializable):
     #       we should check if it has a new type of arithmetic function that we can call.
 
     # Override when needed
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
-        simplified_entries: List[MapElement] = {v : (entry._simplify_with_var_values2(var_dict) or entry)
-                                                for v, entry in zip(self.function.vars, self.entries)}
-        function: MapElement = (self.function._simplify2() or self.function)
+    def _simplify_with_var_values2(self, var_dict: Optional[VarDict] = None) -> Optional['MapElement']:
+        is_simpler = False
 
-        result = function._simplify_with_var_values2(simplified_entries)
+        function: MapElement = self.function.simplify2()
+        is_simpler = function is not self.function
+
+        simplified_entries = [entry._simplify_with_var_values2(var_dict) for entry in self.entries]
+        is_simpler |= any([entry is not None for entry in simplified_entries])
+        simplified_entries = [simp_entry or entry for simp_entry, entry in zip(simplified_entries, self.entries)]
+
+        simplified_entries_dict  = {v : entry
+                                    for v, entry in zip(function.vars, simplified_entries)}
+        result = function._simplify_with_var_values2(simplified_entries_dict)
         if result != None:
             return result
 
-        for position, v in enumerate(self.function.vars):
-            result = simplified_entries[v]._simplify_caller_function2(function, position, simplified_entries)
+        for position, v in enumerate(function.vars):
+            result = simplified_entries_dict[v]._simplify_caller_function2(function, position, simplified_entries_dict)
             if result != None:
                 return result
 
-        return CompositionFunction(function, [simplified_entries[v] for v in self.function.vars])
+        return None if not is_simpler else CompositionFunction(function, simplified_entries)
 
     def _simplify_caller_function2(self, function: MapElement, position: int, var_dict: VarDict) -> Optional[MapElement]:
         return None
