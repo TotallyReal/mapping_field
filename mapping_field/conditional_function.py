@@ -116,6 +116,22 @@ class ConditionalFunction(MapElement, DefaultSerializable):
         return self._simplify_with_var_values2({})
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> 'MapElement':
+
+        def combinable(condition1: Condition, elem1: MapElement, condition2: Condition, elem2:MapElement) \
+                -> Optional[MapElement]:
+            if elem1 == elem2:
+                return elem1
+
+            var_dict = SingleAssignmentCondition.as_assignment_dict(condition1)
+            if var_dict is not None and elem2(var_dict) == elem1:
+                return elem2
+
+            var_dict = SingleAssignmentCondition.as_assignment_dict(condition2)
+            if var_dict is not None and elem1(var_dict) == elem2:
+                return elem1
+
+            return None
+
         regions = []
         for condition, func in self.regions:
             # TODO: use var_dict to simplify the conditions
@@ -128,10 +144,11 @@ class ConditionalFunction(MapElement, DefaultSerializable):
                 func = func._simplify_with_var_values2(var_dict) or func
 
             for i, (prev_cond, prev_func) in enumerate(regions):
-                if prev_func == func:
+                comb_elem = combinable(prev_cond, prev_func, condition, func)
+                if comb_elem is not None:
                     condition_union = prev_cond | condition
                     condition_union = condition_union.simplify()
-                    regions[i][0] = condition_union
+                    regions[i] = [condition_union, comb_elem]
                     break
             else:
                 regions.append([condition, func])
@@ -139,30 +156,7 @@ class ConditionalFunction(MapElement, DefaultSerializable):
         if len(regions) == 1 and regions[0][0] is TrueCondition:
             return regions[0][1]
 
-        # If there is a region (assignment -> func1) and another region (cond -> func2), such that
-        # func2(assignment) = func, then we can combine them.
-
-        assignment_regions = []
-        other_regions = []
-        for condition, func in regions:
-            var_dict = SingleAssignmentCondition.as_assignment_dict(condition)
-            if var_dict is not None:
-                assignment_regions.append((var_dict, condition, func))
-            else:
-                other_regions.append((condition, func))
-
-        for var_dict, condition, func in assignment_regions:
-            for other_region in other_regions:
-                other_cond, other_func = other_region
-                if other_func(var_dict) == func:
-                    other_regions = [region for region in other_regions if (region is not other_region)]
-                    union_condition = (other_cond | condition).simplify()
-                    other_regions.append((union_condition, other_func))
-                    break
-            else:
-                other_regions.append((condition, func))
-
-        return ConditionalFunction([tuple(region) for region in other_regions])
+        return ConditionalFunction([tuple(region) for region in regions])
 
 
 def ReLU(map_elem: MapElement):

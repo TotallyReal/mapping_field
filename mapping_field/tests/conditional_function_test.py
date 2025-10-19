@@ -106,6 +106,18 @@ def test_equality_to_conditional_function():
 
     assert cond_func1 == cond_func2
 
+def test_combining_regions():
+    x, y = BoolVar('x'), BoolVar('y')
+
+    func = ConditionalFunction([
+        ( (x << 0) & (y << 0) , MapElementConstant(0)),
+        ( (x << 1) & (y << 0) , MapElementConstant(1)),
+        ( (y << 1) , x),
+    ])
+
+    func = func.simplify2()
+    assert func == x
+
 
 def test_equality_region_wise():
     x = Var('x')
