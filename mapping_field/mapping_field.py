@@ -2,7 +2,7 @@ from abc import abstractmethod
 import collections
 import functools
 import inspect
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple, Type
 from mapping_field.field import FieldElement, ExtElement
 from mapping_field.serializable import DefaultSerializable
 
@@ -591,6 +591,58 @@ class Func:
         self.assigned = NamedFunc(self.name, actual_vars)
         return self.assigned
 
+"""
+These callables are registered to a MapElement class.
+Tries to simplify the given map element (1st parameter) with the assignment (2nd parameter).
+If possible, returns the simplified version, otherwise returns None.
+"""
+# TODO: Find a way to promise that the map element in the parameters is of the type of the class where this
+#       simplifier was registered
+MapElemSimplifier = Callable[[VarDict], Optional[MapElement]]
+
+ClassSimplifier = Callable[[MapElement, VarDict], Optional[MapElement]]
+
+class Simplifier:
+
+    def __init__(self):
+        self.map_elem_simplifiers: List[Tuple[MapElement, MapElemSimplifier]] = []
+        self.class_simplifiers: List[Tuple[Type[MapElement], ClassSimplifier]] = []
+
+    def register_map_elem_simplifier(self, map_elem: MapElement, simplifier: MapElemSimplifier) -> None:
+        self.map_elem_simplifiers.append((map_elem, simplifier))
+
+    # TODO: make sure that the class simplifier corresponds to the given map_elem_class
+    def register_class_simplifier(self, map_elem_class: Type[MapElement], simplifier: ClassSimplifier) -> None:
+        self.class_simplifiers.append((map_elem_class, simplifier))
+
+    def _single_simplifier(self, map_elem: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+        for simplify_map_elem, simplifier in self.map_elem_simplifiers:
+            if simplify_map_elem is map_elem:
+                result = simplifier(var_dict)
+                if result is None:
+                    continue
+                return result
+
+        for simplify_map_elem_class, simplifier in self.class_simplifiers:
+            if isinstance(map_elem, simplify_map_elem_class):
+                result = simplifier(map_elem, var_dict)
+                if result is None:
+                    continue
+                return result
+
+        return None
+
+    def simplify(self, map_elem: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+        is_simpler = False
+        while True:
+            result = self._single_simplifier(map_elem, var_dict)
+            if result is None:
+                break
+            map_elem = result
+            is_simpler = True
+
+        return map_elem if is_simpler else None
+
 
 class CompositionFunction(MapElement, DefaultSerializable):
 
@@ -637,6 +689,8 @@ class CompositionFunction(MapElement, DefaultSerializable):
 
         return CompositionFunction(function=eval_function, entries=eval_entries)
 
+    simplifier = Simplifier()
+
     # TODO: When simplifying arithmetic function, e.g. a + b, after simplifying both a and b,
     #       we should check if it has a new type of arithmetic function that we can call.
 
@@ -662,7 +716,10 @@ class CompositionFunction(MapElement, DefaultSerializable):
             if result != None:
                 return result
 
-        return None if not is_simpler else CompositionFunction(function, simplified_entries)
+        if is_simpler:
+            return CompositionFunction(function, simplified_entries)
+
+        return CompositionFunction.simplifier.simplify(function, simplified_entries_dict)
 
     def _simplify_caller_function2(self, function: MapElement, position: int, var_dict: VarDict) -> Optional[MapElement]:
         return None
