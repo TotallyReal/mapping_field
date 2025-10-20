@@ -730,6 +730,16 @@ class MapElementConstant(MapElement, DefaultSerializable):
     Used for constant maps, and for casting elements into maps.
     """
 
+    zero = None
+    one = None
+
+    def __new__(cls, elem: ExtElement):
+        if elem == 0 and MapElementConstant.zero is not None:
+            return MapElementConstant.zero
+        if elem == 1 and MapElementConstant.one is not None:
+            return MapElementConstant.one
+        return super().__new__(cls)
+
     def __init__(self, elem: ExtElement):
         super().__init__([], str(elem))
         self.elem = elem

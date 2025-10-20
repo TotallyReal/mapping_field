@@ -219,4 +219,7 @@ def test_adding_class_simplifier():
     assert str(h(dummy0)) == 'h(DummyMap(0))'
     assert h(dummy0) != 0
 
+def test_unique_01():
+    assert MapElementConstant(0) is MapElementConstant.zero
+    assert MapElementConstant(1) is MapElementConstant.one
 
