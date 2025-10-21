@@ -100,7 +100,7 @@ class MapElement:
         self.name = name or self.__class__.__name__
         var_names = set(v.name for v in variables)
         if len(variables) > len(var_names):
-            raise Exception(f'Function must have distinct variables')
+            raise Exception(f'Function must have distinct variables: {variables}')
         self.vars = variables
         self.num_vars = len(variables)
         self._simplified = False

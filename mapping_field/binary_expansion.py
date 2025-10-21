@@ -1,8 +1,9 @@
 from typing import List, Union, Optional, Tuple
 import math
 
+from mapping_field.mapping_field import get_var_values
 from mapping_field.serializable import DefaultSerializable
-from mapping_field.arithmetics import as_neg
+from mapping_field.arithmetics import as_neg, Add
 from mapping_field.mapping_field import Var, MapElement, MapElementConstant, ExtElement, VarDict, FuncDict
 from mapping_field.conditions import Condition, FalseCondition, TrueCondition, ConditionUnion
 from mapping_field.ranged_condition import SingleAssignmentCondition, RangeCondition, RangeTransformer, Range, \
@@ -137,6 +138,17 @@ def _two_power(k):
 
 class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer, ConditionToRangeTransformer, DefaultSerializable):
 
+    @classmethod
+    def of(cls, map_elem: MapElement) -> Optional['BinaryExpansion']:
+        if isinstance(map_elem, BinaryExpansion):
+            return map_elem
+        if isinstance(map_elem, BoolVar):
+            return BinaryExpansion([map_elem])
+        # if isinstance(map_elem, BoundedIntVar) and map_elem.max_value - map_elem.min_value == 2:
+        #     return BinaryExpansion([BoolVar(f'{map_elem.name}_bool')]), map_elem.min_value
+
+        return None
+
     @staticmethod
     def generate(var_name: str, num_digits: int):
         num_digits = max(num_digits, 1)
@@ -188,7 +200,7 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer, Condition
             return str(self.coefficients[0])
         # TODO: use the vars_str_list
         vars_str = ', '.join([str(v) for v in self.coefficients[:1+indices[-1]]])
-        return f'[{vars_str}]'
+        return f'Bin[{vars_str}]'
 
     def evaluate(self) -> Optional[ExtElement]:
         return self._constant if (self._bool_max_value[-1] == 0) else None
@@ -252,6 +264,7 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer, Condition
         if k2 == 0 or len(non_zero2) == 0:
             return k1, elem1
 
+        # Check if both elements are the same up to a power of 2
         if len(non_zero1) == len(non_zero2):
             diff = non_zero1[0] - non_zero2[0]
             if all( ((coef1[i1] == coef2[i2]) and (i1 - i2 == diff)) for i1,i2 in zip(non_zero1, non_zero2)):
@@ -541,3 +554,24 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer, Condition
             b += two_power
 
         return (a,b+1)
+
+def binary_addition_simplifier(var_dict: VarDict) -> Optional[MapElement]:
+    add_vars = get_var_values(Add.vars, var_dict)
+    if add_vars is None:
+        return None
+
+    linear_var1 = Linear.of(add_vars[0])
+    linear_var2 = Linear.of(add_vars[1])
+
+    bin_1 = BinaryExpansion.of(linear_var1.elem)
+    bin_2 = BinaryExpansion.of(linear_var2.elem)
+    if bin_1 is None or bin_2 is None:
+        return None
+
+    result = bin_1.linear_combination(linear_var1.a, linear_var2.a, bin_2)
+    if result is not None:
+        coef, elem = result
+        return coef * elem
+    return None
+
+Add.register_simplifier(binary_addition_simplifier)
