@@ -151,6 +151,51 @@ class _Sub(_ArithmeticMapFromFunction):
     def to_string(self, entries: List[str]):
         return f'({entries[0]}-{entries[1]})'
 
+def _as_scalar_mult(map_elem: MapElement) -> Tuple[int, MapElement]:
+    value = map_elem.evaluate()
+    if value is not None:
+        return value, MapElementConstant.one
+    if isinstance(map_elem, CompositionFunction) and map_elem.function == Mult:
+        a, b = map_elem.entries
+        a_value = a.evaluate()
+        b_value = b.evaluate()
+        if a_value is not None:
+            if b_value is not None:
+                return a_value * b_value, MapElementConstant.one
+            return a_value, b
+        if b_value is not None:
+            return b_value, a
+    return 1, map_elem
+
+# TODO: consider creating a LinearCombination class?
+#       also, make this function recursive.
+def _as_combination(map_elem: MapElement) -> Tuple[int, MapElement, int, MapElement]:
+    if not isinstance(map_elem, CompositionFunction):
+        return 1, map_elem, 0, MapElementConstant.zero
+
+    function = map_elem.function
+
+    if function is Neg:
+        c0, elem0 = _as_scalar_mult(map_elem.entries[0])
+        return -c0, elem0, 0, MapElementConstant.zero
+
+    if function is Sub:
+        c0, elem0 = _as_scalar_mult(map_elem.entries[0])
+        c1, elem1 = _as_scalar_mult(map_elem.entries[1])
+        if c0 == 0 or elem0 is MapElementConstant.one:
+            return -c1, elem1, c0, elem0
+        return c0, elem0, -c1, elem1
+
+    if function is Add:
+        c0, elem0 = _as_scalar_mult(map_elem.entries[0])
+        c1, elem1 = _as_scalar_mult(map_elem.entries[1])
+        if c0 == 0 or elem0 is MapElementConstant.one:
+            return c1, elem1, c0, elem0
+        return c0, elem0, c1, elem1
+
+    c, elem = _as_scalar_mult(map_elem)
+    return c, elem, 0, MapElementConstant.zero
+
 
 def _as_rational(map_elem: MapElement) -> (int, MapElement, MapElement):
     """

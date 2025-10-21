@@ -1,6 +1,8 @@
 from typing import List, Tuple, Optional
 
 import pytest
+
+from mapping_field.arithmetics import _as_combination
 from mapping_field.mapping_field import Var, NamedFunc, Func, MapElement, VarDict
 
 
@@ -181,3 +183,55 @@ def test_simplification_after_assignment():
     assigned_addition = assigned_addition({x: ImprovedDummyMap((1,))})
     assigned_addition = assigned_addition.simplify2()
     assert assigned_addition == result
+
+# ----------------- combination -----------------
+
+
+def test_as_combination_trivial():
+    dummy0 = DummyMap(0)
+
+    a, elem_a, b, elem_b = _as_combination(dummy0)
+    assert (a, elem_a, b) == (1, dummy0, 0)
+
+    a, elem_a, b, elem_b = _as_combination(-dummy0)
+    assert (a, elem_a, b) == (-1, dummy0, 0)
+
+
+def test_as_combination_only_multiplication():
+    dummy0 = DummyMap(0)
+
+    a, elem_a, b, elem_b = _as_combination(3 * dummy0)
+    assert (a, elem_a, b) == (3, dummy0, 0)
+
+    a, elem_a, b, elem_b = _as_combination(dummy0 * 3)
+    assert (a, elem_a, b) == (3, dummy0, 0)
+
+    a, elem_a, b, elem_b = _as_combination((-3) * dummy0)
+    assert (a, elem_a, b) == (-3, dummy0, 0)
+
+    a, elem_a, b, elem_b = _as_combination(-(3 * dummy0))
+    assert (a, elem_a, b) == (-3, dummy0, 0)
+
+
+def test_as_combination_linear():
+    dummy0 = DummyMap(0)
+
+    a, elem_a, b, elem_b = _as_combination(3 * dummy0 + 4)
+    assert (a, elem_a, b) == (3, dummy0, 4)
+
+    a, elem_a, b, elem_b = _as_combination(4 + dummy0 * 3)
+    assert (a, elem_a, b) == (3, dummy0, 4)
+
+    a, elem_a, b, elem_b = _as_combination(3 * dummy0 - 4)
+    assert (a, elem_a, b) == (3, dummy0, -4)
+
+    a, elem_a, b, elem_b = _as_combination(4 - dummy0 * 3)
+    assert (a, elem_a, b) == (-3, dummy0, 4)
+
+
+def test_as_combination_full():
+    dummy0 = DummyMap(0)
+    dummy1 = DummyMap(0)
+
+    a, elem_a, b, elem_b = _as_combination(3 * dummy0 + 4 * dummy1)
+    assert (a, elem_a, b, elem_b) == (3, dummy0, 4, dummy1)
