@@ -2,6 +2,7 @@ from abc import abstractmethod
 import math
 from typing import List, Tuple, Optional
 
+from mapping_field.arithmetics import _as_combination
 from mapping_field.serializable import DefaultSerializable
 from mapping_field.mapping_field import MapElement, VarDict, FuncDict, MapElementConstant, ExtElement
 from mapping_field.conditions import Condition, TrueCondition, FalseCondition
@@ -22,6 +23,15 @@ class Linear(MapElement, RangeTransformer, DefaultSerializable):
 
     @staticmethod
     def of(elem: MapElement):
+        if isinstance(elem, Linear):
+            return elem
+
+        a, elem_a, b, elem_b = _as_combination(elem)
+        if b == 0 or elem_b is MapElementConstant.one:
+            return Linear(a, elem_a, b)
+        if a == 0 or elem_a is MapElementConstant.one:
+            return Linear(b, elem_b, a)
+
         return Linear(1, elem, 0)
 
     def __init__(self, a: float, elem: MapElement, b: float):

@@ -58,6 +58,23 @@ def test_linear_arithmetic():
     result = -6*dummy - 4
     assert func == result
 
+def test_conversion_to_linear():
+    dummy = DummyMap(0)
+
+    # linear of general functions
+    lin_dummy = Linear(1, dummy, 0)
+    assert Linear.of(dummy) == lin_dummy
+
+    # linear of linear functions: same function (not just equals)
+    lin_dummy = Linear(3, dummy, 4)
+    assert Linear.of(lin_dummy) is lin_dummy
+
+    arith_dummy = 3 * dummy + 4
+    assert Linear.of(arith_dummy) == lin_dummy
+
+    arith_dummy = 4 + dummy * 3
+    assert Linear.of(arith_dummy) == lin_dummy
+
 # ============================== ranged condition ==============================
 
 def test_linear_ranged_condition():
