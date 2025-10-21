@@ -155,9 +155,11 @@ def test_linear_shift():
     x2 = Linear.of(BinaryExpansion([0, 0, v1, v2, 0, 1, 1]))
     x3 = Linear.of(BinaryExpansion([0, 0, 0, 0, v1, v2, 0, 1, 1]))
 
-    assert x1*4 == x2
-    assert x1*16 == x3
-    assert x2*4 == x3
+    # The result of the arithmetics operations are simplified automatically
+
+    assert x1*4 == x2.simplify2()
+    assert x1*16 == x3.simplify2()
+    assert x2*4 == x3.simplify2()
 
 
 def addition_test(x, y, x_plus_y):

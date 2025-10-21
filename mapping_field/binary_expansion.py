@@ -520,6 +520,8 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer, Condition
         if a <= 0 and self._bool_max_value[i+1] < b: # TODO: +1 ?
             return condition
         else:
+            if condition is TrueCondition and (a, b) == range_values:
+                return None
             return condition * RangeCondition(BinaryExpansion(coefs[:i+1]), (a, b), simplified=True)
 
     def as_range(self, condition: Condition) -> Optional[Range]:
@@ -555,6 +557,14 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer, Condition
 
         return (a,b+1)
 
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
+        elem, constant = self.split_constant()
+        if constant == 0:
+            return None
+        if elem is None:
+            return constant
+        return Linear(1, elem, constant.evaluate())
+
 def binary_addition_simplifier(var_dict: VarDict) -> Optional[MapElement]:
     add_vars = get_var_values(Add.vars, var_dict)
     if add_vars is None:
@@ -571,7 +581,7 @@ def binary_addition_simplifier(var_dict: VarDict) -> Optional[MapElement]:
     result = bin_1.linear_combination(linear_var1.a, linear_var2.a, bin_2)
     if result is not None:
         coef, elem = result
-        return coef * elem
+        return Linear(coef, elem, linear_var1.b + linear_var2.b)
     return None
 
 Add.register_simplifier(binary_addition_simplifier)
