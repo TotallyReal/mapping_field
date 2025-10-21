@@ -181,7 +181,7 @@ def test_adding_element_simplifier():
             return MapElementConstant.zero
         return None
 
-    CompositionFunction.simplifier.register_map_elem_simplifier(f, f0_simplifier)
+    f.register_simplifier(f0_simplifier)
 
     assert f(dummy0) == 0
     assert str(g(dummy0)) == 'g(DummyMap(0))'
@@ -212,7 +212,7 @@ def test_adding_class_simplifier():
 
         return None
 
-    CompositionFunction.simplifier.register_class_simplifier(NamedFunc, named_func_simplifier)
+    NamedFunc.register_class_simplifier(named_func_simplifier)
 
     assert f(dummy0) == 0
     assert g(dummy0, dummy1) == 0

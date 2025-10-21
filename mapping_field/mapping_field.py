@@ -138,7 +138,6 @@ class MapElement:
 
     # </editor-fold>
 
-
     # <editor-fold desc=" ------------------------ Call and Simplify function ------------------------">
 
     def _extract_var_dicts(self, args, kwargs) -> Tuple[VarDict, FuncDict]:
@@ -253,6 +252,13 @@ class MapElement:
 
     def _simplify_caller_function2(self, function:'MapElement', position: int, var_dict: VarDict) -> Optional['MapElement']:
         return None
+
+    @classmethod
+    def register_class_simplifier(cls, simplifier: 'ClassSimplifier'):
+        CompositionFunction.simplifier.register_class_simplifier(cls, simplifier)
+
+    def register_simplifier(self, simplifier: 'MapElemSimplifier'):
+        CompositionFunction.simplifier.register_map_elem_simplifier(self, simplifier)
 
     # </editor-fold>
 
