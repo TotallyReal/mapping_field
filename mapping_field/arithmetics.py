@@ -42,6 +42,7 @@ class _ArithmeticMapFromFunction(MapElementFromFunction, DefaultSerializable):
             return
         super().__init__(name, function)
         self._initialized = True
+        self._simplified = True
 
     @classmethod
     def try_get_entries(cls, elem: MapElement) -> Optional[Tuple[MapElement, MapElement]]:
@@ -241,9 +242,9 @@ class _Mult(_ArithmeticMapFromFunction):
             return entries[0]
 
         if entries[0] == -1:
-            return Neg(entries[1])._simplify2()
+            return Neg(entries[1])
         if entries[1] == -1:
-            return Neg(entries[0])._simplify2()
+            return Neg(entries[0])
 
         sign0, numerator0, denominator0 = _as_rational(entries[0])
         sign1, numerator1, denominator1 = _as_rational(entries[1])
