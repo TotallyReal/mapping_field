@@ -175,40 +175,40 @@ class ConditionalFunction(MapElement, DefaultSerializable):
 
         return ConditionalFunction([tuple(region) for region in regions]) if is_simpler else None
 
-#
-# def bool_var_simplifier(map_elem: MapElement, var_dict: VarDict) -> Optional[MapElement]:
-#     assert isinstance(map_elem, ConditionalFunction)
-#
-#     if len(map_elem.regions) != 2:
-#         return None
-#
-#     cond1, func1 = map_elem.regions[0]
-#     cond2, func2 = map_elem.regions[1]
-#     value1 = func1.evaluate()
-#     value2 = func2.evaluate()
-#     if value1 is None or value2 is None:
-#         return None
-#
-#     if not (isinstance(cond1, SingleAssignmentCondition) and isinstance(cond2, SingleAssignmentCondition)):
-#         return None
-#
-#     v1 = cond1.var
-#     v2 = cond2.var
-#     if not (isinstance(v1, BoolVar) and v1 is v2):
-#         return None
-#
-#     assigned_value1 = cond1.value
-#     assigned_value2 = cond2.value
-#
-#     if (assigned_value1, assigned_value2) == (0, 1):
-#         return (value1 + (value2 - value1) * v1).simplify2()
-#
-#     if (assigned_value1, assigned_value2) == (1, 0):
-#         return (value2 + (value1 - value2) * v1).simplify2()
-#
-#     raise Exception(f'The assigned values should be 0 and 1, but instead got {assigned_value1} and {assigned_value2}')
-#
-# ConditionalFunction.register_class_simplifier(bool_var_simplifier)
+
+def bool_var_simplifier(map_elem: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    assert isinstance(map_elem, ConditionalFunction)
+
+    if len(map_elem.regions) != 2:
+        return None
+
+    cond1, func1 = map_elem.regions[0]
+    cond2, func2 = map_elem.regions[1]
+    value1 = func1.evaluate()
+    value2 = func2.evaluate()
+    if value1 is None or value2 is None:
+        return None
+
+    if not (isinstance(cond1, SingleAssignmentCondition) and isinstance(cond2, SingleAssignmentCondition)):
+        return None
+
+    v1 = cond1.var
+    v2 = cond2.var
+    if not (isinstance(v1, BoolVar) and v1 is v2):
+        return None
+
+    assigned_value1 = cond1.value
+    assigned_value2 = cond2.value
+
+    if (assigned_value1, assigned_value2) == (0, 1):
+        return (value1 + (value2 - value1) * v1).simplify2()
+
+    if (assigned_value1, assigned_value2) == (1, 0):
+        return (value2 + (value1 - value2) * v1).simplify2()
+
+    raise Exception(f'The assigned values should be 0 and 1, but instead got {assigned_value1} and {assigned_value2}')
+
+ConditionalFunction.register_class_simplifier(bool_var_simplifier)
 
 
 def ReLU(map_elem: MapElement):

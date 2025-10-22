@@ -1,19 +1,28 @@
 import pytest
-
+import logging
 from typing import List, Tuple, Union, Set
 
+from mapping_field.tree_loggers import TreeLogger
 from mapping_field.binary_expansion import BoolVar, BinaryExpansion
 from mapping_field.conditions import Condition, FalseCondition
 from mapping_field.conditional_function import ConditionalFunction, ReLU
 from mapping_field.linear import Linear
 from mapping_field.mapping_field import MapElementConstant, MapElement, Var, NamedFunc
 from mapping_field.ranged_condition import RangeCondition, SingleAssignmentCondition
+from mapping_field.tests.conftest import debug_step, log_to_file, SIMPLE_FORMAT
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture(autouse=True)
 def reset_static_variables():
     Var.clear_vars()
     NamedFunc.clear_vars()
+
+
+@pytest.fixture(autouse=True)
+def reset_logs():
+    TreeLogger.reset()
 
 # <editor-fold desc=" ------------------------ Dummy objects ------------------------">
 
@@ -231,8 +240,7 @@ def test_linear_ranged_condition_subtraction():
     assert v == x.coefficients[3]
 
     v = 8 * v
-    u = ConditionalFunction.always(xx) - v
-    u = u.simplify2()
+    u = xx - v
 
     result = BinaryExpansion(vv[:3])
     assert u == result
