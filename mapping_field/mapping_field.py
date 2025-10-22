@@ -6,7 +6,9 @@ from typing import Callable, Dict, List, Optional, Tuple
 from mapping_field.processors import ProcessorCollection, Processor, ParamProcessor
 from mapping_field.field import FieldElement, ExtElement
 from mapping_field.serializable import DefaultSerializable
+from mapping_field.tree_loggers import TreeLogger, TreeAction, red, cyan, magenta, green
 
+simplify_logger = TreeLogger(__name__)
 
 # def _to_constant(elem):
 #     if isinstance(elem, MapElementConstant):
@@ -674,7 +676,9 @@ class CompositionFunction(MapElement, DefaultSerializable):
     # Override when needed
     def _simplify_with_var_values2(self, var_dict: Optional[VarDict] = None) -> Optional['MapElement']:
 
+        simplify_logger.log('Simplifying just the function')
         function: MapElement = self.function.simplify2()
+        simplify_logger.log('Simplifying just the entries')
         simplified_entries = [entry._simplify2(var_dict) for entry in self.entries]
 
         is_simpler = (function is not self.function) | any([entry is not None for entry in simplified_entries])
@@ -682,21 +686,25 @@ class CompositionFunction(MapElement, DefaultSerializable):
 
         simplified_entries_dict  = {v : entry
                                     for v, entry in zip(function.vars, simplified_entries)}
+        simplify_logger.log('Simplifying function with entries')
         result = function._simplify2(simplified_entries_dict)
         if result is not None:
             return result
 
+        simplify_logger.log('Simplifying via positional entries')
         for position, v in enumerate(function.vars):
-            result = simplified_entries_dict[v]._simplify_caller_function2(function, position, simplified_entries_dict)
+            pos_entry = simplified_entries_dict[v]
+            simplify_logger.log(f'Pos {red(v)} -> {red(pos_entry)} with class {cyan(pos_entry.__class__.__name__)}', TreeAction.GO_DOWN)
+            result = pos_entry._simplify_caller_function2(function, position, simplified_entries_dict)
+
             if result is not None:
+                simplify_logger.log(f'Pos {green(result)}', TreeAction.GO_UP)
                 return result
+            simplify_logger.log(f'Pos {magenta("& & &")}', TreeAction.GO_UP)
 
         if is_simpler:
             return CompositionFunction(function, simplified_entries)
 
-        return None
-
-    def _simplify_caller_function2(self, function: MapElement, position: int, var_dict: VarDict) -> Optional[MapElement]:
         return None
 
 
