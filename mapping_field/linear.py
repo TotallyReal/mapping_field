@@ -19,7 +19,7 @@ class LinearTransformer:
         pass
 
 
-class Linear(MapElement, RangeTransformer, DefaultSerializable):
+class Linear(MapElement, RangeTransformer, DefaultSerializable, LinearTransformer):
 
     @staticmethod
     def of(elem: MapElement):
@@ -67,9 +67,15 @@ class Linear(MapElement, RangeTransformer, DefaultSerializable):
 
         if isinstance(elem, LinearTransformer):
             a, elem, b = elem.transform_linear(self.a, self.b)
+            # TODO: Move the transform linear into the Processor mechanism
             if a == 0:
                 return MapElementConstant(b)
+            if a == self.a and b == self.b and elem == self.elem:
+                return None
             return Linear(a, elem, b)
+
+        if elem is self.elem:
+            return None
 
         return Linear(self.a, elem, self.b)
 
@@ -170,3 +176,7 @@ class Linear(MapElement, RangeTransformer, DefaultSerializable):
         if self.a < 0:
             f_range = (f_range[1]+1, f_range[0]+1)
         return RangeCondition(self.elem, f_range)
+
+
+    def transform_linear(self, a: int, b: int) -> Tuple[int, MapElement, int]:
+        return int(a * self.a), self.elem, int(a*self.b + b)

@@ -97,6 +97,13 @@ class MapElement:
     the _call_with_dict(var_dict, func_dict) method instead. (see description below)
     """
 
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        processor = cls.__dict__.get('_simplify_with_var_values2', None)
+        if processor is not None:
+            MapElement._simplifier.register_class_processor(cls, processor)
+
     def __init__(self, variables: List['Var'], name: Optional[str] = None):
         """
         The 'variables' are the ordered list used when calling the function, as in f(a_1,...,a_n).
@@ -231,25 +238,40 @@ class MapElement:
     def simplify2(self) -> 'MapElement':
         return self._simplify2() or self
 
-    def _simplify2(self) -> Optional['MapElement']:
-        if self._simplified:
+    _simplifier = ProcessorCollection['MapElement', VarDict]()
+
+    def _simplify2(self, var_dict: Optional[VarDict] = None) -> Optional['MapElement']:
+        if var_dict is None:
+            var_dict = {}
+
+        if self._simplified and len(self.vars) == 0:
             return None
 
-        simplified_version = self._simplify_with_var_values2({})
+        simplified_version = MapElement._simplifier.full_process(self, var_dict)
 
-        (simplified_version or self)._simplified = True
-        return simplified_version
+        if simplified_version is not None:
+            simplified_version._simplified = True
+            return simplified_version
+
+        if len(var_dict) == 0:
+            self._simplified = True
+            return None
+
+        return None
 
     # Override when needed
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
         """
         --------------- Override when needed ---------------
-        Try to simplify the given function, given assignment of the function standard variables.
+        Try to simplify the given function, given assignment of variables.
 
-        For example, the function
+        For example, the multiplication function by itself cannot be simplified:
             (x,y) -> x*y
-        cannot be simplified, but if we know that one of the entries is 0, then it can be simplified to zero,
-        and if x=1, then it can be simplified to (x,y) -> y , and similarly with y=1.
+
+        If, for example, we know that x=0, then we can simplify it to the zero function.
+        If x=1, we can simplify it to the y function.
+        If x=2, and y doesn't change, then the function remains a multiplication function 3*y, namely we
+        can't do any simplification other than setting the variables. In this case we return None.
         """
         return None
 
@@ -258,10 +280,10 @@ class MapElement:
 
     @classmethod
     def register_class_simplifier(cls, simplifier: ClassSimplifier):
-        CompositionFunction.simplifier.register_class_processor(cls, simplifier)
+        MapElement._simplifier.register_class_processor(cls, simplifier)
 
     def register_simplifier(self, simplifier: ElemSimplifier):
-        CompositionFunction.simplifier.register_elem_processor(self, simplifier)
+        MapElement._simplifier.register_elem_processor(self, simplifier)
 
     # </editor-fold>
 
@@ -646,37 +668,33 @@ class CompositionFunction(MapElement, DefaultSerializable):
 
         return CompositionFunction(function=eval_function, entries=eval_entries)
 
-    simplifier = ProcessorCollection[MapElement, VarDict]()
-
     # TODO: When simplifying arithmetic function, e.g. a + b, after simplifying both a and b,
     #       we should check if it has a new type of arithmetic function that we can call.
 
     # Override when needed
     def _simplify_with_var_values2(self, var_dict: Optional[VarDict] = None) -> Optional['MapElement']:
-        is_simpler = False
 
         function: MapElement = self.function.simplify2()
-        is_simpler = function is not self.function
+        simplified_entries = [entry._simplify2(var_dict) for entry in self.entries]
 
-        simplified_entries = [entry._simplify_with_var_values2(var_dict) for entry in self.entries]
-        is_simpler |= any([entry is not None for entry in simplified_entries])
+        is_simpler = (function is not self.function) | any([entry is not None for entry in simplified_entries])
         simplified_entries = [simp_entry or entry for simp_entry, entry in zip(simplified_entries, self.entries)]
 
         simplified_entries_dict  = {v : entry
                                     for v, entry in zip(function.vars, simplified_entries)}
-        result = function._simplify_with_var_values2(simplified_entries_dict)
-        if result != None:
+        result = function._simplify2(simplified_entries_dict)
+        if result is not None:
             return result
 
         for position, v in enumerate(function.vars):
             result = simplified_entries_dict[v]._simplify_caller_function2(function, position, simplified_entries_dict)
-            if result != None:
+            if result is not None:
                 return result
 
         if is_simpler:
             return CompositionFunction(function, simplified_entries)
 
-        return CompositionFunction.simplifier.full_process(function, simplified_entries_dict)
+        return None
 
     def _simplify_caller_function2(self, function: MapElement, position: int, var_dict: VarDict) -> Optional[MapElement]:
         return None

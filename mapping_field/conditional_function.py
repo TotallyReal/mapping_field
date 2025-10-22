@@ -1,6 +1,7 @@
 import operator
 from typing import List, Tuple, Optional
 
+from mapping_field.binary_expansion import BoolVar
 from mapping_field.mapping_field import MapElement, ExtElement, MapElementConstant, VarDict, FuncDict, params_to_maps
 from mapping_field.conditions import TrueCondition, Condition, FalseCondition, MapElementProcessor, _ListCondition
 from mapping_field.ranged_condition import SingleAssignmentCondition
@@ -112,9 +113,6 @@ class ConditionalFunction(MapElement, DefaultSerializable):
                    for region in self.regions]
         return ConditionalFunction(regions)
 
-    def _simplify2(self) -> Optional['MapElement']:
-        return self._simplify_with_var_values2({})
-
     def _simplify_with_var_values2(self, var_dict: VarDict) -> 'MapElement':
 
         def combinable(condition1: Condition, elem1: MapElement, condition2: Condition, elem2:MapElement) \
@@ -133,19 +131,34 @@ class ConditionalFunction(MapElement, DefaultSerializable):
             return None
 
         regions = []
+        is_simpler = False
         for condition, func in self.regions:
             # TODO: use var_dict to simplify the conditions
-            condition = condition.simplify()
+            simplified_condition = condition.simplify()
+            # TODO: Use a simplifier process like in map elements instead
+            is_simpler |= (simplified_condition is not condition)
+            condition = simplified_condition
+
             if condition == FalseCondition:
                 continue
-            func = func._simplify_with_var_values2(var_dict) or func
+            simplified_func = func._simplify2(var_dict)
+            is_simpler |= (simplified_func is not None)
+            func = simplified_func or func
+
             if isinstance(condition, MapElementProcessor):
-                func = condition.process_function(func)
-                func = func._simplify_with_var_values2(var_dict) or func
+                # TODO: Use a process_function process like in map elements instead
+                simplified_func = condition.process_function(func)
+                is_simpler |= (simplified_func is not func)
+                func = simplified_func
+
+                simplified_func = func._simplify2(var_dict)
+                is_simpler |= (simplified_func is not None)
+                func = simplified_func or func
 
             for i, (prev_cond, prev_func) in enumerate(regions):
                 comb_elem = combinable(prev_cond, prev_func, condition, func)
                 if comb_elem is not None:
+                    is_simpler = True
                     condition_union = prev_cond | condition
                     condition_union = condition_union.simplify()
                     regions[i] = [condition_union, comb_elem]
@@ -153,10 +166,48 @@ class ConditionalFunction(MapElement, DefaultSerializable):
             else:
                 regions.append([condition, func])
 
-        if len(regions) == 1 and regions[0][0] is TrueCondition:
+        # TODO: The conditions in a conditional function should cover the whole space, so a single region
+        #       must always have a TrueCondition. However, it is not always true that it is easy to check
+        #       that the condition is true. Should I keep this check here or not?
+        if len(regions) == 1: # and regions[0][0] is TrueCondition:
             return regions[0][1]
 
-        return ConditionalFunction([tuple(region) for region in regions])
+        return ConditionalFunction([tuple(region) for region in regions]) if is_simpler else None
+
+#
+# def bool_var_simplifier(map_elem: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+#     assert isinstance(map_elem, ConditionalFunction)
+#
+#     if len(map_elem.regions) != 2:
+#         return None
+#
+#     cond1, func1 = map_elem.regions[0]
+#     cond2, func2 = map_elem.regions[1]
+#     value1 = func1.evaluate()
+#     value2 = func2.evaluate()
+#     if value1 is None or value2 is None:
+#         return None
+#
+#     if not (isinstance(cond1, SingleAssignmentCondition) and isinstance(cond2, SingleAssignmentCondition)):
+#         return None
+#
+#     v1 = cond1.var
+#     v2 = cond2.var
+#     if not (isinstance(v1, BoolVar) and v1 is v2):
+#         return None
+#
+#     assigned_value1 = cond1.value
+#     assigned_value2 = cond2.value
+#
+#     if (assigned_value1, assigned_value2) == (0, 1):
+#         return (value1 + (value2 - value1) * v1).simplify2()
+#
+#     if (assigned_value1, assigned_value2) == (1, 0):
+#         return (value2 + (value1 - value2) * v1).simplify2()
+#
+#     raise Exception(f'The assigned values should be 0 and 1, but instead got {assigned_value1} and {assigned_value2}')
+#
+# ConditionalFunction.register_class_simplifier(bool_var_simplifier)
 
 
 def ReLU(map_elem: MapElement):
