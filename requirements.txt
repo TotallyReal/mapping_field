@@ -1,2 +1,3 @@
 pytest~=8.4.2
-pyyaml
+pyyaml~=6.0.3
+colorama~=0.4.6

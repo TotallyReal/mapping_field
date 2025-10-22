@@ -29,6 +29,7 @@ class TreeAction(Enum):
 class TreeLogger:
     # TODO: sometime, if I really need it, add a "SharedTreePosition" so I could make loggers for different trees.
     _depth = 0  # shared depth for all instances
+    _max_depth = 30
 
     @classmethod
     def reset(cls):
@@ -49,3 +50,5 @@ class TreeLogger:
         tab_symbols = [(f'{Back.LIGHTBLACK_EX}{c}{Style.RESET_ALL}' if i%3==0 else c) for i, c in enumerate(tab_symbols)]
         initial = ''.join(tab_symbols)
         self.logger.info(f'{initial}{message}')
+        if TreeLogger._depth > TreeLogger._max_depth:
+            raise Exception('Too many recursive logs')

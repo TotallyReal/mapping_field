@@ -47,6 +47,13 @@ def log_to_file(log_format: str = FULL_FORMAT):
 
 _DEBUG_STATE = 0
 
+@pytest.fixture
+def simple_logs():
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter(SIMPLE_FORMAT))
+
+    logging.getLogger().addHandler(handler)
+
 def debug_step(value: int):
     global _DEBUG_STATE
     if _DEBUG_STATE == value:
