@@ -1,4 +1,10 @@
+from colorama import init, Fore, Style
 from typing import TypeVar, Generic, Callable, Optional, List, Tuple, Type, Dict
+
+from mapping_field.tree_loggers import TreeLogger, TreeAction
+
+init(autoreset=True)
+logger = TreeLogger(__name__)
 
 Elem = TypeVar('Elem')
 Param = TypeVar('Param')
@@ -36,12 +42,12 @@ class ProcessorCollection(Generic[Elem, Param]):
         key = id(elem)
         if key not in self.elem_processors:
             self.elem_processors[key] = []
-        self.elem_processors[key].append(processor)
+        self.elem_processors[key].append(lambda elem, param: processor(param))
 
     # TODO: make sure that the class processor corresponds to the given map_elem_class
     def register_class_processor(self, elem_class: Type[Elem], processor: Processor) -> None:
         key = elem_class
-        if key not in self.elem_processors:
+        if key not in self.class_processors:
             self.class_processors[key] = []
         self.class_processors[key].append(processor)
 
@@ -50,22 +56,18 @@ class ProcessorCollection(Generic[Elem, Param]):
         Runs all the registered processors, until one of them updates the element, and returns this result.
         If none of them changes the element, returns None.
         """
-        for processor in self.processors:
-            result = processor(elem, param)
-            if result is None:
-                continue
-            return result
 
-        for processor in self.elem_processors.get(id(elem), []):
-            result = processor(param)
-            if result is None:
-                continue
-            return result
+        for processor in self.processors + self.elem_processors.get(id(elem), []) + self.class_processors.get(type(elem), []):
 
-        for processor in self.class_processors.get(elem.__class__, []):
+            message = f'Processing {processor.__name__} ( {Fore.RED}{elem}{Style.RESET_ALL} , {Fore.YELLOW}{param}{Style.RESET_ALL} )'
+
+            logger.log(message, action=TreeAction.GO_DOWN)
             result = processor(elem, param)
+
             if result is None:
+                logger.log(message=f'{Fore.MAGENTA}- - -{Style.RESET_ALL}', action=TreeAction.GO_UP)
                 continue
+            logger.log(message=f'Produced {Fore.GREEN}{result}{Style.RESET_ALL}', action=TreeAction.GO_UP)
             return result
 
         return None
@@ -76,6 +78,9 @@ class ProcessorCollection(Generic[Elem, Param]):
         returns it. Returns None if there wasn't any change.
         """
         was_processed = False
+
+        message = f'Full Processing ( {Fore.RED}{elem}{Style.RESET_ALL} , {Fore.YELLOW}{param}{Style.RESET_ALL} )'
+        logger.log(message=message, action=TreeAction.GO_DOWN)
         while True:
             # TODO:
             #   Should I add a mechanism that prevent to run the same process that made the change in the
@@ -86,4 +91,8 @@ class ProcessorCollection(Generic[Elem, Param]):
             elem = result
             was_processed = True
 
-        return elem if was_processed else None
+        if was_processed:
+            logger.log(f'Full Produced {Fore.GREEN}{elem}{Style.RESET_ALL}', action=TreeAction.GO_UP)
+            return elem
+        logger.log(f'{Fore.MAGENTA}X X X{Style.RESET_ALL} ', action=TreeAction.GO_UP)
+        return None
