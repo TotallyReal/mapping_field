@@ -2,12 +2,14 @@ from abc import abstractmethod
 import math
 from typing import List, Tuple, Optional
 
-from mapping_field.arithmetics import _as_combination
+from mapping_field.tree_loggers import TreeLogger
+from mapping_field.arithmetics import _as_combination, Add, Sub
 from mapping_field.serializable import DefaultSerializable
-from mapping_field.mapping_field import MapElement, VarDict, FuncDict, MapElementConstant, ExtElement
+from mapping_field.mapping_field import MapElement, VarDict, FuncDict, MapElementConstant, ExtElement, get_var_values
 from mapping_field.conditions import Condition, TrueCondition, FalseCondition
 from mapping_field.ranged_condition import RangeCondition, RangeTransformer
 
+logger = TreeLogger(__name__)
 
 class LinearTransformer:
 
@@ -23,6 +25,10 @@ class Linear(MapElement, RangeTransformer, DefaultSerializable, LinearTransforme
 
     @staticmethod
     def of(elem: MapElement):
+        value = elem.evaluate()
+        if value is not None:
+            return Linear(0, MapElementConstant.zero, value)
+
         if isinstance(elem, Linear):
             return elem
 
@@ -180,3 +186,31 @@ class Linear(MapElement, RangeTransformer, DefaultSerializable, LinearTransforme
 
     def transform_linear(self, a: int, b: int) -> Tuple[int, MapElement, int]:
         return int(a * self.a), self.elem, int(a*self.b + b)
+
+
+def _extract_scalar_signed_addition(var_dict: VarDict, sign: int = 1) -> Optional[MapElement]:
+
+    add_vars = get_var_values((Add if sign == 1 else Sub).vars, var_dict)
+    if add_vars is None:
+        return None
+
+    linear_var1 = Linear.of(add_vars[0])
+    linear_var2 = sign*Linear.of(add_vars[1])
+    linear_var2 = Linear.of(linear_var2)
+    if (linear_var1.a != 0 and linear_var1.b != 0) or (linear_var2.a != 0 and linear_var2.b != 0):
+        b = linear_var1.b + linear_var2.b
+        linear_var1 = Linear(linear_var1.a, linear_var1.elem, 0)
+        linear_var2 = Linear(linear_var2.a, linear_var2.elem, 0)
+        logger.log(f'Extracted the scalar {b}')
+        return (linear_var1 + linear_var2) + b
+
+    return None
+
+def extract_scalar_addition(var_dict: VarDict) -> Optional[MapElement]:
+    return _extract_scalar_signed_addition(var_dict=var_dict, sign=1)
+
+def extract_scalar_subtraction(var_dict: VarDict) -> Optional[MapElement]:
+    return _extract_scalar_signed_addition(var_dict=var_dict, sign=-1)
+
+Add.register_simplifier(extract_scalar_addition)
+Sub.register_simplifier(extract_scalar_subtraction)

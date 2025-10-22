@@ -588,6 +588,12 @@ def binary_signed_addition_simplifier(var_dict: VarDict, sign: int) -> Optional[
         return Linear(coef, elem, linear_var1.b + linear_var2.b)
     return None
 
-Add.register_simplifier(lambda var_dict: binary_signed_addition_simplifier(var_dict, 1))
+def binary_addition_simplifier(var_dict: VarDict) -> Optional[MapElement]:
+    return binary_signed_addition_simplifier(var_dict=var_dict, sign=1)
 
-Sub.register_simplifier(lambda var_dict: binary_signed_addition_simplifier(var_dict, -1))
+def binary_subtraction_simplifier(var_dict: VarDict) -> Optional[MapElement]:
+    return binary_signed_addition_simplifier(var_dict=var_dict, sign=-1)
+
+Add.register_simplifier(binary_addition_simplifier)
+
+Sub.register_simplifier(binary_subtraction_simplifier)

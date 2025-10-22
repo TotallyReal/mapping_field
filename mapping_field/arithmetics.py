@@ -171,6 +171,9 @@ def _as_scalar_mult(map_elem: MapElement) -> Tuple[int, MapElement]:
 # TODO: consider creating a LinearCombination class?
 #       also, make this function recursive.
 def _as_combination(map_elem: MapElement) -> Tuple[int, MapElement, int, MapElement]:
+    if isinstance(map_elem, MapElementConstant):
+        return map_elem.evaluate(), MapElementConstant.one, 0, MapElementConstant.zero
+
     if not isinstance(map_elem, CompositionFunction):
         return 1, map_elem, 0, MapElementConstant.zero
 
