@@ -1,7 +1,7 @@
 from colorama import init, Fore, Style
 from typing import TypeVar, Generic, Callable, Optional, List, Tuple, Type, Dict
 
-from mapping_field.tree_loggers import TreeLogger, TreeAction
+from mapping_field.tree_loggers import TreeLogger, TreeAction, green, red, yellow, magenta, cyan
 
 init(autoreset=True)
 logger = TreeLogger(__name__)
@@ -59,15 +59,15 @@ class ProcessorCollection(Generic[Elem, Param]):
 
         for processor in self.processors + self.elem_processors.get(id(elem), []) + self.class_processors.get(type(elem), []):
 
-            message = f'Processing {processor.__name__} ( {Fore.RED}{elem}{Style.RESET_ALL} , {Fore.YELLOW}{param}{Style.RESET_ALL} )'
+            message = f'Processing {processor.__name__} ( {red(elem)} , {yellow(param)} )'
 
             logger.log(message, action=TreeAction.GO_DOWN)
             result = processor(elem, param)
 
             if result is None:
-                logger.log(message=f'{Fore.MAGENTA}- - -{Style.RESET_ALL}', action=TreeAction.GO_UP)
+                logger.log(message=f'{magenta("- - -")}', action=TreeAction.GO_UP)
                 continue
-            logger.log(message=f'Produced {Fore.GREEN}{result}{Style.RESET_ALL}', action=TreeAction.GO_UP)
+            logger.log(message=f'Produced {green(result)}', action=TreeAction.GO_UP)
             return result
 
         return None
@@ -79,11 +79,11 @@ class ProcessorCollection(Generic[Elem, Param]):
         """
         was_processed = False
 
-        message = f'Full Processing ( {Fore.RED}{elem}{Style.RESET_ALL} , {Fore.YELLOW}{param}{Style.RESET_ALL} )'
+        message = f'Full Processing ( {red(elem)} , {Fore.YELLOW}{param}{Style.RESET_ALL} ) , [{cyan(elem.__class__.__name__)}]'
         logger.log(message=message, action=TreeAction.GO_DOWN)
         while True:
             # TODO:
-            #   Should I add a mechanism that prevent to run the same process that made the change in the
+            #   Should I add a mechanism that prevent running the same process that made the change in the
             #   last loop?
             result = self.one_step_process(elem, param)
             if result is None:
@@ -92,7 +92,7 @@ class ProcessorCollection(Generic[Elem, Param]):
             was_processed = True
 
         if was_processed:
-            logger.log(f'Full Produced {Fore.GREEN}{elem}{Style.RESET_ALL}', action=TreeAction.GO_UP)
+            logger.log(f'Full Produced {green(elem)}', action=TreeAction.GO_UP)
             return elem
-        logger.log(f'{Fore.MAGENTA}X X X{Style.RESET_ALL} ', action=TreeAction.GO_UP)
+        logger.log(f'{magenta("X X X")} ', action=TreeAction.GO_UP)
         return None
