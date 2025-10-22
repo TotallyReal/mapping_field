@@ -1,15 +1,17 @@
 from typing import List, Union, Optional, Tuple
 import math
 
+from mapping_field.tree_loggers import TreeLogger, red
 from mapping_field.mapping_field import get_var_values
 from mapping_field.serializable import DefaultSerializable
-from mapping_field.arithmetics import as_neg, Add
+from mapping_field.arithmetics import as_neg, Add, Sub
 from mapping_field.mapping_field import Var, MapElement, MapElementConstant, ExtElement, VarDict, FuncDict
 from mapping_field.conditions import Condition, FalseCondition, TrueCondition, ConditionUnion
 from mapping_field.ranged_condition import SingleAssignmentCondition, RangeCondition, RangeTransformer, Range, \
     ConditionToRangeTransformer, RangeConditionSimplifier
 from mapping_field.linear import LinearTransformer, Linear
 
+logger = TreeLogger(__name__)
 
 class IntVar(Var, RangeTransformer, DefaultSerializable):
 
@@ -253,6 +255,7 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer, Condition
             return None
 
         elem1 = self
+        logger.log(f'Trying to linear combine to Binary Expansion {red(k1)} * {red(elem1)} + {red(k2)} * {red(elem2)}')
 
         coef1 = elem1.coefficients
         non_zero1 = [i for i, v in enumerate(coef1) if v!=0]
@@ -565,13 +568,14 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer, Condition
             return constant
         return Linear(1, elem, constant.evaluate())
 
-def binary_addition_simplifier(var_dict: VarDict) -> Optional[MapElement]:
-    add_vars = get_var_values(Add.vars, var_dict)
+def binary_signed_addition_simplifier(var_dict: VarDict, sign: int) -> Optional[MapElement]:
+    add_vars = get_var_values((Add if sign == 1 else Sub).vars, var_dict)
     if add_vars is None:
         return None
+    logger.log(f'Trying to combine (Binary Expansion) {red(add_vars[0])} {"+" if sign>0 else "-"} {red(add_vars[1])}')
 
     linear_var1 = Linear.of(add_vars[0])
-    linear_var2 = Linear.of(add_vars[1])
+    linear_var2 = sign*Linear.of(add_vars[1])
 
     bin_1 = BinaryExpansion.of(linear_var1.elem)
     bin_2 = BinaryExpansion.of(linear_var2.elem)
@@ -584,4 +588,6 @@ def binary_addition_simplifier(var_dict: VarDict) -> Optional[MapElement]:
         return Linear(coef, elem, linear_var1.b + linear_var2.b)
     return None
 
-Add.register_simplifier(binary_addition_simplifier)
+Add.register_simplifier(lambda var_dict: binary_signed_addition_simplifier(var_dict, 1))
+
+Sub.register_simplifier(lambda var_dict: binary_signed_addition_simplifier(var_dict, -1))
