@@ -47,7 +47,7 @@ class Linear(MapElement, RangeTransformer, DefaultSerializable, LinearTransforme
             b_str = f' + {self.b}'
         if self.b < 0:
             b_str = f' - {-self.b}'
-        return f'{a_str}{self.elem}{b_str}'
+        return f'Lin[{a_str}{self.elem}{b_str}]'
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
         elem = self.elem._call_with_dict(var_dict, func_dict)

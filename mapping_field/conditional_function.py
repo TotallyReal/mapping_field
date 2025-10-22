@@ -29,7 +29,8 @@ class ConditionalFunction(MapElement, DefaultSerializable):
 
     def to_string(self, vars_str_list: List[str]):
         # TODO: fix this printing function
-        return ' , '.join([f'( {repr(condition)} -> {repr(map)} )' for (condition, map) in self.regions])
+        inner_str = ' ; '.join([f' {repr(condition)} -> {repr(map)} ' for (condition, map) in self.regions])
+        return f'[{inner_str}]'
 
     def pretty_str(self):
         return '\n  @@       +      @@  \n'.join([
