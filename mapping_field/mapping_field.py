@@ -246,7 +246,7 @@ class MapElement:
         if var_dict is None:
             var_dict = {}
 
-        if self._simplified and len(self.vars) == 0:
+        if self._simplified and len(var_dict) == 0:
             return None
 
         simplified_version = MapElement._simplifier.full_process(self, var_dict)
@@ -675,7 +675,8 @@ class CompositionFunction(MapElement, DefaultSerializable):
 
     # Override when needed
     def _simplify_with_var_values2(self, var_dict: Optional[VarDict] = None) -> Optional['MapElement']:
-
+        from mapping_field.tests.conftest import debug_step
+        debug_step(1)
         simplify_logger.log('Simplifying just the function')
         function: MapElement = self.function.simplify2()
         simplify_logger.log('Simplifying just the entries')
