@@ -42,7 +42,7 @@ class ProcessorCollection(Generic[Elem, Param]):
         key = id(elem)
         if key not in self.elem_processors:
             self.elem_processors[key] = []
-        self.elem_processors[key].append(lambda elem, param: processor(param))
+        self.elem_processors[key].append(named_forgetful_function(processor))
 
     # TODO: make sure that the class processor corresponds to the given map_elem_class
     def register_class_processor(self, elem_class: Type[Elem], processor: Processor) -> None:
@@ -96,3 +96,10 @@ class ProcessorCollection(Generic[Elem, Param]):
             return elem
         logger.log(f'{magenta("X X X")} ', action=TreeAction.GO_UP)
         return None
+
+def named_forgetful_function(func: ParamProcessor) -> Processor:
+    def wrapper(elem: Elem, param: Param) -> Optional[Elem]:
+        return func(param)
+
+    wrapper.__name__ = func.__name__
+    return wrapper
