@@ -332,7 +332,7 @@ def not_simplifier(self: NotCondition) -> Condition:
         upper = RangeCondition(self.condition.function, (b, float('inf'))).simplify()
         lower = RangeCondition(self.condition.function, (float('-inf'), a)).simplify()
         return (upper | lower).simplify()
-    return original_not_simplifier(self.condition)
+    return original_not_simplifier(self)
 NotCondition.simplify = not_simplifier
 
 
