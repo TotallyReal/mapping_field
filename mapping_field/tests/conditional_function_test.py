@@ -282,3 +282,17 @@ def test_comparisons():
     condition1 = (func < 10)
     condition2 = RangeCondition(x, (-9,3))
     assert condition1 == condition2
+
+
+def test_mul_generation():
+    x = Linear.of(Var('x'))
+
+    func1 = (3<=x) * x
+
+    func2 = ConditionalFunction([
+        (3<=x, x),
+        (x<3, 0)
+    ])
+
+    assert func1 == func2
+

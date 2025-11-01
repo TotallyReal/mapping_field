@@ -1,6 +1,7 @@
 import operator
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, TypeVar, Union
 
+from mapping_field import convert_to_map
 from mapping_field.binary_expansion import BoolVar
 from mapping_field.mapping_field import MapElement, ExtElement, MapElementConstant, VarDict, FuncDict, params_to_maps
 from mapping_field.conditions import TrueCondition, Condition, FalseCondition, MapElementProcessor, _ListCondition, \
@@ -23,8 +24,8 @@ class ConditionalFunction(MapElement, DefaultSerializable):
         return ConditionalFunction([(TrueCondition, map)])
 
     def __init__(self, regions: List[Tuple[Condition, MapElement]]):
-        self.regions = regions
-        variables = sum([region[0].vars + region[1].vars for region in regions], [])
+        self.regions = [(condition, convert_to_map(func)) for condition, func in regions]
+        variables = sum([region[0].vars + region[1].vars for region in self.regions], [])
 
         super().__init__(list(set(variables)))
 
@@ -191,6 +192,20 @@ class ConditionalFunction(MapElement, DefaultSerializable):
             return regions[0][1]
 
         return ConditionalFunction([tuple(region) for region in regions]) if is_simpler else None
+
+_T = TypeVar('_T', bound=Union[Condition, MapElement])
+
+# TODO: Think of a better way of overriding this function
+#       Also, should __mul__ be used for condition * condition = condition also, or only use __and__ for that?
+@params_to_maps
+def condition_mul(self, func: MapElement) -> MapElement:
+
+    return ConditionalFunction([
+        (self, func),
+        (~self, MapElementConstant.zero)
+    ]).simplify2()
+Condition.__mul__ = condition_mul
+Condition.__rmul__ = condition_mul
 
 
 def bool_var_simplifier(map_elem: MapElement, var_dict: VarDict) -> Optional[MapElement]:
