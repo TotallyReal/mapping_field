@@ -115,18 +115,25 @@ def _range_sum_bools_simplifier(function: MapElement, f_range: Range) -> Optiona
     if b <= a:
         return FalseCondition
 
-    conditions = []
-    for k0 in (0,1):
-        for k1 in (0,1):
-            if a <= k0 + k1 < b:
-                conditions.append((var0 << k0) & (var1 << k1))
+    if b-a == 3:
+        return TrueCondition
 
-    if len(conditions) == 0:
-        # not possible, but for completeness’s sake
-        return False
-    if len(conditions) == 1:
-        return conditions[0]
-    return ConditionUnion(conditions, simplified = True)
+    if b-a == 2:
+        if a == 0:
+            return ( (var0 << 0) | (var1 << 0) )
+        if a == 1:
+            return ( (var0 << 1) | (var1 << 1) )
+
+    if b-a == 1:
+        if a == 0:
+            return ((var0 << 0) & (var1 << 0))
+        if a == 1:
+            return ((var0 << 0) & (var1 << 1)) | ((var0 << 1) & (var1 << 0))
+        if a == 2:
+            return ((var0 << 1) & (var1 << 1))
+
+    # Not possible to get here, but just in case:
+    return FalseCondition
 
 RangeCondition.register_simplifier(_range_sum_bools_simplifier)
 
