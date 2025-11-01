@@ -45,40 +45,6 @@ def test_binary_conditions_or():
     assert TrueCondition | dummy == TrueCondition
     assert dummy | FalseCondition == dummy
     assert FalseCondition | dummy == dummy
-#
-# def test_unpack_intersections():
-#     dummies = [DummyCondition(type = i) for i in range(5)]
-#
-#     cond1 = ConditionIntersection([dummies[0], dummies[1]])
-#
-#     cond2 = ConditionIntersection([cond1, dummies[2]])
-#     assert isinstance(cond2, ConditionIntersection) and len(cond2.conditions) == 3
-#
-#     cond2 = ConditionIntersection([dummies[2], cond1])
-#     assert isinstance(cond2, ConditionIntersection) and len(cond2.conditions) == 3
-#
-# def test_simplify_intersection():
-#     dummies = [DummyCondition(i) for i in range(5)] # TODO: type = i ?
-#
-#     cond1 = ConditionIntersection([dummies[0], dummies[1], dummies[2]])
-#     cond2 = ConditionIntersection([dummies[2], dummies[0], dummies[1]])
-#     assert cond1 == cond2
-#
-#     cond1 = ConditionIntersection([TrueCondition, dummies[0], dummies[1], dummies[2], TrueCondition])
-#     cond2 = ConditionIntersection([dummies[2], dummies[0], dummies[1]])
-#     assert cond1 == cond2
-#
-#     cond1 = ConditionIntersection([FalseCondition, dummies[0], dummies[1], dummies[2], TrueCondition])
-#     cond2 = FalseCondition
-#     assert cond1 == cond2
-#
-#     cond1 = ConditionIntersection([dummies[0], dummies[1], dummies[1], dummies[0], dummies[2]])
-#     cond2 = ConditionIntersection([dummies[2], dummies[0], dummies[1]])
-#     assert cond1 == cond2
-#
-#     cond1 = ConditionIntersection([dummies[0]])
-#     cond2 = dummies[0]
-#     assert cond1 == cond2
     assert dummy | dummy == dummy
 
 def test_binary_and_with_invert():
@@ -96,6 +62,31 @@ def test_binary_or_with_invert():
     assert dummy0 | ~dummy0 == TrueCondition
     assert ~dummy0 | dummy0 == TrueCondition
     assert str((~dummy0) | (~dummy1)) == str(~(dummy0 & dummy1))
+
+def test_intersection_with_delim(simple_logs):
+    dummies = [DummyCondition(type = i) for i in range(4)]
+
+    cond1 = IntersectionCondition([dummies[0], dummies[1], dummies[2], dummies[3]])
+    cond2 = dummies[0] & dummies[1] & dummies[2] & dummies[3]
+    assert cond1 == cond2
+
+def test_unpack_intersections():
+    dummies = [DummyCondition(type = i) for i in range(5)]
+
+    cond1 = IntersectionCondition([dummies[0], dummies[1]])
+
+    cond2 = IntersectionCondition([cond1, dummies[2]])
+    assert isinstance(cond2, IntersectionCondition) and len(cond2.conditions) == 3
+
+    cond2 = IntersectionCondition([dummies[2], cond1])
+    assert isinstance(cond2, IntersectionCondition) and len(cond2.conditions) == 3
+
+def test_equality_intersection_permutations():
+    dummies = [DummyCondition(i) for i in range(5)]
+
+    cond1 = IntersectionCondition([dummies[0], dummies[1], dummies[2]])
+    cond2 = IntersectionCondition([dummies[2], dummies[0], dummies[1]])
+    assert cond1 == cond2
 #
 # def test_improved_simplify_intersection():
 #     dummies = [DummyCondition(i) for i in range(5)]

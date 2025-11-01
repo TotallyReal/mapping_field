@@ -1,4 +1,4 @@
-from typing import Optional, List
+import operator
 from typing import Optional, List, Tuple
 
 from mapping_field.arithmetics import _ArithmeticMapFromFunction
@@ -142,13 +142,24 @@ def parameter_and_simplifier(var_dict: VarDict) -> Optional[MapElement]:
 
     if (entries[0] is entries[1]) or (entries[0] == entries[1]):
         return entries[0]
+
     simplify_logger.log('Simplify \'and\' via 1st parameter')
     result = entries[0].and_(entries[1])
     if result is not None:
         return result
+
     simplify_logger.log('Simplify \'and\' via 2nd parameter')
     return entries[1].and_(entries[0])
 AndCondition.register_simplifier(parameter_and_simplifier)
+
+def associative_and_simplifier(var_dict: VarDict) -> Optional[MapElement]:
+    entry0, entry1 = [var_dict[v] for v in AndCondition.vars]
+    if isinstance(entry0, CompositionFunction) and (entry0.function is AndCondition):
+        return IntersectionCondition([*(entry0.entries), entry1])
+    if isinstance(entry1, CompositionFunction) and (entry1.function is AndCondition):
+        return IntersectionCondition([entry0, *(entry1.entries)])
+    return None
+AndCondition.register_simplifier(associative_and_simplifier)
 
 MapElement.intersection = AndCondition
 
@@ -197,3 +208,66 @@ MapElement.union = OrCondition
 
 # </editor-fold>
 
+class _ListCondition(Condition):
+    # For intersection \ union of conditions
+
+    AND = 0
+    OR = 1
+
+    bin_condition = [AndCondition, OrCondition]
+    list_classes = [None, None]
+    op_types = [operator.and_, operator.or_]
+    method_names = ['and_', 'or_']
+    trivials = [TrueCondition, FalseCondition]
+    join_delims = [' & ', ' | ']
+
+    def __init_subclass__(cls, op_type: int, **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls.type = op_type
+
+        _ListCondition.list_classes[op_type] = cls
+
+        cls.op_type = cls.op_types[op_type]
+        cls.join_delim = cls.join_delims[op_type]
+        cls.one_condition = cls.trivials[op_type]
+        cls.zero_condition = cls.trivials[1-op_type]
+        setattr(cls, cls.method_names[op_type], cls.op)
+        # setattr(cls, cls.method_names[1 - op_type], cls.rev_op)
+
+    def __init__(self, conditions: List[MapElement], simplified: bool = False):
+        super().__init__(
+            list(set(sum([condition.vars for condition in conditions],[])))
+        )
+        self.add_promise(IsCondition)
+        self._simplified = simplified
+        self.conditions: List[MapElement] = []
+
+        conditions = conditions.copy()
+        cls = self.__class__
+        index = 0
+        while index < len(conditions):
+            condition = conditions[index]
+            index += 1
+            if isinstance(condition, cls):
+                conditions.extend(condition.conditions)
+                continue
+            self.conditions.append(condition)
+
+    def to_string(self, vars_str_list: List[str]):
+        conditions_rep = self.__class__.join_delim.join(condition.to_string(vars_str_list) for condition in self.conditions)
+        return f'[{conditions_rep}]'
+
+    def __eq__(self, other: MapElement) -> bool:
+        if not isinstance(other, self.__class__):
+            return False
+        if len(self.conditions) != len(other.conditions):
+            return False
+
+        for condition in self.conditions:
+            if condition not in other.conditions:
+                return False
+
+        return True
+
+class IntersectionCondition(_ListCondition, op_type = _ListCondition.AND):
+    pass
