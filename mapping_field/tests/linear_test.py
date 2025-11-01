@@ -194,23 +194,23 @@ def test_me():
 
     cond1 = xx - 7 >= 0
     cond2 = xx - 8 >= 0
-    assert cond1 * cond2 == cond2
+    assert cond1 & cond2 == cond2
 
     cond1 = xx - 7 >= 0
     cond2 = xx - 8 < 0
-    prod = cond1 * cond2
+    prod = cond1 & cond2
     prod = prod.simplify()
     assert prod == SingleAssignmentCondition.from_assignment_dict({vv[0]:1, vv[1]:1, vv[2]: 1, vv[3]:0})
 
     cond1 = xx - 7 < 0
     cond2 = xx - 8 >= 0
-    prod = cond1 * cond2
+    prod = cond1 & cond2
     prod = prod.simplify()
     assert prod == FalseCondition
 
     cond1 = xx - 7 < 0
     cond2 = xx - 8 < 0
-    prod = cond1 * cond2
+    prod = cond1 & cond2
     prod = prod.simplify()
     assert prod == cond1
 

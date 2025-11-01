@@ -27,10 +27,10 @@ def test_range_condition_intersection():
     cond1 = RangeCondition(dummy_map, (0,10))
     cond2 = RangeCondition(dummy_map, (5,15))
     cond12 = RangeCondition(dummy_map, (5,10))
-    assert cond1 * cond2 == cond12
+    assert cond1 & cond2 == cond12
 
     cond3 = RangeCondition(dummy_map, [15,25])
-    assert cond1 * cond3 == FalseCondition
+    assert cond1 & cond3 == FalseCondition
 
 def test_range_condition_union():
     dummy_var = Var('x')
