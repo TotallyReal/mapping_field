@@ -40,10 +40,10 @@ class DummyMap(MapElement):
 
 def test_binary_conditions():
     dummy = DummyCondition(0)
-    assert dummy * TrueCondition == dummy
-    assert TrueCondition * dummy == dummy
-    assert dummy * FalseCondition == FalseCondition
-    assert FalseCondition * dummy == FalseCondition
+    assert dummy & TrueCondition == dummy
+    assert TrueCondition & dummy == dummy
+    assert dummy & FalseCondition == FalseCondition
+    assert FalseCondition & dummy == FalseCondition
 
 def test_unpack_intersections():
     dummies = [DummyCondition(type = i) for i in range(5)]
@@ -82,16 +82,16 @@ def test_simplify_intersection():
 def test_improved_simplify_intersection():
     dummies = [DummyCondition(i) for i in range(5)]
 
-    assert dummies[0] * dummies[0] == dummies[0]
+    assert dummies[0] & dummies[0] == dummies[0]
 
     cond1 = ConditionIntersection([dummies[0], dummies[1], dummies[2]])
     cond2 = ConditionIntersection([dummies[0], dummies[1], dummies[3]])
-    prod = cond1 * cond2
+    prod = cond1 & cond2
     result = ConditionIntersection([dummies[0], dummies[1], dummies[2], dummies[3]])
     assert prod == result
 
-    prod = (dummies[0] * dummies[1] * dummies[2]) * (dummies[0] * dummies[1] * dummies[3])
-    result = (dummies[0] * dummies[1] * dummies[2] * dummies[3])
+    prod = (dummies[0] & dummies[1] & dummies[2]) & (dummies[0] & dummies[1] & dummies[3])
+    result = (dummies[0] & dummies[1] & dummies[2] & dummies[3])
     assert prod == result
 
 def test_union_of_intersections():
@@ -99,8 +99,8 @@ def test_union_of_intersections():
 
     # containment:
 
-    cond1 = dummies[0] * dummies[1] * dummies[2]
-    cond2 = dummies[2] * dummies[0]
+    cond1 = dummies[0] & dummies[1] & dummies[2]
+    cond2 = dummies[2] & dummies[0]
     cond3 = dummies[2]
 
     assert cond1 | cond2 == cond2
@@ -114,12 +114,12 @@ def test_union_of_intersections():
 
     # One Union
 
-    cond1 = dummies[0] * dummies[1] * dummies[2]
+    cond1 = dummies[0] & dummies[1] & dummies[2]
     dummy_special = DummyCondition(values = 1, type = 0)
-    cond2 = dummy_special * dummies[1] * dummies[2]
+    cond2 = dummy_special & dummies[1] & dummies[2]
     dummy_union = DummyCondition(values = {0,1}, type = 0)
 
-    result = dummies[1] * dummy_union * dummies[2]
+    result = dummies[1] & dummy_union & dummies[2]
     assert cond1 | cond2 == result
 
 def test_intersection_of_unions():
@@ -130,14 +130,14 @@ def test_intersection_of_unions():
     cond2 = dummies[2] | dummies[0]
     cond3 = dummies[2]
 
-    assert cond1 * cond2 == cond2
-    assert cond2 * cond1 == cond2
+    assert cond1 & cond2 == cond2
+    assert cond2 & cond1 == cond2
 
-    assert cond1 * cond3 == cond3
-    assert cond3 * cond1 == cond3
+    assert cond1 & cond3 == cond3
+    assert cond3 & cond1 == cond3
 
-    assert cond2 * cond3 == cond3
-    assert cond3 * cond2 == cond3
+    assert cond2 & cond3 == cond3
+    assert cond3 & cond2 == cond3
 
     # One intersection
 
@@ -149,7 +149,7 @@ def test_intersection_of_unions():
     cond2 = dummy02 | dummies[1] | dummies[2]
     result = dummy0 | dummies[1] | dummies[2]
 
-    assert cond1 * cond2 == result
+    assert cond1 & cond2 == result
 
 def single_containment(cond_small: Condition, cond_large: Condition):
 

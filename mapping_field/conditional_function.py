@@ -71,7 +71,7 @@ class ConditionalFunction(MapElement, DefaultSerializable):
         regions: List[Tuple[Condition, MapElement]] = []
         for (cond1, elem1) in self.regions:
             for (cond2, elem2) in other.regions:
-                cond_prod = (cond1 * cond2).simplify()
+                cond_prod = (cond1 & cond2).simplify()
                 if cond_prod is not FalseCondition:
                     regions.append((cond_prod, op_func(elem1, elem2)))
         return ConditionalFunction(regions).simplify2()
@@ -223,8 +223,8 @@ def ReLU(map_elem: MapElement):
             elif (func <= 0) == FalseCondition:
                 regions.append( (condition, zero) )
             else:
-                regions.append( (condition * (func > 0), func) )
-                regions.append( (condition * (func <= 0), zero) )
+                regions.append( (condition & (func > 0), func) )
+                regions.append( (condition & (func <= 0), zero) )
         regions = [(cond, func) for cond, func in regions if FalseCondition != cond]
         return ConditionalFunction(regions)
     return ConditionalFunction([

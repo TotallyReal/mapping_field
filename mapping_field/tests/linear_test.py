@@ -114,21 +114,21 @@ def test_assignment_condition():
     # disjoint
     cond1 = SingleAssignmentCondition.from_assignment_dict({x:1, y:2})
     cond2 = SingleAssignmentCondition.from_assignment_dict({z:3})
-    prod = cond1 * cond2
+    prod = cond1 & cond2
     result = SingleAssignmentCondition.from_assignment_dict({x:1, y:2, z:3})
     assert prod == result
 
     # valid intersection
     cond1 = SingleAssignmentCondition.from_assignment_dict({x:1, y:2})
     cond2 = SingleAssignmentCondition.from_assignment_dict({y:2, z:3})
-    prod = cond1 * cond2
+    prod = cond1 & cond2
     result = SingleAssignmentCondition.from_assignment_dict({x:1, y:2, z:3})
     assert prod == result
 
     # invalid intersection
     cond1 = SingleAssignmentCondition.from_assignment_dict({x:1, y:2})
     cond2 = SingleAssignmentCondition.from_assignment_dict({y:5, z:3})
-    prod = cond1 * cond2
+    prod = cond1 & cond2
     result = FalseCondition
     assert prod == result
 

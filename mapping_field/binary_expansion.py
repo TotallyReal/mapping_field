@@ -514,13 +514,13 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer, Condition
 
             # BoolVar
             if self._bool_max_value[i] < a:
-                condition *= SingleAssignmentCondition(c, 1)
+                condition &= SingleAssignmentCondition(c, 1)
                 a -= two_power
                 b -= two_power
                 continue
 
             if b <= two_power:
-                condition *= SingleAssignmentCondition(c, 0)
+                condition &= SingleAssignmentCondition(c, 0)
                 continue
 
             break
@@ -532,7 +532,7 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer, Condition
         else:
             if condition is TrueCondition and (a, b) == range_values:
                 return None
-            return condition * RangeCondition(BinaryExpansion(coefs[:i+1]), (a, b), simplified=True)
+            return condition & RangeCondition(BinaryExpansion(coefs[:i+1]), (a, b), simplified=True)
 
     def as_range(self, condition: Condition) -> Optional[Range]:
         var_dict = SingleAssignmentCondition.as_assignment_dict(condition)
