@@ -6,7 +6,7 @@ from mapping_field.field import ExtElement
 from mapping_field.mapping_field import MapElement, VarDict, CompositionFunction, OutputPromise, \
     always_validate_promises
 from mapping_field.serializable import DefaultSerializable
-from mapping_field.tree_loggers import TreeLogger
+from mapping_field.tree_loggers import TreeLogger, red, green
 
 simplify_logger = TreeLogger(__name__)
 
@@ -268,6 +268,91 @@ class _ListCondition(Condition):
                 return False
 
         return True
+
+    @classmethod
+    def _op_between(cls, condition1: MapElement, condition2: MapElement) -> Optional[MapElement]:
+        return cls.bin_condition[cls.type](condition1, condition2, simplify=False)._simplify2()
+        # return getattr(condition1, cls.method_names[cls.type])(condition2)
+
+    def op(self, condition: MapElement) -> Optional[MapElement]:
+        cls = self.__class__
+
+        if isinstance(condition, BinaryCondition):
+            # quick shortcut
+            return cls._op_between(condition , self)
+
+        if isinstance(condition, self.__class__):
+            return cls([*self.conditions, *condition.conditions])
+
+        return cls([*self.conditions, condition])
+
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
+        if self._simplified:
+            return None
+
+        cls = self.__class__
+
+        final_conditions = []
+        conditions = self.conditions.copy()
+
+        is_whole_simpler = False
+
+        for condition in conditions:
+
+            simplified_condition = condition._simplify2(var_dict)
+            if simplified_condition is not None:
+                is_whole_simpler = True
+            condition = simplified_condition or condition
+
+            if condition is cls.one_condition:
+                is_whole_simpler = True
+                continue
+
+            if isinstance(condition, cls):
+                # unpack list condition of the same type
+                is_whole_simpler = True
+                conditions.extend(condition.conditions)
+                continue
+
+            while (True):
+                # Check if this new condition intersects in a special way with an existing condition.
+                # Each time this loop repeats itself, the conditions array's size must decrease by 1, so it cannot
+                # continue forever.
+                if condition is cls.zero_condition:
+                    return cls.zero_condition
+
+                for existing_condition in final_conditions:
+                    simplify_logger.log(
+                        f'Trying to combine {red(condition)} with existing {red(existing_condition)}',
+                    )
+                    # prod_cond = AndCondition(existing_condition, condition, simplify=False)._simplify2()
+                    prod_cond = cls._op_between(existing_condition, condition)
+                    # if prod_cond is None:
+                    #     prod_cond = cls._op_between(condition, existing_condition)
+
+                    if prod_cond is not None:
+                        simplify_logger.log(
+                            f'Combined: {red(condition)} {cls.join_delim} {red(existing_condition)}  =>  {green(prod_cond)}',
+                        )
+                        is_whole_simpler = True
+                        final_conditions = [cond for cond in final_conditions if (cond is not existing_condition)]
+                        break
+
+                else:
+                    # new condition cannot be intersected in a special way
+                    final_conditions.append(condition)
+                    break
+
+        if len(final_conditions) == 0:
+            return self.__class__.one_condition
+
+        if len(final_conditions) == 1:
+            return final_conditions[0]
+
+        if is_whole_simpler:
+            return cls(final_conditions, simplified = True)
+
+        return None
 
 class IntersectionCondition(_ListCondition, op_type = _ListCondition.AND):
     pass

@@ -63,7 +63,7 @@ def test_binary_or_with_invert():
     assert ~dummy0 | dummy0 == TrueCondition
     assert str((~dummy0) | (~dummy1)) == str(~(dummy0 & dummy1))
 
-def test_intersection_with_delim(simple_logs):
+def test_intersection_with_delim():
     dummies = [DummyCondition(type = i) for i in range(4)]
 
     cond1 = IntersectionCondition([dummies[0], dummies[1], dummies[2], dummies[3]])
@@ -86,6 +86,32 @@ def test_equality_intersection_permutations():
 
     cond1 = IntersectionCondition([dummies[0], dummies[1], dummies[2]])
     cond2 = IntersectionCondition([dummies[2], dummies[0], dummies[1]])
+    assert cond1 == cond2
+
+def test_simplify_intersection():
+    dummies = [DummyCondition(i) for i in range(5)] # TODO: type = i ?
+
+    # Removing True Conditions
+    cond1 = IntersectionCondition([TrueCondition, dummies[0], dummies[1], dummies[2], TrueCondition])
+    cond1 = cond1.simplify2()
+    cond2 = IntersectionCondition([dummies[2], dummies[0], dummies[1]])
+    assert cond1 == cond2
+
+    # Controlled by FalseCondition
+    cond1 = IntersectionCondition([FalseCondition, dummies[0], dummies[1], dummies[2], TrueCondition])
+    cond1 = cond1.simplify2()
+    cond2 = FalseCondition
+    assert cond1 == cond2
+
+    # Repeating conditions
+    cond1 = IntersectionCondition([dummies[0], dummies[1], dummies[1], dummies[0], dummies[2]])
+    cond1 = cond1.simplify2()
+    cond2 = IntersectionCondition([dummies[2], dummies[0], dummies[1]])
+    assert cond1 == cond2
+
+    cond1 = IntersectionCondition([dummies[0]])
+    cond1 = cond1.simplify2()
+    cond2 = dummies[0]
     assert cond1 == cond2
 #
 # def test_improved_simplify_intersection():
