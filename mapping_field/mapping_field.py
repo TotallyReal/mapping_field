@@ -450,6 +450,27 @@ class MapElement:
 
     # </editor-fold>
 
+    # <editor-fold desc=" ------------------------ Comparison condition ------------------------">
+
+    """
+    All the comparison methods are implemented in the condition.py file.
+    For now, these are only defined for comparison with an integer.
+    """
+
+    def __le__(self, n: int) -> 'Condition':
+        raise NotImplementedError()
+
+    def __lt__(self, n: int) -> 'Condition':
+        raise NotImplementedError()
+
+    def __ge__(self, n: int) -> 'Condition':
+        raise NotImplementedError()
+
+    def __gt__(self, n: int) -> 'Condition':
+        raise NotImplementedError()
+
+    # </editor-fold>
+
 
 class Var(MapElement, DefaultSerializable):
     """
