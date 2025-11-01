@@ -1,7 +1,7 @@
 import collections
 import functools
 import inspect
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple, Iterator, Type, TypeVar
 
 from mapping_field.processors import ProcessorCollection, Processor, ParamProcessor
 from mapping_field.field import FieldElement, ExtElement
@@ -86,6 +86,32 @@ def params_to_maps(f):
 ElemSimplifier = ParamProcessor[VarDict, 'MapElement']
 ClassSimplifier = Processor['MapElement', VarDict]
 
+class OutputPromise:
+    def __init__(self, name: str):
+        self.name = name
+
+    def __repr__(self):
+        return self.name
+
+T = TypeVar('T', bound='MapElement')
+
+def validate_promises_var_dict(var_dict: VarDict) -> bool:
+    for v, value in var_dict.items():
+        for promise in v.output_promises():
+            assert value.has_promise(promise), f'{v}={value} does not satisfy the promise of {promise}'
+
+def always_validate_promises(cls: Type[T]) -> Type[T]:
+
+    original_call_method = cls.__call__
+
+    def call_wrapper(self, *args, **kwargs):
+        if 'validate_promises' not in kwargs:
+            kwargs['validate_promises'] = True
+        return original_call_method(self, *args, **kwargs)
+
+    cls.__call__ = call_wrapper
+    return cls
+
 class MapElement:
     """
     The main class representing a "formula" which both has variables, and function variables.
@@ -117,6 +143,7 @@ class MapElement:
         self.vars = variables
         self.num_vars = len(variables)
         self._simplified = False
+        self._promises = set()
 
     def set_var_order(self, variables: List['Var']):
         """
@@ -129,6 +156,19 @@ class MapElement:
             raise Exception(f'New variables order {variables} have to be on the function\'s variables {self.vars}')
 
         self.vars = variables
+
+    # <editor-fold desc=" ------------------------ Output Promises ------------------------ ">
+
+    def add_promise(self, promise: OutputPromise):
+        self._promises.add(promise)
+
+    def output_promises(self) -> Iterator[OutputPromise]:
+        return iter(self._promises)
+
+    def has_promise(self, promise: OutputPromise):
+        return promise in self._promises
+
+    # </editor-fold>
 
     # <editor-fold desc=" ------------------------ String represnetation ------------------------">
 
@@ -209,7 +249,16 @@ class MapElement:
                 raise Exception(f'The "simplify" flag must be a boolean, instead got {simplify}')
             del kwargs['simplify']
 
+        validate_promises = False
+        if 'validate_promises' in kwargs:
+            validate_promises = kwargs['validate_promises']
+            if not isinstance(validate_promises, bool):
+                raise Exception(f'The "validate_promises" flag must be a boolean, instead got {validate_promises}')
+            del kwargs['validate_promises']
+
         var_dict, func_dict = self._extract_var_dicts(args, kwargs)
+        if validate_promises:
+            validate_promises_var_dict(var_dict)
         result = self
         if len(func_dict) > 0 or any([v in var_dict for v in self.vars]):
             result = self._call_with_dict(var_dict, func_dict)
@@ -450,6 +499,24 @@ class MapElement:
 
     # </editor-fold>
 
+    # <editor-fold desc=" ------------------------ Binary ------------------------">
+
+    # <editor-fold desc=" ------------------------ Inversion ------------------------">
+
+    @staticmethod
+    def inversion(condition: 'MapElement') -> 'MapElement':
+        raise NotImplementedError()
+
+    def __invert__(self) -> 'MapElement':
+        return MapElement.inversion(self)
+
+    def invert(self) -> Optional['MapElement']:
+        return None
+
+    # </editor-fold>
+
+    # </editor-fold>
+
     # <editor-fold desc=" ------------------------ Comparison condition ------------------------">
 
     """
@@ -671,6 +738,10 @@ class CompositionFunction(MapElement, DefaultSerializable):
         else:
             self.function = function
             self.entries = entries
+
+        # Works under the assumption that the entries satisfy their promises for the given function
+        for promise in self.function.output_promises():
+            self.add_promise(promise)
 
     def to_string(self, vars_str_list: List[str]):
         # Compute the str representation for each entry, by supplying it the str
