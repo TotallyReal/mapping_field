@@ -402,3 +402,40 @@ class RangeTransformer:
 
 Var.__lshift__ = lambda self, n: SingleAssignmentCondition(self, n)
 
+# TODO: combine with assignment for variables
+class GeneralAssignment(Condition):
+
+    def __init__(self, elem: MapElement, value: int):
+        super().__init__(elem.vars)
+        self.elem = elem
+        self.value = value
+
+    def simplify(self):
+        self.elem = self.elem.simplify2()
+        if isinstance(self.elem, Var):
+            return SingleAssignmentCondition(self.elem, self.value).simplify()
+        value = self.elem.evaluate()
+        if value is not None:
+            return TrueCondition if value == self.value else FalseCondition
+
+        return self
+
+    def __repr__(self):
+        return f'({self.elem} = {self.value})'
+
+    def _eq_simplified(self, other: 'Condition') -> bool:
+        return isinstance(other, GeneralAssignment) and self.elem == other.elem and self.value == other.value
+
+
+class WhereFunction:
+    def __init__(self, elem: MapElement):
+        self.elem = elem
+
+    def __eq__(self, n: int):
+        return GeneralAssignment(self.elem, n).simplify()
+
+    def __repr__(self):
+        return f'Where({self.elem})'
+
+# TODO: Refactor this entire nightmare!
+MapElement.where = lambda self: WhereFunction(self)

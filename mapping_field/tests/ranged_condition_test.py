@@ -3,8 +3,8 @@ from typing import List
 
 from mapping_field.binary_expansion import BoolVar, BinaryExpansion
 from mapping_field.conditions import FalseCondition, TrueCondition
-from mapping_field.ranged_condition import RangeCondition, SingleAssignmentCondition
-from mapping_field.mapping_field import MapElement, Var, NamedFunc
+from mapping_field.ranged_condition import RangeCondition, SingleAssignmentCondition, GeneralAssignment
+from mapping_field.mapping_field import MapElement, Var, NamedFunc, MapElementConstant
 
 
 @pytest.fixture(autouse=True)
@@ -143,3 +143,12 @@ def test_invert_range():
     condition1 = ~ RangeCondition(dummy, (1,3))
     condition2 = (dummy<1) | (3<=dummy)
     assert condition1 == condition2
+
+def test_general_assignment():
+    dummy = DummyMap(0)
+
+    assert (dummy.where() == 3) == GeneralAssignment(dummy, 3)
+
+    assert (MapElementConstant(3).where() == 3) is TrueCondition
+
+    assert (MapElementConstant(5).where() == 3) is FalseCondition
