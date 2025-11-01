@@ -248,3 +248,12 @@ def test_intersection_of_union_component_simplification():
     assert intersection == (dummies3[0] | small_dummy)
     #
     # assert intersection == small_dummy
+
+
+def test_invert_condition():
+    assert ~TrueCondition == FalseCondition
+    assert ~FalseCondition == TrueCondition
+
+    dummy = DummyCondition()
+
+    assert dummy == ~(~dummy)

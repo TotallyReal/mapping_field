@@ -127,3 +127,19 @@ def test_simplifier():
     cond2 = (1 <= x)
 
     assert cond1 == cond2
+
+
+def test_invert_range():
+    dummy = DummyMap(0)
+
+    condition1 = ~(dummy<3)
+    condition2 = dummy>=3
+    assert condition1 == condition2
+
+    condition1 = ~(dummy<=3)
+    condition2 = dummy>3
+    assert condition1 == condition2
+
+    condition1 = ~ RangeCondition(dummy, (1,3))
+    condition2 = (dummy<1) | (3<=dummy)
+    assert condition1 == condition2

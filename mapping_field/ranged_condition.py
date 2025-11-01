@@ -4,7 +4,7 @@ from typing import Tuple, Optional, List, Callable
 from mapping_field import CompositionFunction
 from mapping_field.mapping_field import VarDict, MapElement, Var
 from mapping_field.conditions import Condition, FalseCondition, ConditionIntersection, \
-    MapElementProcessor, TrueCondition
+    MapElementProcessor, TrueCondition, NotCondition
 from mapping_field.serializable import DefaultSerializable
 
 
@@ -324,16 +324,28 @@ class RangeCondition(Condition, AsRange, DefaultSerializable):
 
     # </editor-fold>
 
+# TODO: Use the simplifier mechanism from MapElement instead.
+original_not_simplifier = NotCondition.simplify
+def not_simplifier(self: NotCondition) -> Condition:
+    if isinstance(self.condition, RangeCondition):
+        a, b = self.condition.range
+        upper = RangeCondition(self.condition.function, (b, float('inf'))).simplify()
+        lower = RangeCondition(self.condition.function, (float('-inf'), a)).simplify()
+        return (upper | lower).simplify()
+    return original_not_simplifier(self.condition)
+NotCondition.simplify = not_simplifier
 
-# TODO: switch later to registering just the function without an object
 
 def _range_transformer_simplifier(function: MapElement, f_range: Range) -> Optional[Condition]:
     if isinstance(function, RangeTransformer):
         return function.transform_range(f_range)
+    return None
 
 def _range_evaluator_simplifier(function: MapElement, f_range: Range) -> Optional[Condition]:
     if f_range[1] <= f_range[0]:
         return FalseCondition
+    if f_range[0] == float('-inf') and f_range[1] == float('inf'):
+        return TrueCondition
     n = function.evaluate()
     if n is not None:
         return (TrueCondition if f_range[0] <= n < f_range[1] else FalseCondition)
@@ -365,7 +377,6 @@ def _range_additive_simplifier(function: MapElement, f_range: Range) -> Optional
 RangeCondition.register_simplifier(_range_transformer_simplifier)
 RangeCondition.register_simplifier(_range_evaluator_simplifier)
 RangeCondition.register_simplifier(_range_additive_simplifier)
-
 
 
 def _ranged(elem: MapElement, low: int, high: int) -> RangeCondition:

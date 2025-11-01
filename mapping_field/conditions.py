@@ -133,6 +133,9 @@ class Condition:
         """
         return self & condition
 
+    def __invert__(self):
+        return NotCondition(self)
+
     def simplify(self) -> 'Condition':
         return self
 
@@ -179,11 +182,31 @@ TrueCondition  = BinaryCondition(True)
 FalseCondition = BinaryCondition(False)
 
 
+class NotCondition(Condition, DefaultSerializable):
+
+    def __init__(self, condition: Condition):
+        super().__init__(condition.vars)
+        self.condition = condition
+
+    def simplify(self) -> 'Condition':
+        if self.condition is TrueCondition:
+            return FalseCondition
+        if self.condition is FalseCondition:
+            return TrueCondition
+        if isinstance(self.condition, NotCondition):
+            return self.condition.condition.simplify()
+        return self
+
+    def __repr__(self):
+        return f'~({self.condition})'
+
+
 class MapElementProcessor:
 
     @abstractmethod
     def process_function(self, func: MapElement) -> MapElement:
         pass
+
 
 class _ListCondition(Condition, DefaultSerializable):
     # For intersection \ union of conditions
@@ -458,6 +481,7 @@ class _ListCondition(Condition, DefaultSerializable):
 
         return True
 
+
 class ConditionIntersection(_ListCondition, MapElementProcessor, op_type = _ListCondition.AND):
 
     def __init__(self, conditions: List[Condition], simplified: bool = False):
@@ -469,7 +493,9 @@ class ConditionIntersection(_ListCondition, MapElementProcessor, op_type = _List
                 func = condition.process_function(func)
         return func
 
+
 class ConditionUnion(_ListCondition, op_type = _ListCondition.OR):
 
     def __init__(self, conditions: List[Condition], simplified: bool = False):
         super().__init__(conditions, simplified)
+
