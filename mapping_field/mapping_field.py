@@ -129,7 +129,7 @@ class MapElement:
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
 
-        processor = cls.__dict__.get('_simplify_with_var_values2', None)
+        processor = getattr(cls, '_simplify_with_var_values2')
         if processor is not None:
             MapElement._simplifier.register_class_processor(cls, processor)
 
