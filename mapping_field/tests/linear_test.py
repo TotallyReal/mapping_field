@@ -229,3 +229,11 @@ def test_assignment_range_condition():
     assert cond1 == cond2
 
 
+def test_general_assignment():
+    dummy = DummyMap()
+    lin_dummy = -3*Linear.of(dummy)+2
+
+    condition1 = (lin_dummy.where() == 17)
+    condition2 = (dummy.where() == -5)
+    assert condition1 == condition2
+

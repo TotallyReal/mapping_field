@@ -7,7 +7,7 @@ from mapping_field.arithmetics import _as_combination, Add, Sub
 from mapping_field.serializable import DefaultSerializable
 from mapping_field.mapping_field import MapElement, VarDict, FuncDict, MapElementConstant, ExtElement, get_var_values
 from mapping_field.conditions import Condition, TrueCondition, FalseCondition
-from mapping_field.ranged_condition import RangeCondition, RangeTransformer
+from mapping_field.ranged_condition import RangeCondition, RangeTransformer, GeneralAssignment
 
 logger = TreeLogger(__name__)
 
@@ -214,3 +214,15 @@ def extract_scalar_subtraction(var_dict: VarDict) -> Optional[MapElement]:
 
 Add.register_simplifier(extract_scalar_addition)
 Sub.register_simplifier(extract_scalar_subtraction)
+
+
+# TODO: another refactoring nightmare
+original_assignment_simplify = GeneralAssignment.simplify
+
+def new_assignment_simplify(self: GeneralAssignment) -> Condition:
+    if not isinstance(self.elem, Linear):
+        return original_assignment_simplify(self)
+    value = (self.value - self.elem.b) / self.elem.a
+    assert value == int(value)
+    return GeneralAssignment(self.elem.elem, int(value)).simplify()
+GeneralAssignment.simplify = new_assignment_simplify
