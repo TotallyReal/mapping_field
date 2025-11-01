@@ -152,3 +152,29 @@ def test_general_assignment():
     assert (MapElementConstant(3).where() == 3) is TrueCondition
 
     assert (MapElementConstant(5).where() == 3) is FalseCondition
+
+
+def test_general_range_condition_union():
+    dummy = DummyMap(0)
+
+    # contained:
+    cond1 = (dummy.where() == 10)
+    cond2 = RangeCondition(dummy, (0,11))
+    assert cond1 | cond2 == cond2
+
+    # union of two assignments
+    cond1 = (dummy.where() == 10)
+    cond2 = (dummy.where() == 11)
+    cond3 = RangeCondition(dummy, (10,12))
+    assert cond1 | cond2 == cond3
+
+    # union of assignment and range
+    cond1 = (dummy.where() == 10)
+    cond2 = RangeCondition(dummy, (5,10))
+    cond3 = RangeCondition(dummy, (5,11))
+    assert cond1 | cond2 == cond3
+
+    # disjoint
+    cond1 = (dummy.where() == 10)
+    cond2 = RangeCondition(dummy, [15,25])
+    assert cond1.or_simpler(cond2)[1] == False

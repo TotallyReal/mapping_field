@@ -246,8 +246,9 @@ class RangeCondition(Condition, AsRange, DefaultSerializable):
     def or_simpler(self, condition: Condition) -> Tuple[Condition, bool]:
 
         # TODO: For now I assume that we only deal with integers
-        if isinstance(condition, SingleAssignmentCondition):
-            if condition.var == self.function:
+        if isinstance(condition, (GeneralAssignment, SingleAssignmentCondition)):
+            elem = condition.elem if isinstance(condition, GeneralAssignment) else condition.var
+            if elem == self.function:
                 if condition.value == self.range[0] - 1:
                     return RangeCondition(self.function, (self.range[0]-1, self.range[1])), True
                 if condition.value == self.range[1]:
@@ -424,6 +425,26 @@ class GeneralAssignment(Condition):
 
     def _eq_simplified(self, other: 'Condition') -> bool:
         return isinstance(other, GeneralAssignment) and self.elem == other.elem and self.value == other.value
+
+    def and_simpler(self, condition: Condition) -> Tuple[Condition, bool]:
+        if isinstance(condition, GeneralAssignment) and self.elem == condition.elem:
+            return (self if (self.value == condition.value) else FalseCondition), True
+
+        return super().and_simpler(condition)
+
+    def or_simpler(self, condition: Condition) -> Tuple[Condition, bool]:
+        if isinstance(condition, RangeCondition):
+            return condition.or_simpler(self)
+
+        if isinstance(condition, GeneralAssignment) and self.elem == condition.elem:
+            a = min(self.value, condition.value)
+            b = max(self.value, condition.value)
+            if a == b:
+                return self, True
+            if a + 1 == b:
+                return RangeCondition(self.elem, (a,b+1)), True
+
+        return super().or_simpler(condition)
 
 
 class WhereFunction:
