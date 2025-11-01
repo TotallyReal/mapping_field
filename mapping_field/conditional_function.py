@@ -1,9 +1,9 @@
 import operator
 from typing import List, Tuple, Optional, TypeVar, Union
 
-from mapping_field import convert_to_map
 from mapping_field.binary_expansion import BoolVar
-from mapping_field.mapping_field import MapElement, ExtElement, MapElementConstant, VarDict, FuncDict, params_to_maps
+from mapping_field.mapping_field import (MapElement, ExtElement, MapElementConstant, VarDict, FuncDict,
+                                         params_to_maps, convert_to_map)
 from mapping_field.conditions import TrueCondition, Condition, FalseCondition, MapElementProcessor, _ListCondition, \
     ConditionUnion
 from mapping_field.ranged_condition import SingleAssignmentCondition, GeneralAssignment

@@ -1,6 +1,6 @@
 import pytest
 
-from mapping_field import MapElementConstant, Var, NamedFunc
+from mapping_field.mapping_field import MapElementConstant, Var, NamedFunc
 from mapping_field.binary_expansion import BinaryExpansion, BoolVar
 from mapping_field.ranged_condition import RangeCondition, SingleAssignmentCondition
 

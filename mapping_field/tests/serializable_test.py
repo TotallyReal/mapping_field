@@ -1,7 +1,7 @@
 import pytest
 import yaml
 
-from mapping_field import Var, DefaultSerializable, NamedFunc, CompositionFunction, MapElement, MapElementConstant
+from mapping_field.mapping_field import Var, DefaultSerializable, NamedFunc, CompositionFunction, MapElement, MapElementConstant
 from mapping_field.binary_expansion import BoolVar, BinaryExpansion
 from mapping_field.conditional_function import ConditionalFunction
 from mapping_field.conditions import ConditionUnion
