@@ -19,7 +19,7 @@ class DummyCondition(MapElement):
         return f'DummyCond_{self.type}({self.values})'
 
 
-def test_invert_condition():
+def test_binary_condition_invert():
     assert ~TrueCondition == FalseCondition
     assert ~FalseCondition == TrueCondition
 
@@ -28,16 +28,13 @@ def test_invert_condition():
     not_not_dummy = ~not_dummy
 
     assert dummy == not_not_dummy
-#
-#
-# # Test conditions
-#
-# def test_binary_conditions():
-#     dummy = DummyCondition(0)
-#     assert dummy & TrueCondition == dummy
-#     assert TrueCondition & dummy == dummy
-#     assert dummy & FalseCondition == FalseCondition
-#     assert FalseCondition & dummy == FalseCondition
+
+def test_binary_conditions_and():
+    dummy = DummyCondition(0)
+    assert dummy & TrueCondition == dummy
+    assert TrueCondition & dummy == dummy
+    assert dummy & FalseCondition == FalseCondition
+    assert FalseCondition & dummy == FalseCondition
 #
 # def test_unpack_intersections():
 #     dummies = [DummyCondition(type = i) for i in range(5)]

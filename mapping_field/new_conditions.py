@@ -5,6 +5,9 @@ from mapping_field.field import ExtElement
 from mapping_field.mapping_field import MapElement, VarDict, CompositionFunction, OutputPromise, \
     always_validate_promises
 from mapping_field.serializable import DefaultSerializable
+from mapping_field.tree_loggers import TreeLogger
+
+simplify_logger = TreeLogger(__name__)
 
 IsCondition = OutputPromise("Condition")
 
@@ -43,11 +46,15 @@ class BinaryCondition(Condition, DefaultSerializable):
     def invert(self) -> Optional[Condition]:
         return FalseCondition if (self is TrueCondition) else TrueCondition
 
+    def and_(self, condition: MapElement):
+        return condition if (self is TrueCondition) else FalseCondition
+
+
 TrueCondition  = BinaryCondition(True)
 FalseCondition = BinaryCondition(False)
 
 
-# <editor-fold desc="Not Condition">
+# <editor-fold desc=" ----------------------- Not Condition ----------------------- ">
 
 @always_validate_promises
 class _NotCondition(Condition, _ArithmeticMapFromFunction):
@@ -88,3 +95,35 @@ NotCondition.register_simplifier(parameter_not_simplifier)
 MapElement.inversion = NotCondition
 
 # </editor-fold>
+
+# <editor-fold desc=" ----------------------- And Condition ----------------------- ">
+
+@always_validate_promises
+class _AndCondition(Condition, _ArithmeticMapFromFunction):
+
+    def __init__(self):
+        super().__init__('And', lambda a, b: a * b)
+        self.add_promise(IsCondition)
+        for v in self.vars:
+            # TODO: Maybe switch directly to BoolVars?
+            v.add_promise(IsCondition)
+
+    def to_string(self, entries: List[str]):
+        return f'({entries[0]} & {entries[1]})'
+
+AndCondition = _AndCondition()
+
+def parameter_and_simplifier(var_dict: VarDict) -> Optional[MapElement]:
+    entries = [var_dict[v] for v in AndCondition.vars]
+    simplify_logger.log('Simplify \'and\' via 1st parameter')
+    result = entries[0].and_(entries[1])
+    if result is not None:
+        return result
+    simplify_logger.log('Simplify \'and\' via 2nd parameter')
+    return entries[1].and_(entries[0])
+AndCondition.register_simplifier(parameter_and_simplifier)
+
+MapElement.intersection = AndCondition
+
+# </editor-fold>
+

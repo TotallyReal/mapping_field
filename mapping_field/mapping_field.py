@@ -128,6 +128,7 @@ class MapElement:
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
+
         processor = cls.__dict__.get('_simplify_with_var_values2', None)
         if processor is not None:
             MapElement._simplifier.register_class_processor(cls, processor)
@@ -346,7 +347,7 @@ class MapElement:
     # <editor-fold desc=" ------------------------ Arithmetic functions ------------------------">
 
     """
-    For ease of reading, all the arithmetic code is in arithmetic.py file. In particular the static functions:
+    For ease of reading, all the arithmetic code is in arithmetics.py file. In particular the static functions:
         addition, subtraction, multiplication, division and negation
     are all overriden there, and _simplify_caller_function2 is updated there. 
     They are defined here to help the compiler.
@@ -501,6 +502,11 @@ class MapElement:
 
     # <editor-fold desc=" ------------------------ Binary ------------------------">
 
+    """
+    These are like the arithmetic functions, but for condition (=binary) functions. Similarly, they are 
+    implemented in new_conditions.py file. 
+    """
+
     # <editor-fold desc=" ------------------------ Inversion ------------------------">
 
     @staticmethod
@@ -511,6 +517,20 @@ class MapElement:
         return MapElement.inversion(self)
 
     def invert(self) -> Optional['MapElement']:
+        return None
+
+    # </editor-fold>
+
+    # <editor-fold desc=" ------------------------ And ------------------------">
+
+    @staticmethod
+    def intersection(condition1: 'MapElement', condition2: 'MapElement') -> 'MapElement':
+        raise NotImplementedError()
+
+    def __and__(self, condition: 'MapElement') -> 'MapElement':
+        return MapElement.intersection(self, condition)
+
+    def and_(self, condition: 'MapElement') -> Optional['MapElement']:
         return None
 
     # </editor-fold>
@@ -782,6 +802,7 @@ class CompositionFunction(MapElement, DefaultSerializable):
         if result is not None:
             return result
 
+        # TODO: consider moving it into a simplifier processor, since it is mainly used for arithmetics
         simplify_logger.log('Simplifying via positional entries')
         for position, v in enumerate(function.vars):
             pos_entry = simplified_entries_dict[v]
