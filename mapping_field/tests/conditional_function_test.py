@@ -257,3 +257,28 @@ def test_general_assignment():
     condition1 = (func.where() == 10)
     condition2 = (x.where() == -10) | (x.where() == 3)
     assert condition1 == condition2
+
+
+def test_comparisons():
+    x = Linear.of(Var('x'))
+
+    func = ConditionalFunction([
+        (x<0, -x),
+        (x>=0, x + 7)
+    ])
+
+    condition1 = (func <= 10)
+    condition2 = RangeCondition(x, (-10,4))
+    assert condition1 == condition2
+
+    condition1 = (func > 10)
+    condition2 = (x<-10) | (4<=x)
+    assert condition1 == condition2
+
+    condition1 = (func >= 10)
+    condition2 = (x<-9) | (3<=x)
+    assert condition1 == condition2
+
+    condition1 = (func < 10)
+    condition2 = RangeCondition(x, (-9,3))
+    assert condition1 == condition2

@@ -3,8 +3,8 @@ from typing import List, Tuple, Optional
 
 from mapping_field.binary_expansion import BoolVar
 from mapping_field.mapping_field import MapElement, ExtElement, MapElementConstant, VarDict, FuncDict, params_to_maps
-from mapping_field.conditions import TrueCondition, Condition, FalseCondition, MapElementProcessor, _ListCondition
-from mapping_field.ranged_condition import SingleAssignmentCondition
+from mapping_field.conditions import TrueCondition, Condition, FalseCondition, MapElementProcessor, _ListCondition, \
+    ConditionUnion
 from mapping_field.ranged_condition import SingleAssignmentCondition, GeneralAssignment
 from mapping_field.serializable import DefaultSerializable
 
@@ -102,6 +102,22 @@ class ConditionalFunction(MapElement, DefaultSerializable):
 
     def rdiv(self, other) -> 'ConditionalFunction':
         return ConditionalFunction.always(other)._op(self, operator.truediv)
+
+    # </editor-fold>
+
+    # <editor-fold desc="Comparisons">
+
+    def __le__(self, n: int) -> Condition:
+        return ConditionUnion([condition & (func <= n) for condition, func in self.regions]).simplify()
+
+    def __lt__(self, n: int) -> Condition:
+        return ConditionUnion([condition & (func <  n) for condition, func in self.regions]).simplify()
+
+    def __ge__(self, n: int) -> Condition:
+        return ConditionUnion([condition & (func >= n) for condition, func in self.regions]).simplify()
+
+    def __gt__(self, n: int) -> Condition:
+        return ConditionUnion([condition & (func >  n) for condition, func in self.regions]).simplify()
 
     # </editor-fold>
 
