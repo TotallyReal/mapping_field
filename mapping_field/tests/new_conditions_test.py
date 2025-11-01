@@ -1,6 +1,9 @@
-from typing import List, Tuple, Union, Set
+from typing import List, Tuple, Union, Set, Type
 
-from mapping_field.new_conditions import TrueCondition, FalseCondition, IsCondition, IntersectionCondition
+import pytest
+
+from mapping_field.new_conditions import TrueCondition, FalseCondition, IsCondition, IntersectionCondition, \
+    UnionCondition, _ListCondition
 from mapping_field.mapping_field import MapElement
 
 class DummyMap(MapElement):
@@ -70,46 +73,62 @@ def test_intersection_with_delim():
     cond2 = dummies[0] & dummies[1] & dummies[2] & dummies[3]
     assert cond1 == cond2
 
-def test_unpack_intersections():
+def test_union_with_delim():
+    dummies = [DummyCondition(type = i) for i in range(4)]
+
+    cond1 = UnionCondition([dummies[0], dummies[1], dummies[2], dummies[3]])
+    cond2 = dummies[0] | dummies[1] | dummies[2] | dummies[3]
+    assert cond1 == cond2
+
+@pytest.mark.parametrize('list_class', [IntersectionCondition, UnionCondition])
+def test_unpack_lists(list_class: Type[_ListCondition]):
     dummies = [DummyCondition(type = i) for i in range(5)]
 
-    cond1 = IntersectionCondition([dummies[0], dummies[1]])
+    cond1 = list_class([dummies[0], dummies[1]])
 
-    cond2 = IntersectionCondition([cond1, dummies[2]])
-    assert isinstance(cond2, IntersectionCondition) and len(cond2.conditions) == 3
+    cond2 = list_class([cond1, dummies[2]])
+    assert isinstance(cond2, list_class) and len(cond2.conditions) == 3
 
-    cond2 = IntersectionCondition([dummies[2], cond1])
-    assert isinstance(cond2, IntersectionCondition) and len(cond2.conditions) == 3
+    cond2 = list_class([dummies[2], cond1])
+    assert isinstance(cond2, list_class) and len(cond2.conditions) == 3
 
-def test_equality_intersection_permutations():
+    cond3 = list_class([dummies[3], cond2])
+    assert isinstance(cond3, list_class) and len(cond3.conditions) == 4
+
+@pytest.mark.parametrize('list_class', [IntersectionCondition, UnionCondition])
+def test_equality_list_permutations(list_class: Type[_ListCondition]):
     dummies = [DummyCondition(i) for i in range(5)]
 
-    cond1 = IntersectionCondition([dummies[0], dummies[1], dummies[2]])
-    cond2 = IntersectionCondition([dummies[2], dummies[0], dummies[1]])
+    cond1 = list_class([dummies[0], dummies[1], dummies[2]])
+    cond2 = list_class([dummies[2], dummies[0], dummies[1]])
     assert cond1 == cond2
 
-def test_simplify_intersection():
+@pytest.mark.parametrize('list_class', [IntersectionCondition, UnionCondition])
+def test_simplify_lists(list_class: Type[_ListCondition]):
     dummies = [DummyCondition(i) for i in range(5)] # TODO: type = i ?
 
-    # Removing True Conditions
-    cond1 = IntersectionCondition([TrueCondition, dummies[0], dummies[1], dummies[2], TrueCondition])
+    trivial_condition = list_class.trivials[list_class.type]
+    final_condition = list_class.trivials[1-list_class.type]
+
+    # Removing trivial_condition
+    cond1 = list_class([trivial_condition, dummies[0], dummies[1], dummies[2], trivial_condition])
     cond1 = cond1.simplify2()
-    cond2 = IntersectionCondition([dummies[2], dummies[0], dummies[1]])
+    cond2 = list_class([dummies[2], dummies[0], dummies[1]])
     assert cond1 == cond2
 
-    # Controlled by FalseCondition
-    cond1 = IntersectionCondition([FalseCondition, dummies[0], dummies[1], dummies[2], TrueCondition])
+    # Controlled by final_condition
+    cond1 = list_class([final_condition, dummies[0], dummies[1], dummies[2], trivial_condition])
     cond1 = cond1.simplify2()
-    cond2 = FalseCondition
+    cond2 = final_condition
     assert cond1 == cond2
 
     # Repeating conditions
-    cond1 = IntersectionCondition([dummies[0], dummies[1], dummies[1], dummies[0], dummies[2]])
+    cond1 = list_class([dummies[0], dummies[1], dummies[1], dummies[0], dummies[2]])
     cond1 = cond1.simplify2()
-    cond2 = IntersectionCondition([dummies[2], dummies[0], dummies[1]])
+    cond2 = list_class([dummies[2], dummies[0], dummies[1]])
     assert cond1 == cond2
 
-    cond1 = IntersectionCondition([dummies[0]])
+    cond1 = list_class([dummies[0]])
     cond1 = cond1.simplify2()
     cond2 = dummies[0]
     assert cond1 == cond2

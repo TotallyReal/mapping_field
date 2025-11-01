@@ -165,7 +165,7 @@ MapElement.intersection = AndCondition
 
 # </editor-fold>
 
-# <editor-fold desc=" ----------------------- And Condition ----------------------- ">
+# <editor-fold desc=" ----------------------- Or Condition ----------------------- ">
 
 @always_validate_promises
 class _OrCondition(Condition, _ArithmeticMapFromFunction):
@@ -203,6 +203,15 @@ def parameter_or_simplifier(var_dict: VarDict) -> Optional[MapElement]:
     simplify_logger.log('Simplify \'or\' via 2nd parameter')
     return entries[1].or_(entries[0])
 OrCondition.register_simplifier(parameter_or_simplifier)
+
+def associative_or_simplifier(var_dict: VarDict) -> Optional[MapElement]:
+    entry0, entry1 = [var_dict[v] for v in OrCondition.vars]
+    if isinstance(entry0, CompositionFunction) and (entry0.function is OrCondition):
+        return UnionCondition([*(entry0.entries), entry1])
+    if isinstance(entry1, CompositionFunction) and (entry1.function is OrCondition):
+        return UnionCondition([entry0, *(entry1.entries)])
+    return None
+OrCondition.register_simplifier(associative_or_simplifier)
 
 MapElement.union = OrCondition
 
@@ -355,4 +364,7 @@ class _ListCondition(Condition):
         return None
 
 class IntersectionCondition(_ListCondition, op_type = _ListCondition.AND):
+    pass
+
+class UnionCondition(_ListCondition, op_type = _ListCondition.OR):
     pass
