@@ -1,4 +1,5 @@
 from typing import Optional, List
+from typing import Optional, List, Tuple
 
 from mapping_field.arithmetics import _ArithmeticMapFromFunction
 from mapping_field.field import ExtElement
@@ -11,6 +12,7 @@ simplify_logger = TreeLogger(__name__)
 
 IsCondition = OutputPromise("Condition")
 
+@always_validate_promises
 class Condition(MapElement):
     pass
 
@@ -98,6 +100,14 @@ NotCondition.register_simplifier(parameter_not_simplifier)
 
 MapElement.inversion = NotCondition
 
+def _as_inversion(condition: MapElement) -> Tuple[bool, MapElement]:
+    """
+    return (has inversion, of elem)
+    """
+    if isinstance(condition, CompositionFunction) and condition.function == NotCondition:
+        return True, condition.entries[0]
+    return False, condition
+
 # </editor-fold>
 
 # <editor-fold desc=" ----------------------- And Condition ----------------------- ">
@@ -115,10 +125,23 @@ class _AndCondition(Condition, _ArithmeticMapFromFunction):
     def to_string(self, entries: List[str]):
         return f'({entries[0]} & {entries[1]})'
 
+
 AndCondition = _AndCondition()
 
 def parameter_and_simplifier(var_dict: VarDict) -> Optional[MapElement]:
     entries = [var_dict[v] for v in AndCondition.vars]
+
+    invert0, cond0 = _as_inversion(entries[0])
+    invert1, cond1 = _as_inversion(entries[1])
+
+    if invert0 == invert1 == True:
+        return ~(cond0 | cond1)
+
+    if invert0 != invert1 and ((cond0 is cond1) or (cond0 == cond1)):
+        return FalseCondition
+
+    if (entries[0] is entries[1]) or (entries[0] == entries[1]):
+        return entries[0]
     simplify_logger.log('Simplify \'and\' via 1st parameter')
     result = entries[0].and_(entries[1])
     if result is not None:
@@ -150,6 +173,18 @@ OrCondition = _OrCondition()
 
 def parameter_or_simplifier(var_dict: VarDict) -> Optional[MapElement]:
     entries = [var_dict[v] for v in OrCondition.vars]
+
+    invert0, cond0 = _as_inversion(entries[0])
+    invert1, cond1 = _as_inversion(entries[1])
+
+    if invert0 == invert1 == True:
+        return ~(cond0 & cond1)
+
+    if invert0 != invert1 and ((cond0 is cond1) or (cond0 == cond1)):
+        return TrueCondition
+
+    if (entries[0] is entries[1]) or (entries[0] == entries[1]):
+        return entries[0]
     simplify_logger.log('Simplify \'or\' via 1st parameter')
     result = entries[0].or_(entries[1])
     if result is not None:

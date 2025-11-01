@@ -1,6 +1,6 @@
 from typing import List, Tuple, Union, Set
 
-from mapping_field.new_conditions import Condition, TrueCondition, FalseCondition, IsCondition
+from mapping_field.new_conditions import TrueCondition, FalseCondition, IsCondition, IntersectionCondition
 from mapping_field.mapping_field import MapElement
 
 class DummyMap(MapElement):
@@ -15,7 +15,7 @@ class DummyCondition(MapElement):
         self.type = type
         self.add_promise(IsCondition)
 
-    def __repr__(self):
+    def to_string(self, vars_str_list: List[str]):
         return f'DummyCond_{self.type}({self.values})'
 
 
@@ -31,13 +31,16 @@ def test_binary_condition_invert():
 
 def test_binary_conditions_and():
     dummy = DummyCondition(0)
+
     assert dummy & TrueCondition == dummy
     assert TrueCondition & dummy == dummy
     assert dummy & FalseCondition == FalseCondition
     assert FalseCondition & dummy == FalseCondition
+    assert dummy & dummy == dummy
 
-def test_binary_conditions_or(simple_logs):
+def test_binary_conditions_or():
     dummy = DummyCondition(0)
+
     assert dummy | TrueCondition == TrueCondition
     assert TrueCondition | dummy == TrueCondition
     assert dummy | FalseCondition == dummy
@@ -76,6 +79,23 @@ def test_binary_conditions_or(simple_logs):
 #     cond1 = ConditionIntersection([dummies[0]])
 #     cond2 = dummies[0]
 #     assert cond1 == cond2
+    assert dummy | dummy == dummy
+
+def test_binary_and_with_invert():
+    dummy0 = DummyCondition(0)
+    dummy1 = DummyCondition(1)
+
+    assert dummy0 & ~dummy0 == FalseCondition
+    assert ~dummy0 & dummy0 == FalseCondition
+    assert str((~dummy0) & (~dummy1)) == str(~(dummy0 | dummy1))
+
+def test_binary_or_with_invert():
+    dummy0 = DummyCondition(0)
+    dummy1 = DummyCondition(1)
+
+    assert dummy0 | ~dummy0 == TrueCondition
+    assert ~dummy0 | dummy0 == TrueCondition
+    assert str((~dummy0) | (~dummy1)) == str(~(dummy0 & dummy1))
 #
 # def test_improved_simplify_intersection():
 #     dummies = [DummyCondition(i) for i in range(5)]
