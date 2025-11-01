@@ -5,6 +5,7 @@ from mapping_field.binary_expansion import BoolVar
 from mapping_field.mapping_field import MapElement, ExtElement, MapElementConstant, VarDict, FuncDict, params_to_maps
 from mapping_field.conditions import TrueCondition, Condition, FalseCondition, MapElementProcessor, _ListCondition
 from mapping_field.ranged_condition import SingleAssignmentCondition
+from mapping_field.ranged_condition import SingleAssignmentCondition, GeneralAssignment
 from mapping_field.serializable import DefaultSerializable
 
 
@@ -210,6 +211,14 @@ def bool_var_simplifier(map_elem: MapElement, var_dict: VarDict) -> Optional[Map
 
 ConditionalFunction.register_class_simplifier(bool_var_simplifier)
 
+# TODO: another refactoring nightmare
+original_assignment_simplify = GeneralAssignment.simplify
+
+def new_assignment_simplify(self: GeneralAssignment) -> Condition:
+    if not isinstance(self.elem, ConditionalFunction):
+        return original_assignment_simplify(self)
+    return ConditionUnion([condition & (func.where() == self.value) for condition, func in self.elem.regions]).simplify()
+GeneralAssignment.simplify = new_assignment_simplify
 
 def ReLU(map_elem: MapElement):
     zero = MapElementConstant.zero

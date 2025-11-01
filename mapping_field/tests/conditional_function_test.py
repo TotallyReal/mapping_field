@@ -244,3 +244,16 @@ def test_linear_ranged_condition_subtraction():
 
     result = BinaryExpansion(vv[:3])
     assert u == result
+
+
+def test_general_assignment():
+    x = Linear.of(Var('x'))
+
+    func = ConditionalFunction([
+        (x<0, -x),
+        (x>=0, x + 7)
+    ])
+
+    condition1 = (func.where() == 10)
+    condition2 = (x.where() == -10) | (x.where() == 3)
+    assert condition1 == condition2
