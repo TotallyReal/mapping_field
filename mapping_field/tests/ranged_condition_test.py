@@ -178,3 +178,27 @@ def test_general_range_condition_union():
     cond1 = (dummy.where() == 10)
     cond2 = RangeCondition(dummy, [15,25])
     assert cond1.or_simpler(cond2)[1] == False
+
+
+def test_general_range_condition_intersection():
+    dummy = DummyMap(0)
+
+    # same:
+    cond1 = (dummy.where() == 10)
+    cond2 = (dummy.where() == 10)
+    assert cond1 & cond2 == cond1
+
+    # distinct:
+    cond1 = (dummy.where() == 10)
+    cond2 = (dummy.where() == 13)
+    assert cond1 & cond2 == FalseCondition
+
+    # contained
+    cond1 = (dummy.where() == 10)
+    cond2 = RangeCondition(dummy, (5,12))
+    assert cond1 & cond2 == cond1
+
+    # distinct
+    cond1 = (dummy.where() == 10)
+    cond2 = RangeCondition(dummy, (12,17))
+    assert cond1 & cond2 == FalseCondition

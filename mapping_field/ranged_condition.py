@@ -239,7 +239,13 @@ class RangeCondition(Condition, AsRange, DefaultSerializable):
             function = self.function(condition.var_dict)
             if function != self.function:
                 # TODO: beware of infinite loops...
+                # TODO: Something is weird here...
                 return ConditionIntersection([RangeCondition(function, self.range), condition]).simplify(), True
+
+        if isinstance(condition, GeneralAssignment) and condition.elem == self.function:
+            if self.range[0] <= condition.value < self.range[1]:
+                return condition, True
+            return FalseCondition, True
 
         return super().and_simpler(condition)
 
