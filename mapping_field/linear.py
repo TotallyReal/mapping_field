@@ -220,9 +220,10 @@ Sub.register_simplifier(extract_scalar_subtraction)
 original_assignment_simplify = GeneralAssignment.simplify
 
 def new_assignment_simplify(self: GeneralAssignment) -> Condition:
-    if not isinstance(self.elem, Linear):
+    lin_elem = Linear.of(self.elem)
+    if lin_elem.a==0 or (lin_elem.a == 1 and lin_elem.b == 0 and not isinstance(self.elem, Linear)):
         return original_assignment_simplify(self)
-    value = (self.value - self.elem.b) / self.elem.a
+    value = (self.value - lin_elem.b) / lin_elem.a
     assert value == int(value)
-    return GeneralAssignment(self.elem.elem, int(value)).simplify()
+    return GeneralAssignment(lin_elem.elem, int(value)).simplify()
 GeneralAssignment.simplify = new_assignment_simplify
