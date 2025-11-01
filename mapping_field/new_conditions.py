@@ -49,6 +49,9 @@ class BinaryCondition(Condition, DefaultSerializable):
     def and_(self, condition: MapElement):
         return condition if (self is TrueCondition) else FalseCondition
 
+    def or_(self, condition: MapElement):
+        return condition if (self is FalseCondition) else TrueCondition
+
 
 TrueCondition  = BinaryCondition(True)
 FalseCondition = BinaryCondition(False)
@@ -78,6 +81,7 @@ class _NotCondition(Condition, _ArithmeticMapFromFunction):
         comp_entries = entries[0].entries
         if function == NotCondition:
             return comp_entries[0]
+        # TODO: simplify formulas like ~(a and ~b) -> ~a or b, which have fewer "not"s.
 
         return super()._simplify_with_var_values2(var_dict)
 
@@ -124,6 +128,37 @@ def parameter_and_simplifier(var_dict: VarDict) -> Optional[MapElement]:
 AndCondition.register_simplifier(parameter_and_simplifier)
 
 MapElement.intersection = AndCondition
+
+# </editor-fold>
+
+# <editor-fold desc=" ----------------------- And Condition ----------------------- ">
+
+@always_validate_promises
+class _OrCondition(Condition, _ArithmeticMapFromFunction):
+
+    def __init__(self):
+        super().__init__('Or', lambda a, b: a + b - a * b)
+        self.add_promise(IsCondition)
+        for v in self.vars:
+            # TODO: Maybe switch directly to BoolVars?
+            v.add_promise(IsCondition)
+
+    def to_string(self, entries: List[str]):
+        return f'({entries[0]} | {entries[1]})'
+
+OrCondition = _OrCondition()
+
+def parameter_or_simplifier(var_dict: VarDict) -> Optional[MapElement]:
+    entries = [var_dict[v] for v in OrCondition.vars]
+    simplify_logger.log('Simplify \'or\' via 1st parameter')
+    result = entries[0].or_(entries[1])
+    if result is not None:
+        return result
+    simplify_logger.log('Simplify \'or\' via 2nd parameter')
+    return entries[1].or_(entries[0])
+OrCondition.register_simplifier(parameter_or_simplifier)
+
+MapElement.union = OrCondition
 
 # </editor-fold>
 

@@ -535,6 +535,20 @@ class MapElement:
 
     # </editor-fold>
 
+    # <editor-fold desc=" ------------------------ Or ------------------------">
+
+    @staticmethod
+    def union(condition1: 'MapElement', condition2: 'MapElement') -> 'MapElement':
+        raise NotImplementedError()
+
+    def __or__(self, condition: 'MapElement') -> 'MapElement':
+        return MapElement.union(self, condition)
+
+    def or_(self, condition: 'MapElement') -> Optional['MapElement']:
+        return None
+
+    # </editor-fold>
+
     # </editor-fold>
 
     # <editor-fold desc=" ------------------------ Comparison condition ------------------------">

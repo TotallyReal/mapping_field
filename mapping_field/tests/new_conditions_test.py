@@ -35,6 +35,13 @@ def test_binary_conditions_and():
     assert TrueCondition & dummy == dummy
     assert dummy & FalseCondition == FalseCondition
     assert FalseCondition & dummy == FalseCondition
+
+def test_binary_conditions_or(simple_logs):
+    dummy = DummyCondition(0)
+    assert dummy | TrueCondition == TrueCondition
+    assert TrueCondition | dummy == TrueCondition
+    assert dummy | FalseCondition == dummy
+    assert FalseCondition | dummy == dummy
 #
 # def test_unpack_intersections():
 #     dummies = [DummyCondition(type = i) for i in range(5)]
