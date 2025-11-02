@@ -748,6 +748,15 @@ class Func:
         return self.assigned
 
 
+# TODO:
+#   Should I keep this class? Maybe have the general MapElement class be a "CompositionFunction"?
+#   MapElement will have 'entries' for the top node of computation + 'vars' needed for the full function.
+#   This means that both (x+y) and (x+(y*z)) are of type Add, so instead of having just one unique 'Add' function
+#   I will have one unique 'Add' class, and one unique instance will indicate the 'base' Add X_Add_1 + X_Add_2 .
+#   The variables of (x+(y*z)) are x,y,z, but the entries are x and (y*z). If I want to create a new function
+#   for which x,y,z are the entries, then I can use a composition class.
+#   Sounds legit. I will think about more it after finishing with the Condition to MapElement stuff.
+#
 class CompositionFunction(MapElement, DefaultSerializable):
 
     def __init__(self, function: MapElement, entries: List[MapElement]):

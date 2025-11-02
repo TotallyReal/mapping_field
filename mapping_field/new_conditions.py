@@ -1,12 +1,12 @@
 import operator
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Type, cast
 
 from mapping_field.arithmetics import _ArithmeticMapFromFunction
 from mapping_field.field import ExtElement
 from mapping_field.mapping_field import MapElement, VarDict, CompositionFunction, OutputPromise, \
     always_validate_promises
 from mapping_field.serializable import DefaultSerializable
-from mapping_field.log_utils.tree_loggers import TreeLogger, red, green
+from mapping_field.log_utils.tree_loggers import TreeLogger, red, green, yellow
 
 simplify_logger = TreeLogger(__name__)
 
@@ -110,125 +110,17 @@ def _as_inversion(condition: MapElement) -> Tuple[bool, MapElement]:
 
 # </editor-fold>
 
-# <editor-fold desc=" ----------------------- And Condition ----------------------- ">
-
-@always_validate_promises
-class _AndCondition(Condition, _ArithmeticMapFromFunction):
-
-    def __init__(self):
-        super().__init__('And', lambda a, b: a * b)
-        self.add_promise(IsCondition)
-        for v in self.vars:
-            # TODO: Maybe switch directly to BoolVars?
-            v.add_promise(IsCondition)
-
-    def to_string(self, entries: List[str]):
-        return f'({entries[0]} & {entries[1]})'
-
-
-AndCondition = _AndCondition()
-
-def parameter_and_simplifier(var_dict: VarDict) -> Optional[MapElement]:
-    entries = [var_dict[v] for v in AndCondition.vars]
-
-    invert0, cond0 = _as_inversion(entries[0])
-    invert1, cond1 = _as_inversion(entries[1])
-
-    if invert0 == invert1 == True:
-        return ~(cond0 | cond1)
-
-    if invert0 != invert1 and ((cond0 is cond1) or (cond0 == cond1)):
-        return FalseCondition
-
-    if (entries[0] is entries[1]) or (entries[0] == entries[1]):
-        return entries[0]
-
-    simplify_logger.log('Simplify \'and\' via 1st parameter')
-    result = entries[0].and_(entries[1])
-    if result is not None:
-        return result
-
-    simplify_logger.log('Simplify \'and\' via 2nd parameter')
-    return entries[1].and_(entries[0])
-AndCondition.register_simplifier(parameter_and_simplifier)
-
-def associative_and_simplifier(var_dict: VarDict) -> Optional[MapElement]:
-    entry0, entry1 = [var_dict[v] for v in AndCondition.vars]
-    if isinstance(entry0, CompositionFunction) and (entry0.function is AndCondition):
-        return IntersectionCondition([*(entry0.entries), entry1])
-    if isinstance(entry1, CompositionFunction) and (entry1.function is AndCondition):
-        return IntersectionCondition([entry0, *(entry1.entries)])
-    return None
-AndCondition.register_simplifier(associative_and_simplifier)
-
-MapElement.intersection = AndCondition
-
-# </editor-fold>
-
-# <editor-fold desc=" ----------------------- Or Condition ----------------------- ">
-
-@always_validate_promises
-class _OrCondition(Condition, _ArithmeticMapFromFunction):
-
-    def __init__(self):
-        super().__init__('Or', lambda a, b: a + b - a * b)
-        self.add_promise(IsCondition)
-        for v in self.vars:
-            # TODO: Maybe switch directly to BoolVars?
-            v.add_promise(IsCondition)
-
-    def to_string(self, entries: List[str]):
-        return f'({entries[0]} | {entries[1]})'
-
-OrCondition = _OrCondition()
-
-def parameter_or_simplifier(var_dict: VarDict) -> Optional[MapElement]:
-    entries = [var_dict[v] for v in OrCondition.vars]
-
-    invert0, cond0 = _as_inversion(entries[0])
-    invert1, cond1 = _as_inversion(entries[1])
-
-    if invert0 == invert1 == True:
-        return ~(cond0 & cond1)
-
-    if invert0 != invert1 and ((cond0 is cond1) or (cond0 == cond1)):
-        return TrueCondition
-
-    if (entries[0] is entries[1]) or (entries[0] == entries[1]):
-        return entries[0]
-    simplify_logger.log('Simplify \'or\' via 1st parameter')
-    result = entries[0].or_(entries[1])
-    if result is not None:
-        return result
-    simplify_logger.log('Simplify \'or\' via 2nd parameter')
-    return entries[1].or_(entries[0])
-OrCondition.register_simplifier(parameter_or_simplifier)
-
-def associative_or_simplifier(var_dict: VarDict) -> Optional[MapElement]:
-    entry0, entry1 = [var_dict[v] for v in OrCondition.vars]
-    if isinstance(entry0, CompositionFunction) and (entry0.function is OrCondition):
-        return UnionCondition([*(entry0.entries), entry1])
-    if isinstance(entry1, CompositionFunction) and (entry1.function is OrCondition):
-        return UnionCondition([entry0, *(entry1.entries)])
-    return None
-OrCondition.register_simplifier(associative_or_simplifier)
-
-MapElement.union = OrCondition
-
-# </editor-fold>
-
 class _ListCondition(Condition):
     # For intersection \ union of conditions
 
     AND = 0
     OR = 1
 
-    bin_condition = [AndCondition, OrCondition]
     list_classes = [cast(Type['_ListCondition'], None), cast(Type['_ListCondition'], None)]
     op_types = [operator.and_, operator.or_]
     method_names = ['and_', 'or_']
     trivials = [TrueCondition, FalseCondition]
-    join_delims = [' & ', ' | ']
+    join_delims = ['&', '|']
 
     def __init_subclass__(cls, op_type: int, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -263,7 +155,11 @@ class _ListCondition(Condition):
             self.conditions.append(condition)
 
     def to_string(self, vars_str_list: List[str]):
-        conditions_rep = self.__class__.join_delim.join(condition.to_string(vars_str_list) for condition in self.conditions)
+        delim = self.__class__.join_delim
+        if hasattr(self, '_binary_flag'):
+            delim = delim * 2
+        delim = f' {delim} '
+        conditions_rep = delim.join(condition.to_string(vars_str_list) for condition in self.conditions)
         return f'[{conditions_rep}]'
 
     def __eq__(self, other: MapElement) -> bool:
@@ -296,6 +192,8 @@ class _ListCondition(Condition):
         return cls([*self.conditions, condition])
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
+        if hasattr(self, '_binary_flag'):
+            return None
         if self._simplified:
             return None
 
@@ -335,7 +233,11 @@ class _ListCondition(Condition):
                         f'Trying to combine {red(condition)} with existing {red(existing_condition)}',
                     )
                     # prod_cond = AndCondition(existing_condition, condition, simplify=False)._simplify2()
-                    prod_cond = cls._op_between(existing_condition, condition)
+                    # prod_cond = cls._op_between(existing_condition, condition)
+                    binary_op = cls([existing_condition, condition])
+                    binary_op._binary_flag = True
+                    prod_cond = binary_op._simplify2()
+
                     # if prod_cond is None:
                     #     prod_cond = cls._op_between(condition, existing_condition)
 
@@ -345,6 +247,7 @@ class _ListCondition(Condition):
                         )
                         is_whole_simpler = True
                         final_conditions = [cond for cond in final_conditions if (cond is not existing_condition)]
+                        condition = prod_cond
                         break
 
                 else:
@@ -363,8 +266,49 @@ class _ListCondition(Condition):
 
         return None
 
+def _binary_simplify(elem: MapElement, var_dict: VarDict) -> Optional['MapElement']:
+    assert isinstance(elem, _ListCondition)
+    if len(elem.conditions) != 2:
+        return None
+
+    cls = elem.__class__
+    rev_cls = cls.list_classes[1 - cls.type]
+
+    cond1, cond2 = elem.conditions
+
+    if (cond1 is cond2) or (cond1 == cond2):
+        return cond1
+
+    invert1, cond1_ = _as_inversion(cond1)
+    invert2, cond2_ = _as_inversion(cond2)
+
+    if invert1 == invert2 == True:
+        return ~rev_cls([cond1_, cond2_])
+
+    if invert1 != invert2 and ((cond1_ is cond2_) or (cond1_ == cond2_)):
+        return cls.zero_condition
+
+    method_name = cls.method_names[cls.type]
+    simplify_logger.log(f'Simplify \'{method_name}\' via 1st parameter')
+    result = getattr(cond1, method_name)(cond2)
+    if result is not None:
+        return result
+
+    simplify_logger.log(f'Simplify \'{method_name}\' via 2nd parameter')
+    return getattr(cond2, method_name)(cond1)
+
+
 class IntersectionCondition(_ListCondition, op_type = _ListCondition.AND):
     pass
 
+IntersectionCondition.register_class_simplifier(_binary_simplify)
+
+MapElement.intersection = lambda cond1, cond2: IntersectionCondition([cond1, cond2]).simplify2()
+
+
 class UnionCondition(_ListCondition, op_type = _ListCondition.OR):
     pass
+
+UnionCondition.register_class_simplifier(_binary_simplify)
+
+MapElement.union = lambda cond1, cond2: UnionCondition([cond1, cond2]).simplify2()
