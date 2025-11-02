@@ -30,6 +30,11 @@ class TreeLogger:
     # TODO: sometime, if I really need it, add a "SharedTreePosition" so I could make loggers for different trees.
     _depth = 0  # shared depth for all instances
     _max_depth = 30
+    _paused = False
+
+    @classmethod
+    def set_log_state(cls, paused: bool = False) -> None:
+        cls._paused = paused
 
     @classmethod
     def reset(cls):
@@ -40,6 +45,8 @@ class TreeLogger:
         self.logger.setLevel(logging.INFO)
 
     def log(self, message, action=TreeAction.NEUTRAL):
+        if self.__class__._paused:
+            return
         tab_symbols = ['| '] * TreeLogger._depth
         if action == TreeAction.GO_DOWN:
             tab_symbols.append('┌ ')
