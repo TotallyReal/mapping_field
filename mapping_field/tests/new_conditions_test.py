@@ -1,4 +1,4 @@
-from typing import List, Tuple, Union, Set, Type
+from typing import List, Tuple, Union, Set, Type, Optional
 
 import pytest
 
@@ -12,7 +12,7 @@ class DummyMap(MapElement):
         self.value = value
 
 class DummyCondition(MapElement):
-    def __init__(self, values: Union[int, Set[int]]=0, type: int=0):
+    def __init__(self, type: int=0, values: Union[int, Set[int]]=0):
         super().__init__([])
         self.values: Set[int] = set([values]) if isinstance(values, int) else values
         self.type = type
@@ -20,6 +20,24 @@ class DummyCondition(MapElement):
 
     def to_string(self, vars_str_list: List[str]):
         return f'DummyCond_{self.type}({self.values})'
+
+    def and_(self, condition: MapElement) -> Optional[MapElement]:
+        if isinstance(condition, DummyCondition) and self.type == condition.type:
+            intersection = self.values.intersection(condition.values)
+            return DummyCondition(intersection, type=self.type) if len(intersection) > 0 else FalseCondition
+        return None
+
+    def or_(self, condition: MapElement) -> Optional[MapElement]:
+        if isinstance(condition, DummyCondition) and self.type == condition.type:
+            union = self.values.union(condition.values)
+            return DummyCondition(union, type=self.type)
+        return None
+
+    def __eq__(self, other: MapElement) -> bool:
+        return (isinstance(other, DummyCondition) and
+                self.type == other.type and
+                len(self.values) == len(other.values) and
+                all([v in other.values for v in self.values]))
 
 
 def test_binary_condition_invert():
@@ -139,7 +157,7 @@ def test_simplify_lists(list_class: Type[_ListCondition]):
 
 @pytest.mark.parametrize('list_class', [IntersectionCondition, UnionCondition])
 def test_simplify_list_of_lists(list_class: Type[_ListCondition]):
-    dummies = [DummyCondition(i) for i in range(5)]
+    dummies = [DummyCondition(type=i) for i in range(5)]
 
     cond1 = list_class([
         list_class([dummies[0], dummies[1], dummies[2]]),
@@ -161,32 +179,36 @@ def test_simplify_list_of_lists(list_class: Type[_ListCondition]):
     cond2 = list_class([dummies[0], dummies[1], dummies[2], dummies[3], dummies[4]])
     assert cond1 == cond2
 
-# def test_union_of_intersections():
+@pytest.mark.parametrize('list_class', [IntersectionCondition, UnionCondition])
+def test_simplify_containment(list_class: Type[_ListCondition]):
+    # Test cases like (A & B & C & D) | (A & B) = (A & B)
+    rev_op = list_class.op_types[1-list_class.type]
+
+    dummies = [DummyCondition(values=0, type=i) for i in range(5)]
+
+    conditions = [
+        list_class([dummies[0] , dummies[1] , dummies[2]]),
+        list_class([dummies[0] , dummies[2]]),
+        dummies[2]
+    ]
+
+    for i in range(3):
+        for j in range(i):
+            assert rev_op(conditions[i], conditions[j]) == conditions[i], f'Failed at indices {i=}, {j=}'
+
+# def test_simplification_one_diff(simple_logs):
+#
 #     dummies = [DummyCondition(values=0, type=i) for i in range(5)]
-#
-#     # containment:
-#
-#     cond1 = dummies[0] & dummies[1] & dummies[2]
-#     cond2 = dummies[2] & dummies[0]
-#     cond3 = dummies[2]
-#
-#     assert cond1 | cond2 == cond2
-#     assert cond2 | cond1 == cond2
-#
-#     assert cond1 | cond3 == cond3
-#     assert cond3 | cond1 == cond3
-#
-#     assert cond2 | cond3 == cond3
-#     assert cond3 | cond2 == cond3
-#
 #     # One Union
 #
 #     cond1 = dummies[0] & dummies[1] & dummies[2]
-#     dummy_special = DummyCondition(values = 1, type = 0)
-#     cond2 = dummy_special & dummies[1] & dummies[2]
-#     dummy_union = DummyCondition(values = {0,1}, type = 0)
-#
-#     result = dummies[1] & dummy_union & dummies[2]
+#     cond2 = dummies[0] & dummies[1] & dummies[3]
+#     result = dummies[0] & dummies[1] & (dummies[2] | dummies[3])
+#     # dummy_special = DummyCondition(values = 1, type = 0)
+#     # cond2 = dummy_special & dummies[1] & dummies[2]
+#     # dummy_union = DummyCondition(values = {0,1}, type = 0)
+#     #
+#     # result = dummies[1] & dummy_union & dummies[2]
 #     assert cond1 | cond2 == result
 #
 # def test_intersection_of_unions():

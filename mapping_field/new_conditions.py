@@ -133,7 +133,7 @@ class _ListCondition(Condition):
         cls.one_condition = cls.trivials[op_type]
         cls.zero_condition = cls.trivials[1-op_type]
         setattr(cls, cls.method_names[op_type], cls.op)
-        # setattr(cls, cls.method_names[1 - op_type], cls.rev_op)
+        setattr(cls, cls.method_names[1 - op_type], cls.rev_op)
 
     def __init__(self, conditions: List[MapElement], simplified: bool = False):
         super().__init__(
@@ -179,6 +179,12 @@ class _ListCondition(Condition):
         return cls.bin_condition[cls.type](condition1, condition2, simplify=False)._simplify2()
         # return getattr(condition1, cls.method_names[cls.type])(condition2)
 
+    @classmethod
+    def _rev_op_between(cls, condition1: MapElement, condition2: MapElement) -> Optional[MapElement]:
+        rev_cls = cls.list_classes[1 - cls.type]
+        return rev_cls([condition1, condition2])
+        # return getattr(condition1, cls.method_names[1-cls.type])(condition2)
+
     def op(self, condition: MapElement) -> Optional[MapElement]:
         cls = self.__class__
 
@@ -190,6 +196,157 @@ class _ListCondition(Condition):
             return cls([*self.conditions, *condition.conditions])
 
         return cls([*self.conditions, condition])
+
+    def rev_op(self, condition: MapElement) -> Optional[MapElement]:
+
+        cls = self.__class__
+        rev_cls = cls.list_classes[1 - cls.type]
+
+        if isinstance(condition, BinaryCondition):
+            # quick shortcut
+            return cls._rev_op_between(condition , self)._simplify2()
+
+        if len(self.conditions) == 0:
+            return condition
+
+        if len(self.conditions) == 1:
+            return rev_cls([self.conditions[0], condition])
+
+        if isinstance(condition, cls):
+            return cls._rev_op_against_multiple_conditions(self, condition)
+
+        return cls._rev_op_against_single_condition(self.conditions, condition)
+
+    @classmethod
+    def _rev_op_against_multiple_conditions(cls, list_cond1: '_ListCondition', list_cond2: '_ListCondition') -> Optional[MapElement]:
+        assert isinstance(list_cond1, cls) and isinstance(list_cond2, cls)
+        simplify_logger.log(f'rev_op( {cls.join_delims[1-cls.type]} ) the conditions: {yellow(list_cond1)} and {yellow(list_cond2)})')
+        if len(list_cond1.conditions) < len(list_cond2.conditions):
+            list_cond1, list_cond2 = list_cond2, list_cond1
+
+        conditions1 = list_cond1.conditions
+        conditions2 = list_cond2.conditions
+
+        if len(conditions2) == 0:
+            return list_cond1
+
+        # Recall that we have the formula:
+        #   ( A & B ) | ( A & C ) = (A | A) & (A | C) & (B | A) & (B | C)
+        #                         = A & (A | C) & (B | A) & (B | C)        = A & (B | C)
+        #
+        # Thus, consider a union of intersections (or the corresponding intersection of unions) like:
+        #   ( A & B & C & D ) | ( A & B & C0) = ( A & B & ( (C & D) | C0 )
+        #
+        # TODO:
+        # The right hand side already contains fewer parts (5 vs 7), so I might want to consider it
+        # as simpler. However, this might not be desirable, for example in cases like:
+        #       ( A & B ) | ( B & C ) | ( C & A )
+        # which I may want to keep as union of intersections
+        #
+        # We have two specific cases, where I do consider this as a simpler version:
+        #       1. C = C0: Full containment, where we can simply return  ->  ( A & B & C )
+        #       2. (C & D) | C0 has a simplified version (e.g. maybe C0 < C, so the result is ( A & B & C0 ).
+
+        n1 = len(conditions1)
+        used_positions = [False] * n1
+        special_condition = None
+
+        # check to see if there is at most one condition in conditions2 that doesn't appear in conditions1.
+        for cond2 in conditions2:
+            for i in range(n1):
+                if not used_positions[i] and conditions1[i] == cond2:
+                    used_positions[i] = True
+                    break
+            else:
+                if special_condition is not None:
+                    return None
+                special_condition = cond2
+
+        if special_condition is None:
+            # Full containment
+            return list_cond2
+
+        used_conditions = [cond1 for cond1, used in zip(conditions1, used_positions) if used]
+        remaining_conditions = [cond1 for cond1, used in zip(conditions1, used_positions) if not used]
+        if len(remaining_conditions) == 1:
+            remaining_cond = remaining_conditions[0]
+        else:   # len(...) > 1 . Cannot be 0.
+            remaining_cond = cls(remaining_conditions, simplified=list_cond1._simplified)
+
+        # Remark: In case (remaining_cond = list_cond1), the following call should not loop back here,
+        #         because this function should only be called when the two side are lists. Unless of course
+        #         someone decides to wrap special_condition into a 1 element list_cond...
+        prod = cls._rev_op_between(special_condition, remaining_cond)._simplify2()
+        if prod is not None:
+            return cls(used_conditions + [prod]) if len(used_conditions) > 0 else prod
+
+        return None
+
+    @classmethod
+    def _rev_op_against_single_condition(cls, conditions: List[MapElement], sp_condition: MapElement) -> Optional[MapElement]:
+
+        # Assumption:
+        # Only called when sp_condition is not an instance of this class, and this class has at least 2 conditions
+        simplify_logger.log(f'rev_op( {cls.join_delims[1-cls.type]} ) the conditions vs 1: {yellow(conditions)} and {yellow(sp_condition)})')
+
+        rev_cls = cls.list_classes[1 - cls.type]
+
+        # Use the fact that
+        #   (A | B | C) & D = (A & D) | (B & D) | (C & D)
+        # If intersection with D simplified one of A,B,C, we should change them.
+        # There are two possibilities:
+        #       1. A & D = A_0 & D where A_0 is simpler than A, however we cannot remove the intersection with D.
+        #       2. A & D = A_0     where A_0 is not computed as intersection of something with D
+        #
+        # If all (but one) can be written as in type (2), we return
+        #       A_0 | B_0 | C_0      or     (A_0 & D) | B_0 | C_0
+        # Otherwise return:
+        #       ( A_0 | B_0 | C_0 ) & D
+
+        prod_conditions   = []  # A  & D
+        prod_0_conditions = []  # A0
+        need_prod         = []  # True if A & D = A0 & D , False if A & D = A0
+        is_simpler = False
+
+        for cond in conditions:
+            prod = cls._rev_op_between(cond, sp_condition)      # (A & D)
+            simplified_prod = prod._simplify2()                 # a simplification of (A & D), or none if there is one.
+
+            # In case where D <= A, ( iff D = A & D ) we have that (A | B | C) & D = D.
+            if simplified_prod is sp_condition or simplified_prod == sp_condition:
+                return sp_condition
+
+            prod_conditions.append(simplified_prod or prod)
+            if simplified_prod is None:
+                prod_0_conditions.append(cond)
+                need_prod.append(True)
+                continue
+
+            is_simpler = True
+
+            # # In case where A <= D, ( iff A = A & D ) ????????
+            # if (simplified_prod is cond) or (simplified_prod == cond):
+            #     need_prod.append(False)
+            #     continue
+
+            if isinstance(simplified_prod, rev_cls):
+                fewer_conditions = [cc for cc in simplified_prod.conditions if cc is not sp_condition]
+                if len(fewer_conditions) < len(simplified_prod.conditions):
+                    prod_0_conditions.append(rev_cls(fewer_conditions) if len(fewer_conditions) > 1 else fewer_conditions[0])
+                    need_prod.append(True)
+                    continue
+
+            prod_0_conditions.append(simplified_prod)
+            need_prod.append(False)
+
+        if not is_simpler:
+            return None
+
+        if sum(need_prod) <= 1:
+            return cls(prod_conditions)
+        else:
+            new_cls_condition = cls(prod_0_conditions)
+            return rev_cls([new_cls_condition, sp_condition])
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
         if hasattr(self, '_binary_flag'):
