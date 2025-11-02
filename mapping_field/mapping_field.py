@@ -6,7 +6,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Iterator, Type, TypeVa
 from mapping_field.processors import ProcessorCollection, Processor, ParamProcessor
 from mapping_field.field import FieldElement, ExtElement
 from mapping_field.serializable import DefaultSerializable
-from mapping_field.tree_loggers import TreeLogger, TreeAction, red, cyan, magenta, green
+from mapping_field.log_utils.tree_loggers import TreeLogger, TreeAction, red, cyan, magenta, green
 
 simplify_logger = TreeLogger(__name__)
 

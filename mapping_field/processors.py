@@ -1,7 +1,7 @@
 from colorama import init, Fore, Style
 from typing import TypeVar, Generic, Callable, Optional, List, Tuple, Type, Dict
 
-from mapping_field.tree_loggers import TreeLogger, TreeAction, green, red, yellow, magenta, cyan
+from mapping_field.log_utils.tree_loggers import TreeLogger, TreeAction, green, red, yellow, magenta, cyan
 
 init(autoreset=True)
 logger = TreeLogger(__name__)

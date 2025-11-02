@@ -6,7 +6,7 @@ from mapping_field.field import ExtElement
 from mapping_field.mapping_field import MapElement, VarDict, CompositionFunction, OutputPromise, \
     always_validate_promises
 from mapping_field.serializable import DefaultSerializable
-from mapping_field.tree_loggers import TreeLogger, red, green
+from mapping_field.log_utils.tree_loggers import TreeLogger, red, green
 
 simplify_logger = TreeLogger(__name__)
 

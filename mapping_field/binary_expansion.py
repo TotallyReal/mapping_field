@@ -1,7 +1,7 @@
 from typing import List, Union, Optional, Tuple
 import math
 
-from mapping_field.tree_loggers import TreeLogger, red
+from mapping_field.log_utils.tree_loggers import TreeLogger, red
 from mapping_field.mapping_field import get_var_values
 from mapping_field.serializable import DefaultSerializable
 from mapping_field.arithmetics import as_neg, Add, Sub

@@ -2,7 +2,7 @@ import pytest
 import logging
 from typing import List, Tuple, Union, Set
 
-from mapping_field.tree_loggers import TreeLogger
+from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.binary_expansion import BoolVar, BinaryExpansion
 from mapping_field.conditions import Condition, FalseCondition
 from mapping_field.conditional_function import ConditionalFunction, ReLU
