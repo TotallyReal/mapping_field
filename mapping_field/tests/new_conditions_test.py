@@ -24,13 +24,13 @@ class DummyCondition(MapElement):
     def and_(self, condition: MapElement) -> Optional[MapElement]:
         if isinstance(condition, DummyCondition) and self.type == condition.type:
             intersection = self.values.intersection(condition.values)
-            return DummyCondition(intersection, type=self.type) if len(intersection) > 0 else FalseCondition
+            return DummyCondition(values=intersection, type=self.type) if len(intersection) > 0 else FalseCondition
         return None
 
     def or_(self, condition: MapElement) -> Optional[MapElement]:
         if isinstance(condition, DummyCondition) and self.type == condition.type:
             union = self.values.union(condition.values)
-            return DummyCondition(union, type=self.type)
+            return DummyCondition(values=union, type=self.type)
         return None
 
     def __eq__(self, other: MapElement) -> bool:
@@ -127,7 +127,7 @@ def test_equality_list_permutations(list_class: Type[_ListCondition]):
 
 @pytest.mark.parametrize('list_class', [IntersectionCondition, UnionCondition])
 def test_simplify_lists(list_class: Type[_ListCondition]):
-    dummies = [DummyCondition(i) for i in range(5)] # TODO: type = i ?
+    dummies = [DummyCondition(type=i) for i in range(5)] # TODO: type = i ?
 
     trivial_condition = list_class.trivials[list_class.type]
     final_condition = list_class.trivials[1-list_class.type]
@@ -196,49 +196,23 @@ def test_simplify_containment(list_class: Type[_ListCondition]):
         for j in range(i):
             assert rev_op(conditions[i], conditions[j]) == conditions[i], f'Failed at indices {i=}, {j=}'
 
-# def test_simplification_one_diff(simple_logs):
-#
-#     dummies = [DummyCondition(values=0, type=i) for i in range(5)]
-#     # One Union
-#
-#     cond1 = dummies[0] & dummies[1] & dummies[2]
-#     cond2 = dummies[0] & dummies[1] & dummies[3]
-#     result = dummies[0] & dummies[1] & (dummies[2] | dummies[3])
-#     # dummy_special = DummyCondition(values = 1, type = 0)
-#     # cond2 = dummy_special & dummies[1] & dummies[2]
-#     # dummy_union = DummyCondition(values = {0,1}, type = 0)
-#     #
-#     # result = dummies[1] & dummy_union & dummies[2]
-#     assert cond1 | cond2 == result
-#
-# def test_intersection_of_unions():
-#     dummies = [DummyCondition(i) for i in range(5)]
-#
-#     # containment:
-#     cond1 = dummies[0] | dummies[1] | dummies[2]
-#     cond2 = dummies[2] | dummies[0]
-#     cond3 = dummies[2]
-#
-#     assert cond1 & cond2 == cond2
-#     assert cond2 & cond1 == cond2
-#
-#     assert cond1 & cond3 == cond3
-#     assert cond3 & cond1 == cond3
-#
-#     assert cond2 & cond3 == cond3
-#     assert cond3 & cond2 == cond3
-#
-#     # One intersection
-#
-#     dummy01 = DummyCondition(values={0,1}, type = 0)
-#     dummy02 = DummyCondition(values={0,2}, type = 0)
-#     dummy0  = DummyCondition(values={0}, type = 0)
-#
-#     cond1 = dummy01 | dummies[1] | dummies[2]
-#     cond2 = dummy02 | dummies[1] | dummies[2]
-#     result = dummy0 | dummies[1] | dummies[2]
-#
-#     assert cond1 & cond2 == result
+def test_simplification_list_with_special_union_condition():
+    dummies = [DummyCondition(values=0, type=i) for i in range(5)]
+
+    cond1 = dummies[0] & dummies[1] & DummyCondition(values = 1, type = 2)
+    cond2 = dummies[0] & dummies[1] & DummyCondition(values = 2, type = 2)
+    result = dummies[0] & dummies[1] & DummyCondition(values = {1,2}, type = 2)
+
+    assert cond1 | cond2 == result
+
+def test_simplification_list_with_special_intersection_condition():
+    dummies = [DummyCondition(values=0, type=i) for i in range(5)]
+
+    cond1 = dummies[0] | dummies[1] | DummyCondition(values = {1,2}, type = 2)
+    cond2 = dummies[0] | dummies[1] | DummyCondition(values = {1,3}, type = 2)
+    result = dummies[0] | dummies[1] | DummyCondition(values = {1}, type = 2)
+
+    assert cond1 & cond2 == result
 #
 # def single_containment(cond_small: Condition, cond_large: Condition):
 #
