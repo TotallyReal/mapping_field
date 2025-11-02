@@ -9,7 +9,6 @@ from mapping_field.conditional_function import ConditionalFunction, ReLU
 from mapping_field.linear import Linear
 from mapping_field.mapping_field import MapElementConstant, MapElement, Var, NamedFunc
 from mapping_field.ranged_condition import RangeCondition, SingleAssignmentCondition
-from mapping_field.tests.conftest import debug_step, log_to_file, SIMPLE_FORMAT
 
 logger = logging.getLogger(__name__)
 

@@ -66,6 +66,10 @@ def test_binary_or_with_invert():
     assert ~dummy0 | dummy0 == TrueCondition
     assert str((~dummy0) | (~dummy1)) == str(~(dummy0 & dummy1))
 
+#       ╭─────────────────────────────────────────────────╮
+#       │                 List Conditions                 │
+#       ╰─────────────────────────────────────────────────╯
+
 def test_intersection_with_delim():
     dummies = [DummyCondition(type = i) for i in range(4)]
 
@@ -132,22 +136,31 @@ def test_simplify_lists(list_class: Type[_ListCondition]):
     cond1 = cond1.simplify2()
     cond2 = dummies[0]
     assert cond1 == cond2
-#
-# def test_improved_simplify_intersection():
-#     dummies = [DummyCondition(i) for i in range(5)]
-#
-#     assert dummies[0] & dummies[0] == dummies[0]
-#
-#     cond1 = ConditionIntersection([dummies[0], dummies[1], dummies[2]])
-#     cond2 = ConditionIntersection([dummies[0], dummies[1], dummies[3]])
-#     prod = cond1 & cond2
-#     result = ConditionIntersection([dummies[0], dummies[1], dummies[2], dummies[3]])
-#     assert prod == result
-#
-#     prod = (dummies[0] & dummies[1] & dummies[2]) & (dummies[0] & dummies[1] & dummies[3])
-#     result = (dummies[0] & dummies[1] & dummies[2] & dummies[3])
-#     assert prod == result
-#
+
+@pytest.mark.parametrize('list_class', [IntersectionCondition, UnionCondition])
+def test_simplify_list_of_lists(list_class: Type[_ListCondition]):
+    dummies = [DummyCondition(i) for i in range(5)]
+
+    cond1 = list_class([
+        list_class([dummies[0], dummies[1], dummies[2]]),
+        list_class([dummies[0], dummies[1], dummies[3]])
+    ])
+    cond1 = cond1.simplify2()
+    cond2 = list_class([dummies[0], dummies[1], dummies[2], dummies[3]])
+    assert cond1 == cond2
+
+    cond1 = list_class([
+        list_class([dummies[0], dummies[1], dummies[2]]),
+        list_class([dummies[0], dummies[1], dummies[3]]),
+        list_class([dummies[4], dummies[2]]),
+        list_class([dummies[1], dummies[0]]),
+        list_class([dummies[1]]),
+        list_class([])
+    ])
+    cond1 = cond1.simplify2()
+    cond2 = list_class([dummies[0], dummies[1], dummies[2], dummies[3], dummies[4]])
+    assert cond1 == cond2
+
 # def test_union_of_intersections():
 #     dummies = [DummyCondition(values=0, type=i) for i in range(5)]
 #

@@ -224,7 +224,7 @@ class _ListCondition(Condition):
     OR = 1
 
     bin_condition = [AndCondition, OrCondition]
-    list_classes = [None, None]
+    list_classes = [cast(Type['_ListCondition'], None), cast(Type['_ListCondition'], None)]
     op_types = [operator.and_, operator.or_]
     method_names = ['and_', 'or_']
     trivials = [TrueCondition, FalseCondition]

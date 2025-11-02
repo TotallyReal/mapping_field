@@ -131,6 +131,7 @@ class MapElement:
 
         processor = getattr(cls, '_simplify_with_var_values2')
         if processor is not None:
+            processor.__name__ = f'{cls.__name__}_simplify_with_var_values'
             MapElement._simplifier.register_class_processor(cls, processor)
 
     def __init__(self, variables: List['Var'], name: Optional[str] = None):
