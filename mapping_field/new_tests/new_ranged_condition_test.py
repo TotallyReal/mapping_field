@@ -1,9 +1,9 @@
 import pytest
 from typing import List
 
-from mapping_field.new_conditions import FalseCondition, UnionCondition, TrueCondition
+from mapping_field.new_code.new_conditions import FalseCondition, UnionCondition, TrueCondition
 from mapping_field.mapping_field import MapElement, Var, NamedFunc, MapElementConstant
-from mapping_field.new_ranged_condition import RangeCondition, InRange, IntervalRange, IsIntegral
+from mapping_field.new_code.new_ranged_condition import RangeCondition, InRange, IntervalRange, IsIntegral
 from mapping_field.arithmetics import Add
 
 

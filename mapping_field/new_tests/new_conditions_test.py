@@ -1,9 +1,9 @@
 import operator
-from typing import List, Tuple, Union, Set, Type, Optional
+from typing import List, Union, Set, Type, Optional
 
 import pytest
 
-from mapping_field.new_conditions import TrueCondition, FalseCondition, IsCondition, IntersectionCondition, \
+from mapping_field.new_code.new_conditions import TrueCondition, FalseCondition, IsCondition, IntersectionCondition, \
     UnionCondition, _ListCondition
 from mapping_field.mapping_field import MapElement
 
@@ -250,7 +250,7 @@ def test_simplify_containment(list_class: Type[_ListCondition]):
 
 def test_proper_containment(
         list_class: Type[_ListCondition], weak_dummies: List[DummyCondition], strong_dummies: List[DummyCondition],
-        rev_bin_op, simple_logs
+        rev_bin_op
 ):
     """
     Suppose that A | A0 = A0, then we also have (A & B & C ...)| A0 = A0,
