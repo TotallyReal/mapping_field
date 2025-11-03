@@ -216,8 +216,6 @@ class RangeCondition(Condition, AsRange, DefaultSerializable):
         upper = '' if self.range[1] == float('inf') else f' < {self.range[1]}'
         return f'{lower}{repr(self.function)}{upper}'
 
-        return f'{self.range[0]} <= {repr(self.function)} < {self.range[1]}'
-
     def _eq_simplified(self, condition: 'Condition') -> bool:
         if isinstance(condition, RangeCondition):
             return self.function == condition.function and self.range == condition.range
