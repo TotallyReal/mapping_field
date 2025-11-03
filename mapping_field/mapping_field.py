@@ -166,6 +166,9 @@ class MapElement:
     def add_promise(self, promise: OutputPromise):
         self._promises.add(promise)
 
+    def remove_promises(self, promises: List['OutputPromise']):
+        self._promises = [promise for promise in self._promises if promise not in promises]
+
     def output_promises(self, of_type: Type[PromiseType] = OutputPromise) -> Iterator[PromiseType]:
         for promise in self._promises:
             if isinstance(promise, of_type):

@@ -3,7 +3,7 @@ from typing import List
 
 from mapping_field.new_conditions import FalseCondition, UnionCondition, TrueCondition
 from mapping_field.mapping_field import MapElement, Var, NamedFunc, MapElementConstant
-from mapping_field.new_ranged_condition import RangeCondition, InRange
+from mapping_field.new_ranged_condition import RangeCondition, InRange, IntervalRange
 from mapping_field.arithmetics import Add
 
 
@@ -20,21 +20,22 @@ class DummyMap(MapElement):
     def to_string(self, vars_str_list: List[str]):
         return f'DummyMap({self.value})'
 
+# TODO: Most of the logic moved to the IntervalRange class, so the test should move there as well.
 
 def test_comparison_operators():
     dummy = DummyMap(0)
 
     cond = (dummy < 10)
-    assert cond == RangeCondition(dummy, (float('-inf'), 10))
+    assert cond == RangeCondition(dummy, IntervalRange(float('-inf'), 10, False, False))
 
     cond = (dummy <= 10)
-    assert cond == RangeCondition(dummy, (float('-inf'), 11))
+    assert cond == RangeCondition(dummy, IntervalRange(float('-inf'), 10, False, True))
 
     cond = (10 <= dummy)
-    assert cond == RangeCondition(dummy, (10, float('inf')))
+    assert cond == RangeCondition(dummy, IntervalRange(10, float('inf'), True, False))
 
     cond = (10 < dummy)
-    assert cond == RangeCondition(dummy, (11, float('inf')))
+    assert cond == RangeCondition(dummy, IntervalRange(10, float('inf'), False, False))
 
     # Unfortunately, python is terrible, and I can't use 2-sided comparisons like:
     #   cond = (10 <= dummy < 20)
@@ -134,8 +135,10 @@ def test_simplify_linear_ranged_condition():
         cond1 = RangeCondition(dummy, (low, high))
         low, high = a*low + b, a*high + b
         if a<0:
-            low, high = high+1, low+1
-        cond2 = RangeCondition(a*dummy+b, (low, high))
+            cond2 = RangeCondition(a*dummy+b, IntervalRange(high, low, False, True))
+        else:
+            cond2 = RangeCondition(a*dummy+b, (low, high))
+
         cond2 = cond2.simplify2()
         assert cond1 == cond2
 
