@@ -230,9 +230,8 @@ class _ListCondition(Condition):
         if len(conditions2) == 0:
             return list_cond1
 
-        # Recall that we have the formula:
-        #   ( A & B ) | ( A & C ) = (A | A) & (A | C) & (B | A) & (B | C)
-        #                         = A & (A | C) & (B | A) & (B | C)        = A & (B | C)
+        # Recall the distributive law on boolean algebra gives us:
+        #   ( A & B ) | ( A & C ) = A & (B | C)
         #
         # Thus, consider a union of intersections (or the corresponding intersection of unions) like:
         #   ( A & B & C & D ) | ( A & B & C0) = ( A & B & ( (C & D) | C0 )
@@ -242,6 +241,7 @@ class _ListCondition(Condition):
         # as simpler. However, this might not be desirable, for example in cases like:
         #       ( A & B ) | ( B & C ) | ( C & A )
         # which I may want to keep as union of intersections
+        #
         #
         # We have two specific cases, where I do consider this as a simpler version:
         #       1. C = C0: Full containment, where we can simply return  ->  ( A & B & C )
