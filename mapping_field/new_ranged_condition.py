@@ -2,10 +2,18 @@ import math
 from typing import Tuple, Optional, List
 
 from mapping_field.arithmetics import _as_combination
-from mapping_field.mapping_field import MapElement, VarDict, MapElementConstant
+from mapping_field.mapping_field import MapElement, VarDict, MapElementConstant, OutputPromise
 from mapping_field.new_conditions import Condition, FalseCondition, TrueCondition, IsCondition
 
 Range = Tuple[float, float]
+
+class InRange(OutputPromise):
+
+    def __init__(self, range: Range):
+        super().__init__()
+        self.range = range
+
+# <editor-fold desc=" --------------- RangeCondition ---------------">
 
 class RangeCondition(Condition):
 
@@ -24,6 +32,10 @@ class RangeCondition(Condition):
         if isinstance(condition, RangeCondition):
             return self.function == condition.function and self.range == condition.range
         return super().__eq__(condition)
+
+    def __hash__(self) -> int:
+        # TODO: Maybe have a better hash?
+        return id(self)
 
     def invert(self) -> Optional[MapElement]:
         low, high = self.range
@@ -51,7 +63,7 @@ class RangeCondition(Condition):
 
         return None
 
-    # <editor-fold desc="Simplifiers">
+    # <editor-fold desc=" ======= Simplifiers ======= ">
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
         if self.range[1] <= self.range[0]:
@@ -71,6 +83,21 @@ class RangeCondition(Condition):
         if value is None:
             return None
         return TrueCondition if element.range[0] <= value < element.range[1] else FalseCondition
+
+    @staticmethod
+    def _ranged_promise_simplifier(element: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+        assert isinstance(element, RangeCondition)
+        low, high = element.range
+        for promise in element.function.output_promises(of_type=InRange):
+            f_low, f_high = promise.range
+            if low <= f_low and f_high <= high:
+                # The promise on the output implies the condition
+                return TrueCondition
+            low = max(low, f_low)
+            high = min(high, f_high)
+        if low != element.range[0] or high != element.range[1]:
+            return RangeCondition(element.function, (low, high))
+        return None
 
     @staticmethod
     def _linear_combination_simplifier(element: MapElement, var_dict: VarDict) -> Optional[MapElement]:
@@ -109,8 +136,8 @@ class RangeCondition(Condition):
     # </editor-fold>
 
 RangeCondition.register_class_simplifier(RangeCondition._evaluated_simplifier)
+RangeCondition.register_class_simplifier(RangeCondition._ranged_promise_simplifier)
 RangeCondition.register_class_simplifier(RangeCondition._linear_combination_simplifier)
-
 
 def _ranged(elem: MapElement, low: int, high: int) -> RangeCondition:
     if isinstance(low, (int, float)) and isinstance(high, (int, float)):
@@ -121,3 +148,5 @@ MapElement.__le__ = lambda self, n: _ranged(self, float('-inf'), n+1)
 MapElement.__lt__ = lambda self, n: _ranged(self, float('-inf'), n)
 MapElement.__ge__ = lambda self, n: _ranged(self, n, float('inf'))
 MapElement.__gt__ = lambda self, n: _ranged(self, n+1, float('inf'))
+
+# </editor-fold>

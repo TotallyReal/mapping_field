@@ -87,11 +87,13 @@ ElemSimplifier = ParamProcessor[VarDict, 'MapElement']
 ClassSimplifier = Processor['MapElement', VarDict]
 
 class OutputPromise:
-    def __init__(self, name: str):
-        self.name = name
+    def __init__(self, name: Optional[str] = None):
+        self.name = name or self.__class__.__name__
 
     def __repr__(self):
         return self.name
+
+PromiseType = TypeVar('PromiseType', bound=OutputPromise)
 
 T = TypeVar('T', bound='MapElement')
 
@@ -164,8 +166,10 @@ class MapElement:
     def add_promise(self, promise: OutputPromise):
         self._promises.add(promise)
 
-    def output_promises(self) -> Iterator[OutputPromise]:
-        return iter(self._promises)
+    def output_promises(self, of_type: Type[PromiseType] = OutputPromise) -> Iterator[PromiseType]:
+        for promise in self._promises:
+            if isinstance(promise, of_type):
+                yield promise
 
     def has_promise(self, promise: OutputPromise):
         return promise in self._promises
