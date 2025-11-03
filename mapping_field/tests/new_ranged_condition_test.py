@@ -21,16 +21,43 @@ class DummyMap(MapElement):
         return f'DummyMap({self.value})'
 
 
+def test_comparison_operators():
+    dummy = DummyMap(0)
+
+    cond = (dummy < 10)
+    assert cond == RangeCondition(dummy, (float('-inf'), 10))
+
+    cond = (dummy <= 10)
+    assert cond == RangeCondition(dummy, (float('-inf'), 11))
+
+    cond = (10 <= dummy)
+    assert cond == RangeCondition(dummy, (10, float('inf')))
+
+    cond = (10 < dummy)
+    assert cond == RangeCondition(dummy, (11, float('inf')))
+
+    # Unfortunately, python is terrible, and I can't use 2-sided comparisons like:
+    #   cond = (10 <= dummy < 20)
+
 def test_range_condition_intersection():
     dummy_map = DummyMap(0)
 
+    # closed ranges
     cond1 = RangeCondition(dummy_map, (0,10))
     cond2 = RangeCondition(dummy_map, (5,15))
     cond12 = RangeCondition(dummy_map, (5,10))
     assert cond1 & cond2 == cond12
 
-    cond3 = RangeCondition(dummy_map, (15,25))
-    assert cond1 & cond3 == FalseCondition
+    # half open ranges
+    cond1 = (5 <= dummy_map)
+    cond2 = (dummy_map < 10)
+    cond12 = RangeCondition(dummy_map, (5,10))
+    assert cond1 & cond2 == cond12
+
+    # disjoint ranges
+    cond1 = RangeCondition(dummy_map, (0,10))
+    cond2 = RangeCondition(dummy_map, (15,25))
+    assert cond1 & cond2 == FalseCondition
 #
 # def test_range_condition_union():
 #     dummy_var = Var('x')
@@ -48,23 +75,6 @@ def test_range_condition_intersection():
 #     assert cond1.or_simpler(cond3)[1] == False
 #
 #
-# def test_comparison_operators():
-#     dummy = DummyMap(0)
-#
-#     cond = (dummy < 10)
-#     assert cond == RangeCondition(dummy, (float('-inf'), 10))
-#
-#     cond = (dummy <= 10)
-#     assert cond == RangeCondition(dummy, (float('-inf'), 11))
-#
-#     cond = (10 <= dummy)
-#     assert cond == RangeCondition(dummy, (10, float('inf')))
-#
-#     cond = (10 < dummy)
-#     assert cond == RangeCondition(dummy, (11, float('inf')))
-#
-#     # Unfortunately, python is terrible, and I can't use 2-sided comparisons like:
-#     #   cond = (10 <= dummy < 20)
 #
 #
 # def test_extend_range_to_full():

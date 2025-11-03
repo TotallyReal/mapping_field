@@ -31,3 +31,14 @@ class RangeCondition(Condition):
             return RangeCondition(self.function, (low, high))
 
         return None
+
+
+def _ranged(elem: MapElement, low: int, high: int) -> RangeCondition:
+    if isinstance(low, (int, float)) and isinstance(high, (int, float)):
+        return RangeCondition(elem, (low, high))
+    return NotImplemented
+
+MapElement.__le__ = lambda self, n: _ranged(self, float('-inf'), n+1)
+MapElement.__lt__ = lambda self, n: _ranged(self, float('-inf'), n)
+MapElement.__ge__ = lambda self, n: _ranged(self, n, float('inf'))
+MapElement.__gt__ = lambda self, n: _ranged(self, n+1, float('inf'))
