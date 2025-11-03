@@ -91,6 +91,34 @@ def test_binary_or_with_invert():
 #       │                 List Conditions                 │
 #       ╰─────────────────────────────────────────────────╯
 
+@pytest.fixture(params=["Intersection", "Union"])
+def dual_case(request):
+    op_name = request.param
+
+    dummies1 = [DummyCondition(values={1},type = i) for i in range(5)]
+    dummies2 = [DummyCondition(values={1,2},type = i) for i in range(5)]
+    if op_name == 'Intersection':
+        return IntersectionCondition, dummies1, dummies2
+    if op_name == 'Union':
+        return UnionCondition, dummies2, dummies1
+    raise NotImplementedError('How did you even get here?!')
+
+# With the following fixtures we have that:
+# list_class([weak_dummy, strong_dummy]) = strong_dummy
+
+@pytest.fixture
+def list_class(dual_case) -> Type[_ListCondition]:
+    return dual_case[0]
+
+@pytest.fixture
+def strong_dummies(dual_case):
+    return dual_case[1]
+
+@pytest.fixture
+def weak_dummies(dual_case):
+    return dual_case[2]
+
+
 def test_intersection_with_delim():
     dummies = [DummyCondition(type = i) for i in range(4)]
 
@@ -105,7 +133,6 @@ def test_union_with_delim():
     cond2 = dummies[0] | dummies[1] | dummies[2] | dummies[3]
     assert cond1 == cond2
 
-@pytest.mark.parametrize('list_class', [IntersectionCondition, UnionCondition])
 def test_unpack_lists(list_class: Type[_ListCondition]):
     """
     Note that unpacking is done in the constructor without any simplification.
@@ -125,7 +152,6 @@ def test_unpack_lists(list_class: Type[_ListCondition]):
     cond3 = list_class([dummies[3], cond2])
     assert isinstance(cond3, list_class) and len(cond3.conditions) == 4
 
-@pytest.mark.parametrize('list_class', [IntersectionCondition, UnionCondition])
 def test_equality_list_permutations(list_class: Type[_ListCondition]):
     dummies = [DummyCondition(i) for i in range(5)]
 
@@ -135,7 +161,6 @@ def test_equality_list_permutations(list_class: Type[_ListCondition]):
 
 # ------------------ Simplifiers ------------------
 
-@pytest.mark.parametrize('list_class', [IntersectionCondition, UnionCondition])
 def test_simplify_trivial_condition(list_class: Type[_ListCondition]):
     dummies = [DummyCondition(type=i) for i in range(5)]
 
@@ -146,7 +171,6 @@ def test_simplify_trivial_condition(list_class: Type[_ListCondition]):
     cond2 = list_class([dummies[2], dummies[0], dummies[1]])
     assert cond1 == cond2
 
-@pytest.mark.parametrize('list_class', [IntersectionCondition, UnionCondition])
 def test_simplify_final_condition(list_class: Type[_ListCondition]):
     dummies = [DummyCondition(type=i) for i in range(5)]
 
@@ -159,7 +183,6 @@ def test_simplify_final_condition(list_class: Type[_ListCondition]):
     cond2 = final_condition
     assert cond1 == cond2
 
-@pytest.mark.parametrize('list_class', [IntersectionCondition, UnionCondition])
 def test_simplify_repeating_conditions(list_class: Type[_ListCondition]):
     dummies = [DummyCondition(type=i) for i in range(5)]
 
@@ -168,7 +191,6 @@ def test_simplify_repeating_conditions(list_class: Type[_ListCondition]):
     cond2 = list_class([dummies[2], dummies[0], dummies[1]])
     assert cond1 == cond2
 
-@pytest.mark.parametrize('list_class', [IntersectionCondition, UnionCondition])
 def test_simplify_unwrapping(list_class: Type[_ListCondition]):
     dummies = [DummyCondition(type=i) for i in range(5)]
 
@@ -177,7 +199,6 @@ def test_simplify_unwrapping(list_class: Type[_ListCondition]):
     cond2 = dummies[0]
     assert cond1 == cond2
 
-@pytest.mark.parametrize('list_class', [IntersectionCondition, UnionCondition])
 def test_simplify_list_of_lists(list_class: Type[_ListCondition]):
     dummies = [DummyCondition(type=i) for i in range(5)]
 
@@ -201,7 +222,6 @@ def test_simplify_list_of_lists(list_class: Type[_ListCondition]):
     cond2 = list_class([dummies[0], dummies[1], dummies[2], dummies[3], dummies[4]])
     assert cond1 == cond2
 
-@pytest.mark.parametrize('list_class', [IntersectionCondition, UnionCondition])
 def test_simplify_containment(list_class: Type[_ListCondition]):
     # Test cases like   (A & B & C & D) | (A & B) = (A & B)
     #                   (A | B | C | D) & (A | B) = (A | B)
@@ -300,7 +320,7 @@ def test_containment_in_intersection():
 #
 #
 def test_intersection_of_union_component_simplification():
-    # If A1 and A2 has some nontrivial intersection, then
+    # If A1 and A2 have some nontrivial intersection, then
     #   (A1 | B | C) & A2 = (A1 & A2) | (B & A2) | (C & A2)
     #                     = (A1 & A2 & A2) | (B & A2) | (C & A2)
     #                     = ((A1 & A2) | B | C ) & A2
@@ -313,7 +333,7 @@ def test_intersection_of_union_component_simplification():
     condition1 = dummies3[0] | dummies3[1] | dummies3[2] | dummies3[3]
     condition2 = dummies3[0] | dummies3[1]
 
-    # assert condition1 & condition2 == condition2
+    assert condition1 & condition2 == condition2
 
     # small_dummy is contained in each of the dummies3[i]
     small_dummy = dummies1[0] & dummies1[1] & dummies1[2] & dummies1[3]
