@@ -2,7 +2,7 @@ import pytest
 from typing import List
 
 from mapping_field.binary_expansion import BoolVar, BinaryExpansion
-from mapping_field.new_conditions import FalseCondition, TrueCondition
+from mapping_field.new_conditions import FalseCondition, UnionCondition
 from mapping_field.mapping_field import MapElement, Var, NamedFunc, MapElementConstant
 from mapping_field.new_ranged_condition import RangeCondition
 
@@ -58,24 +58,31 @@ def test_range_condition_intersection():
     cond1 = RangeCondition(dummy_map, (0,10))
     cond2 = RangeCondition(dummy_map, (15,25))
     assert cond1 & cond2 == FalseCondition
-#
-# def test_range_condition_union():
-#     dummy_var = Var('x')
-#
-#     cond1 = RangeCondition(dummy_var, (0,10))
-#     cond2 = RangeCondition(dummy_var, (5,15))
-#     cond12 = RangeCondition(dummy_var, (0,15))
-#     assert cond1 | cond2 == cond12
-#
-#     cond2 = SingleAssignmentCondition(dummy_var, 10)
-#     cond12 = RangeCondition(dummy_var, (0,11))
-#     assert cond1 | cond2 == cond12
-#
-#     cond3 = RangeCondition(dummy_var, [15,25])
-#     assert cond1.or_simpler(cond3)[1] == False
-#
-#
-#
+
+def test_range_condition_union():
+    dummy_map = DummyMap(0)
+
+    # Union with intersection
+    cond1 = RangeCondition(dummy_map, (0,10))
+    cond2 = RangeCondition(dummy_map, (5,15))
+    cond12 = RangeCondition(dummy_map, (0,15))
+    assert cond1 | cond2 == cond12
+
+    # Consecutive ranges with no intersection
+    cond1 = RangeCondition(dummy_map, (0,8))
+    cond2 = RangeCondition(dummy_map, (8,15))
+    cond12 = RangeCondition(dummy_map, (0,15))
+    assert cond1 | cond2 == cond12
+
+    # Purely disjoint ranges
+    cond1 = RangeCondition(dummy_map, (0,5))
+    cond2 = RangeCondition(dummy_map, (10,15))
+    cond12 = UnionCondition([cond1, cond2])
+    assert cond12._simplify2() is None
+
+    # cond2 = SingleAssignmentCondition(dummy_var, 10)
+    # cond12 = RangeCondition(dummy_var, (0,11))
+    # assert cond1 | cond2 == cond12
 #
 # def test_extend_range_to_full():
 #     vv = [BoolVar(f'x_{i}') for i in range(4)]

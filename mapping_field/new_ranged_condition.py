@@ -32,6 +32,16 @@ class RangeCondition(Condition):
 
         return None
 
+    def or_(self, condition: MapElement) -> Optional[MapElement]:
+        if isinstance(condition, RangeCondition) and condition.function == self.function:
+            if self.range[1] < condition.range[0] or condition.range[1] < self.range[0]:
+                return None
+            a = min(self.range[0], condition.range[0])
+            b = max(self.range[1], condition.range[1])
+            return RangeCondition(self.function, (a, b))
+
+        return None
+
 
 def _ranged(elem: MapElement, low: int, high: int) -> RangeCondition:
     if isinstance(low, (int, float)) and isinstance(high, (int, float)):
