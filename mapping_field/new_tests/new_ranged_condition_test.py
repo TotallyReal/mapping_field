@@ -3,7 +3,7 @@ from typing import List
 
 from mapping_field.new_conditions import FalseCondition, UnionCondition, TrueCondition
 from mapping_field.mapping_field import MapElement, Var, NamedFunc, MapElementConstant
-from mapping_field.new_ranged_condition import RangeCondition, InRange, IntervalRange
+from mapping_field.new_ranged_condition import RangeCondition, InRange, IntervalRange, IsIntegral
 from mapping_field.arithmetics import Add
 
 
@@ -184,6 +184,39 @@ def test_simplify_on_ranged_promised_functions():
     condition = condition.simplify2()
     result = RangeCondition(dummy, (0, 5))
     assert condition is not result
+
+#       ╭─────────────────────────────────────────────────╮
+#       │               IsIntegral promise                │
+#       ╰─────────────────────────────────────────────────╯
+
+def test_equality_as_integral():
+    dummy = DummyMap(0)
+
+    cond1 = (4  < dummy) & (dummy <= 10.2)
+    cond2 = (4.8<=dummy) & (dummy <= 10.4)
+    assert cond1 != cond2
+
+    dummy.add_promise( IsIntegral )
+
+    cond1 = (4  < dummy) & (dummy <= 10.2)
+    cond2 = (4.8<=dummy) & (dummy <= 10.4)
+    assert cond1 == cond2
+
+def test_union_for_integral_functions():
+    dummy = DummyMap(0)
+
+    cond1 = (5.5  <= dummy) & (dummy <= 10.2)
+    cond2 = (10.8 <= dummy) & (dummy <= 17.4)
+    result = UnionCondition([cond1, cond2])._simplify2()
+    assert result is None
+
+    dummy.add_promise(IsIntegral)
+
+    cond1 = (5.5  <= dummy) & (dummy <= 10.2)
+    cond2 = (10.8 <= dummy) & (dummy <= 17.4)
+    result = UnionCondition([cond1, cond2])._simplify2()
+    assert result == (6 <= dummy) & (dummy <= 17)
+
 
 
 

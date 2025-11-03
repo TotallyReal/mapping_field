@@ -9,7 +9,10 @@ class IntervalRange:
 
     # TODO: Should I consider this as a MapElement as well? Namely a function which returns 1 on the interval
     #       and 0 otherwise?
-    #       Then, the RangeCondition of func becomes the composition interval * func .
+    #       Then, the RangeCondition of func becomes the composition interval * func and similarly the InRange
+    #       Promise only see the composition with interval.
+    #       More generally, a function h(x) of one variable can be viewed as a promise on the output of a function
+    #       f(x_1,...,x_n) by saying that h(f(x_1,...,x_n)) = 1.
 
     @staticmethod
     def of_point(value: float):
@@ -140,6 +143,12 @@ class IntervalRange:
 
         return IntervalRange(true_low, true_high, contain_true_low, contain_true_high)
 
+    def integral_union(self, other: 'IntervalRange') -> Optional['IntervalRange']:
+        range1 = self.as_integral(half_open=True)
+        range2 = other.as_integral(half_open=True)
+        result = range1.union(range2)
+        return None if result is None else result.as_integral(half_open=False)
+
     def __add__(self, value: Union[int, float]) -> 'IntervalRange':
         if value == 0:
             return self
@@ -170,6 +179,29 @@ class IntervalRange:
         assert value != 0, 'DO NOT DIVIDE BY ZERO'
         return self.__mul__(1/value)
 
+    def as_integral(self, half_open: bool = False) -> 'IntervalRange':
+        """
+        Returns a close [n,m] interval range containing exactly all the integers in this range.
+        If the half_open flag is true, return instead [n,m+1)
+        """
+        if self.is_empty:
+            return self
+
+        low = self.low if self.low == float('-inf') else int(math.ceil(self.low))
+        if low == self.low and not self.contain_low:
+            low += 1
+
+        if half_open:
+            high = self.high if self.high == float('inf') else int(math.ceil(self.high))
+            if high == self.high and self.contain_high:
+                high += 1
+            return IntervalRange(low, high, True, False)
+
+        high = self.high if self.high == float('inf') else int(math.floor(self.high))
+        if high == self.high and not self.contain_high:
+            high -= 1
+        return IntervalRange(low, high, True, True)
+
 Range = Tuple[float, float]
 
 class InRange(OutputPromise):
@@ -194,6 +226,7 @@ class InRange(OutputPromise):
             element.add_promise(InRange(f_range))
         return count, f_range
 
+IsIntegral = OutputPromise("Integral")
 
 # <editor-fold desc=" --------------- RangeCondition ---------------">
 
@@ -232,7 +265,11 @@ class RangeCondition(Condition):
 
     def or_(self, condition: MapElement) -> Optional[MapElement]:
         if isinstance(condition, RangeCondition) and condition.function == self.function:
-            f_range = self.range.union(condition.range)
+            if condition.function.has_promise(IsIntegral):
+                # Union works better for the integral version of ranges
+                f_range = self.range.integral_union(condition.range)
+            else:
+                f_range = self.range.union(condition.range)
             return None if (f_range is None) else RangeCondition(condition.function, f_range)
 
         return None
@@ -261,7 +298,9 @@ class RangeCondition(Condition):
     @staticmethod
     def _ranged_promise_simplifier(element: MapElement, var_dict: VarDict) -> Optional[MapElement]:
         assert isinstance(element, RangeCondition)
+
         num_range_promises, f_range = InRange.consolidate_ranges(element.function)
+
         if num_range_promises == 0:
             return None
 
@@ -280,6 +319,16 @@ class RangeCondition(Condition):
             #       I prefer to not change the function, but return a new one. Should think if this is
             #       really needed.
             return element
+
+        return None
+
+    @staticmethod
+    def _integral_simplifier(element: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+        assert isinstance(element, RangeCondition)
+        if element.function.has_promise(IsIntegral):
+            f_range = element.range.as_integral()
+            if f_range != element.range:
+                return RangeCondition(element.function, f_range)
 
         return None
 
@@ -309,6 +358,7 @@ class RangeCondition(Condition):
 
 RangeCondition.register_class_simplifier(RangeCondition._evaluated_simplifier)
 RangeCondition.register_class_simplifier(RangeCondition._ranged_promise_simplifier)
+RangeCondition.register_class_simplifier(RangeCondition._integral_simplifier)
 RangeCondition.register_class_simplifier(RangeCondition._linear_combination_simplifier)
 
 def _ranged(elem: MapElement, low: int, high: int, contains_low: bool = True, contains_high: bool = False) -> RangeCondition:
@@ -320,7 +370,6 @@ MapElement.__le__ = lambda self, n: _ranged(self, float('-inf'), n, False, True)
 MapElement.__lt__ = lambda self, n: _ranged(self, float('-inf'), n, False, False)
 MapElement.__ge__ = lambda self, n: _ranged(self, n,  float('inf'), True,  False)
 MapElement.__gt__ = lambda self, n: _ranged(self, n,  float('inf'), False, False)
-
 
 MapElement.__lshift__ = lambda self, n: RangeCondition(self, IntervalRange.of_point(n))
 
