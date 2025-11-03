@@ -40,6 +40,15 @@ def test_comparison_operators():
     # Unfortunately, python is terrible, and I can't use 2-sided comparisons like:
     #   cond = (10 <= dummy < 20)
 
+def test_lshift_operator():
+    dummy = DummyMap(0)
+
+    cond1 = dummy << 5
+    cond2 = RangeCondition(dummy, IntervalRange.of_point(5))
+    cond3 = (dummy.where() == 5)
+
+    assert cond1 == cond2 == cond3
+
 def test_invert_range():
     dummy = DummyMap(0)
 
@@ -122,10 +131,12 @@ def test_simplify_evaluated():
 
     assert (c < 10).simplify2() == TrueCondition
     assert (1 <= c).simplify2() == TrueCondition
+    assert (c << 5).simplify2() == TrueCondition
     assert (RangeCondition(c, (1,10))).simplify2() == TrueCondition
 
     assert (c > 10).simplify2() == FalseCondition
     assert (1 >= c).simplify2() == FalseCondition
+    assert (c << 8).simplify2() == FalseCondition
     assert (RangeCondition(c, (10,100))).simplify2() == FalseCondition
 
 def test_simplify_linear_ranged_condition():
@@ -217,23 +228,17 @@ def test_union_for_integral_functions():
     result = UnionCondition([cond1, cond2])._simplify2()
     assert result == (6 <= dummy) & (dummy <= 17)
 
+def test_union_of_integral_points():
+    dummy = DummyMap(0)
 
+    dummy.add_promise( IsIntegral )
 
+    conditions = [(dummy << i) for i in range(3, 9)]
+    union = UnionCondition(conditions).simplify2()
 
-#
-#
-#
-#
+    result = (3 <= dummy) & (dummy <= 8)
+    assert union == result
 
-#
-# def test_general_assignment():
-#     dummy = DummyMap(0)
-#
-#     assert (dummy.where() == 3) == GeneralAssignment(dummy, 3)
-#
-#     assert (MapElementConstant(3).where() == 3) is TrueCondition
-#
-#     assert (MapElementConstant(5).where() == 3) is FalseCondition
 #
 #
 # def test_general_range_condition_union():

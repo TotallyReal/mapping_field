@@ -373,4 +373,16 @@ MapElement.__gt__ = lambda self, n: _ranged(self, n,  float('inf'), False, False
 
 MapElement.__lshift__ = lambda self, n: RangeCondition(self, IntervalRange.of_point(n))
 
+class WhereFunction:
+    def __init__(self, elem: MapElement):
+        self.elem = elem
+
+    def __eq__(self, n: int):
+        return RangeCondition(self.elem, IntervalRange.of_point(n))
+
+    def __repr__(self):
+        return f'Where({self.elem})'
+
+# TODO: Refactor this entire nightmare!
+MapElement.where = lambda self: WhereFunction(self)
 # </editor-fold>
