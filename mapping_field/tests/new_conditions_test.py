@@ -1,3 +1,4 @@
+import operator
 from typing import List, Tuple, Union, Set, Type, Optional
 
 import pytest
@@ -98,13 +99,13 @@ def dual_case(request):
     dummies1 = [DummyCondition(values={1},type = i) for i in range(5)]
     dummies2 = [DummyCondition(values={1,2},type = i) for i in range(5)]
     if op_name == 'Intersection':
-        return IntersectionCondition, dummies1, dummies2
+        return IntersectionCondition, dummies1, dummies2, operator.and_, operator.or_
     if op_name == 'Union':
-        return UnionCondition, dummies2, dummies1
+        return UnionCondition, dummies2, dummies1, operator.or_, operator.and_
     raise NotImplementedError('How did you even get here?!')
 
 # With the following fixtures we have that:
-# list_class([weak_dummy, strong_dummy]) = strong_dummy
+# list_class([weak_dummy, strong_dummy]).simplify2() = bin_op(weak, strong) = strong_dummy
 
 @pytest.fixture
 def list_class(dual_case) -> Type[_ListCondition]:
@@ -117,6 +118,14 @@ def strong_dummies(dual_case):
 @pytest.fixture
 def weak_dummies(dual_case):
     return dual_case[2]
+
+@pytest.fixture
+def bin_op(dual_case):
+    return dual_case[3]
+
+@pytest.fixture
+def rev_bin_op(dual_case):
+    return dual_case[4]
 
 
 def test_intersection_with_delim():
@@ -239,6 +248,42 @@ def test_simplify_containment(list_class: Type[_ListCondition]):
         for j in range(i):
             assert rev_op(conditions[i], conditions[j]) == conditions[i], f'Failed at indices {i=}, {j=}'
 
+def test_proper_containment(
+        list_class: Type[_ListCondition], weak_dummies: List[DummyCondition], strong_dummies: List[DummyCondition],
+        rev_bin_op, simple_logs
+):
+    """
+    Suppose that A | A0 = A0, then we also have (A & B & C ...)| A0 = A0,
+    Check both this 1 vs many case, and also add more "noise"
+    """
+
+    cond1 = list_class([strong_dummies[0], strong_dummies[1], strong_dummies[2]])
+    cond2 = strong_dummies[0]
+    cond3 = weak_dummies[0]
+
+    assert rev_bin_op(cond1, cond2) == cond2
+    assert rev_bin_op(cond2, cond1) == cond2
+    assert rev_bin_op(cond2, cond3) == cond3
+    assert rev_bin_op(cond3, cond2) == cond3
+    # Transitivity
+    assert rev_bin_op(cond1, cond3) == cond3
+    assert rev_bin_op(cond3, cond1) == cond3
+
+    # Adding extra "noise"
+    noise = list_class([strong_dummies[3], strong_dummies[4]])
+
+    cond1 = list_class([cond1, noise])
+    cond2 = list_class([cond2, noise])
+    cond3 = list_class([cond3, noise])
+
+    assert rev_bin_op(cond1, cond2) == cond2
+    assert rev_bin_op(cond2, cond1) == cond2
+    assert rev_bin_op(cond2, cond3) == cond3
+    assert rev_bin_op(cond3, cond2) == cond3
+    # Transitivity
+    assert rev_bin_op(cond1, cond3) == cond3
+    assert rev_bin_op(cond3, cond1) == cond3
+
 def test_simplification_list_with_special_union_condition():
     dummies = [DummyCondition(values=0, type=i) for i in range(5)]
 
@@ -256,54 +301,6 @@ def test_simplification_list_with_special_intersection_condition():
     result = dummies[0] | dummies[1] | DummyCondition(values = {1}, type = 2)
 
     assert cond1 & cond2 == result
-
-def single_containment(cond_small: MapElement, cond_large: MapElement):
-
-    # TODO: Make sure that the reverse works as well
-    intersection = cond_small & cond_large
-    assert intersection == cond_small
-    intersection = cond_large & cond_small
-    assert intersection == cond_small
-
-def test_containment_in_union():
-
-    dummies1 = [DummyCondition(values={1},type = i) for i in range(5)]
-    dummies3 = [DummyCondition(values={1,2,3},type = i) for i in range(5)]
-
-    condition = dummies3[0] | dummies3[1] | dummies3[2] | dummies3[3]
-
-    # Exactly one of the element of the union
-    single_containment(dummies3[1], condition)
-
-    # Contained in one of the elements in the union
-    single_containment(dummies1[1], dummies3[1])  # make sure that dummies1 is inside dummies3 first
-    single_containment(dummies1[1], condition)
-
-    # Exactly two elements the same
-    single_containment(dummies3[1] | dummies3[3], condition)
-
-    # One element the same, and another contained
-    single_containment(dummies3[1] | dummies1[3], condition)
-
-def test_containment_in_intersection():
-
-    dummies1 = [DummyCondition(values={1},type = i) for i in range(5)]
-    dummies3 = [DummyCondition(values={1,2,3},type = i) for i in range(5)]
-
-    condition = dummies1[0] & dummies1[1] & dummies1[2] & dummies1[3]
-
-    # Exactly one of the element of the intersection
-    single_containment(condition, dummies1[1])
-
-    # Containing one of the elements from the intersection
-    single_containment(dummies1[1], dummies3[1])  # make sure that dummies1 is inside dummies3 first
-    single_containment(condition, dummies3[1])
-
-    # Exactly two elements the same
-    single_containment(condition, dummies1[1] & dummies1[3])
-
-    # One element the same, and another contained
-    single_containment(condition, dummies3[1] & dummies1[3])
 
 # def test_simplified_intersection_list(simple_logs):
 #
