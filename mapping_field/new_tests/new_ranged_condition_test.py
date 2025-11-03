@@ -67,6 +67,11 @@ def test_invert_range():
 def test_range_condition_intersection():
     dummy_map = DummyMap(0)
 
+    # containment
+    cond1 = RangeCondition(dummy_map, (0,10))
+    cond2 = RangeCondition(dummy_map, (5,7))
+    assert cond1 & cond2 == cond2
+
     # closed ranges
     cond1 = RangeCondition(dummy_map, (0,10))
     cond2 = RangeCondition(dummy_map, (5,15))
@@ -86,6 +91,11 @@ def test_range_condition_intersection():
 
 def test_range_condition_union():
     dummy_map = DummyMap(0)
+
+    # containment
+    cond1 = RangeCondition(dummy_map, (0,10))
+    cond2 = RangeCondition(dummy_map, (5,7))
+    assert cond1 | cond2 == cond1
 
     # Union with intersection
     cond1 = RangeCondition(dummy_map, (0,10))
@@ -239,53 +249,3 @@ def test_union_of_integral_points():
     result = (3 <= dummy) & (dummy <= 8)
     assert union == result
 
-#
-#
-# def test_general_range_condition_union():
-#     dummy = DummyMap(0)
-#
-#     # contained:
-#     cond1 = (dummy.where() == 10)
-#     cond2 = RangeCondition(dummy, (0,11))
-#     assert cond1 | cond2 == cond2
-#
-#     # union of two assignments
-#     cond1 = (dummy.where() == 10)
-#     cond2 = (dummy.where() == 11)
-#     cond3 = RangeCondition(dummy, (10,12))
-#     assert cond1 | cond2 == cond3
-#
-#     # union of assignment and range
-#     cond1 = (dummy.where() == 10)
-#     cond2 = RangeCondition(dummy, (5,10))
-#     cond3 = RangeCondition(dummy, (5,11))
-#     assert cond1 | cond2 == cond3
-#
-#     # disjoint
-#     cond1 = (dummy.where() == 10)
-#     cond2 = RangeCondition(dummy, [15,25])
-#     assert cond1.or_simpler(cond2)[1] == False
-#
-#
-# def test_general_range_condition_intersection():
-#     dummy = DummyMap(0)
-#
-#     # same:
-#     cond1 = (dummy.where() == 10)
-#     cond2 = (dummy.where() == 10)
-#     assert cond1 & cond2 == cond1
-#
-#     # distinct:
-#     cond1 = (dummy.where() == 10)
-#     cond2 = (dummy.where() == 13)
-#     assert cond1 & cond2 == FalseCondition
-#
-#     # contained
-#     cond1 = (dummy.where() == 10)
-#     cond2 = RangeCondition(dummy, (5,12))
-#     assert cond1 & cond2 == cond1
-#
-#     # distinct
-#     cond1 = (dummy.where() == 10)
-#     cond2 = RangeCondition(dummy, (12,17))
-#     assert cond1 & cond2 == FalseCondition
