@@ -2,9 +2,10 @@ import pytest
 from typing import List
 
 from mapping_field.binary_expansion import BoolVar, BinaryExpansion
-from mapping_field.new_conditions import FalseCondition, UnionCondition
+from mapping_field.new_conditions import FalseCondition, UnionCondition, TrueCondition
 from mapping_field.mapping_field import MapElement, Var, NamedFunc, MapElementConstant
 from mapping_field.new_ranged_condition import RangeCondition
+from mapping_field.arithmetics import Add
 
 
 @pytest.fixture(autouse=True)
@@ -98,6 +99,60 @@ def test_range_condition_union():
     # cond2 = SingleAssignmentCondition(dummy_var, 10)
     # cond12 = RangeCondition(dummy_var, (0,11))
     # assert cond1 | cond2 == cond12
+
+def test_simplify_all_or_nothing_range():
+    dummy_map = DummyMap(0)
+
+    cond = RangeCondition(dummy_map, (10,10))
+    assert cond is not FalseCondition
+    assert cond.simplify2() is FalseCondition
+
+    cond = RangeCondition(dummy_map, (20,10))
+    assert cond is not FalseCondition
+    assert cond.simplify2() is FalseCondition
+
+    cond = RangeCondition(dummy_map, (float('-inf'),float('+inf')))
+    assert cond is not TrueCondition
+    assert cond.simplify2() is TrueCondition
+
+def test_simplify_evaluated():
+    c = Add(MapElementConstant(3), MapElementConstant(2), simplify=False)
+    assert str(c) != str(MapElementConstant(5))
+    # c is not by itself a constant, but can be evaluated into a constant
+
+    assert (c < 10).simplify2() == TrueCondition
+    assert (1 <= c).simplify2() == TrueCondition
+    assert (RangeCondition(c, (1,10))).simplify2() == TrueCondition
+
+    assert (c > 10).simplify2() == FalseCondition
+    assert (1 >= c).simplify2() == FalseCondition
+    assert (RangeCondition(c, (10,100))).simplify2() == FalseCondition
+
+def test_linear_ranged_condition():
+    dummy = DummyMap(0)
+
+    def inner_test(a, b, low, high) -> None:
+        cond1 = RangeCondition(dummy, (low, high))
+        low, high = a*low + b, a*high + b
+        if a<0:
+            low, high = high+1, low+1
+        cond2 = RangeCondition(a*dummy+b, (low, high))
+        cond2 = cond2.simplify2()
+        assert cond1 == cond2
+
+    inner_test(a=2, b=3, low=1, high=6)
+    inner_test(a=-2, b=3, low=-5, high=0)
+
+    # test zero coefficient - False
+    condition = RangeCondition(0*dummy+3, (5, 15))
+    condition = condition.simplify2()
+    assert condition == FalseCondition
+
+    # test zero coefficient - False
+    condition = RangeCondition(0*dummy+7, (5, 15))
+    condition = condition.simplify2()
+    assert condition == TrueCondition
+
 #
 # def test_extend_range_to_full():
 #     vv = [BoolVar(f'x_{i}') for i in range(4)]
@@ -152,29 +207,9 @@ def test_range_condition_union():
 #         cond1 = next_cond
 #
 #
-# def test_simplifier():
-#     x = Var('x')
-#     cond1 = (0 <= x - 1)
-#     cond1 = cond1.simplify()
-#     cond2 = (1 <= x)
-#
-#     assert cond1 == cond2
 #
 #
-# def test_invert_range():
-#     dummy = DummyMap(0)
-#
-#     condition1 = ~(dummy<3)
-#     condition2 = dummy>=3
-#     assert condition1 == condition2
-#
-#     condition1 = ~(dummy<=3)
-#     condition2 = dummy>3
-#     assert condition1 == condition2
-#
-#     condition1 = ~ RangeCondition(dummy, (1,3))
-#     condition2 = (dummy<1) | (3<=dummy)
-#     assert condition1 == condition2
+
 #
 # def test_general_assignment():
 #     dummy = DummyMap(0)
