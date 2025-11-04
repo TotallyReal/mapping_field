@@ -2,13 +2,13 @@ from abc import abstractmethod
 import math
 from typing import List, Tuple, Optional
 
-from mapping_field.linear import LinearTransformer
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.new_code.arithmetics import _as_combination, Add, Sub
 from mapping_field.new_code.conditions import FalseCondition, TrueCondition
 from mapping_field.new_code.ranged_condition import RangeCondition
 from mapping_field.serializable import DefaultSerializable
-from mapping_field.new_code.mapping_field import MapElement, VarDict, FuncDict, MapElementConstant, ExtElement, get_var_values
+from mapping_field.new_code.mapping_field import MapElement, VarDict, FuncDict, MapElementConstant, ExtElement, \
+    params_to_maps
 
 logger = TreeLogger(__name__)
 
@@ -146,13 +146,9 @@ class Linear(MapElement, DefaultSerializable):
         n = self.elem.evaluate()
         return None if (n is None) else self.a * n + self.b
 
+    @params_to_maps
     def __eq__(self, other: MapElement):
-        if self.elem == other:
-            return self.a == 1 and self.b == 0
-        if not isinstance(other, Linear):
-            return super().__eq__(other)
-
-        return (self-other).evaluate() == 0
+        return (self-Linear.of(other)).evaluate() == 0
 
     # <editor-fold desc=" ======= Simplifiers ======= ">
 

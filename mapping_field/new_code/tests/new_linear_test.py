@@ -1,8 +1,7 @@
 import pytest
 from typing import List
 
-from mapping_field.log_utils.tree_loggers import TreeLogger
-from mapping_field.new_code.mapping_field import MapElement, Var
+from mapping_field.new_code.mapping_field import MapElement, Var, convert_to_map
 from mapping_field.new_code.linear import Linear
 
 
@@ -51,14 +50,13 @@ def test_linear_unpacking():
     assert elem1 == elem2
 
 def single_addition(func1: MapElement, func2: MapElement, addition: MapElement):
-    TreeLogger._paused = False
     result = func1 + func2
+    func2 = convert_to_map(func2)
     assert result == addition
-    assert result - func1 == func2
-    assert result - func2 == func1
+    assert addition - func1 == func2.simplify2()
+    assert addition - func2 == func1.simplify2()
 
 def test_linear_addition():
-    TreeLogger._paused = True
     dummy = DummyMap(0)
     lin_dummy = Linear.of(dummy)
 
@@ -72,7 +70,7 @@ def test_linear_addition():
     single_addition(5*lin_dummy + 3, 11*lin_dummy + 7, 16*lin_dummy + 10)
 
     # Add unpacked linear
-    # single_addition(5*lin_dummy + 3, 11*dummy     + 7, 16*lin_dummy + 10)
+    single_addition(5*lin_dummy + 3, 11*dummy     + 7, 16*lin_dummy + 10)
 
 
 def test_linear_arithmetic():

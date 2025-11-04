@@ -93,9 +93,9 @@ class _Add(_ArithmeticMapFromFunction):
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
         entries = [var_dict.get(v,v) for v in self.vars]
 
-        if entries[0] == 0:
+        if entries[0].evaluate() == 0:
             return entries[1]
-        if entries[1] == 0:
+        if entries[1].evaluate() == 0:
             return entries[0]
 
         sign0, map0 = as_neg(entries[0])
@@ -126,9 +126,9 @@ class _Sub(_ArithmeticMapFromFunction):
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
         entries = [var_dict.get(v,v) for v in self.vars]
 
-        if entries[0] == 0:
+        if entries[0].evaluate() == 0:
             return Neg(entries[1]).simplify2()
-        if entries[1] == 0:
+        if entries[1].evaluate() == 0:
             return entries[0]
         if (entries[0] is entries[1]):
             # TODO:
@@ -180,8 +180,8 @@ def _as_combination(map_elem: MapElement) -> Tuple[int, MapElement, int, MapElem
     function = map_elem.function
 
     if function is Neg:
-        c0, elem0 = _as_scalar_mult(map_elem.entries[0])
-        return -c0, elem0, 0, MapElementConstant.zero
+        c0, elem0, c1, elem1 = _as_combination(map_elem.entries[0])
+        return -c0, elem0, -c1, elem1
 
     if function is Sub:
         c0, elem0 = _as_scalar_mult(map_elem.entries[0])
@@ -234,19 +234,19 @@ class _Mult(_ArithmeticMapFromFunction):
         entries = [var_dict.get(v,v) for v in self.vars]
 
         # Multiplication by 0 and 1
-        if entries[0] == 0:
+        if entries[0].evaluate() == 0:
             return MapElementConstant.zero
-        if entries[0] == 1:
+        if entries[0].evaluate() == 1:
             return entries[1]
 
-        if entries[1] == 0:
+        if entries[1].evaluate() == 0:
             return MapElementConstant.zero
-        if entries[1] == 1:
+        if entries[1].evaluate() == 1:
             return entries[0]
 
-        if entries[0] == -1:
+        if entries[0].evaluate() == -1:
             return Neg(entries[1])
-        if entries[1] == -1:
+        if entries[1].evaluate() == -1:
             return Neg(entries[0])
 
         sign0, numerator0, denominator0 = _as_rational(entries[0])
