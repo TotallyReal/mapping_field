@@ -1,10 +1,9 @@
 import pytest
 from typing import List
 
-from mapping_field.binary_expansion import BoolVar, BinaryExpansion
 from mapping_field.log_utils.tree_loggers import TreeLogger
-from mapping_field.mapping_field import MapElement, Var
-from mapping_field.new_code.new_linear import Linear
+from mapping_field.new_code.mapping_field import MapElement, Var
+from mapping_field.new_code.linear import Linear
 
 
 @pytest.fixture(autouse=True)

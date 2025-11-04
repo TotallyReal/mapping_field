@@ -4,11 +4,11 @@ from typing import List, Tuple, Optional
 
 from mapping_field.linear import LinearTransformer
 from mapping_field.log_utils.tree_loggers import TreeLogger
-from mapping_field.arithmetics import _as_combination, Add, Sub
-from mapping_field.new_code.new_conditions import FalseCondition, TrueCondition
-from mapping_field.new_code.new_ranged_condition import RangeCondition
+from mapping_field.new_code.arithmetics import _as_combination, Add, Sub
+from mapping_field.new_code.conditions import FalseCondition, TrueCondition
+from mapping_field.new_code.ranged_condition import RangeCondition
 from mapping_field.serializable import DefaultSerializable
-from mapping_field.mapping_field import MapElement, VarDict, FuncDict, MapElementConstant, ExtElement, get_var_values
+from mapping_field.new_code.mapping_field import MapElement, VarDict, FuncDict, MapElementConstant, ExtElement, get_var_values
 
 logger = TreeLogger(__name__)
 

@@ -3,9 +3,9 @@ from typing import List, Union, Set, Type, Optional
 
 import pytest
 
-from mapping_field.new_code.new_conditions import TrueCondition, FalseCondition, IsCondition, IntersectionCondition, \
+from mapping_field.new_code.conditions import TrueCondition, FalseCondition, IsCondition, IntersectionCondition, \
     UnionCondition, _ListCondition
-from mapping_field.mapping_field import MapElement
+from mapping_field.new_code.mapping_field import MapElement
 
 class DummyMap(MapElement):
     def __init__(self, value=0):

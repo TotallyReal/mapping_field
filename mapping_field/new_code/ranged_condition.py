@@ -1,9 +1,9 @@
 import math
 from typing import Tuple, Optional, List, Union
 
-from mapping_field.arithmetics import _as_combination
-from mapping_field.mapping_field import MapElement, VarDict, MapElementConstant, OutputPromise
-from mapping_field.new_code.new_conditions import Condition, FalseCondition, TrueCondition, IsCondition
+from mapping_field.new_code.arithmetics import _as_combination
+from mapping_field.new_code.mapping_field import MapElement, VarDict, MapElementConstant, OutputPromise
+from mapping_field.new_code.conditions import Condition, FalseCondition, TrueCondition, IsCondition
 
 class IntervalRange:
 
