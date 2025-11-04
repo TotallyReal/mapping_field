@@ -2,6 +2,7 @@ import pytest
 from typing import List
 
 from mapping_field.binary_expansion import BoolVar, BinaryExpansion
+from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.mapping_field import MapElement, Var
 from mapping_field.new_code.new_linear import Linear
 
@@ -42,20 +43,52 @@ def test_linear_generation():
     func = func.simplify2()
     result = 7
     assert func == result
-#
-# def test_linear_arithmetic():
-#     dummy = Linear.of(DummyMap(0))
-#
-#     func1 = 5*dummy + 3
-#     func2 = 11*dummy + 7
-#
-#     func = func1 + func2
-#     result = 16*dummy + 10
-#     assert func == result
-#
-#     func = func1 - func2
-#     result = -6*dummy - 4
-#     assert func == result
+
+def test_linear_unpacking():
+    dummy = DummyMap(0)
+
+    elem1 = Linear(3, Linear(4, dummy, 5), 6)
+    elem2 = Linear(12, dummy, 21)
+    assert elem1 == elem2
+
+def single_addition(func1: MapElement, func2: MapElement, addition: MapElement):
+    TreeLogger._paused = False
+    result = func1 + func2
+    assert result == addition
+    assert result - func1 == func2
+    assert result - func2 == func1
+
+def test_linear_addition():
+    TreeLogger._paused = True
+    dummy = DummyMap(0)
+    lin_dummy = Linear.of(dummy)
+
+    # Add constant
+    single_addition(5*lin_dummy + 3, 3, 5*lin_dummy + 6)
+
+    # Add elem
+    single_addition(5*lin_dummy + 3, dummy, 6*lin_dummy + 3)
+
+    # Add linear
+    single_addition(5*lin_dummy + 3, 11*lin_dummy + 7, 16*lin_dummy + 10)
+
+    # Add unpacked linear
+    # single_addition(5*lin_dummy + 3, 11*dummy     + 7, 16*lin_dummy + 10)
+
+
+def test_linear_arithmetic():
+    dummy = Linear.of(DummyMap(0))
+
+    func1 = 5*dummy + 3
+    func2 = 11*dummy + 7
+
+    func = func1 + func2
+    result = 16*dummy + 10
+    assert func == result
+
+    func = func1 - func2
+    result = -6*dummy - 4
+    assert func == result
 #
 # def test_conversion_to_linear():
 #     dummy = DummyMap(0)

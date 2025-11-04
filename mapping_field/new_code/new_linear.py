@@ -94,25 +94,21 @@ class Linear(MapElement, DefaultSerializable):
         if isinstance(value, int):
             return Linear(self.a, self.elem, self.b + value)
 
-        if other == self.elem:
-            return Linear(self.a + 1, self.elem, self.b)
+        lin_other = Linear.of(other)
 
-        if isinstance(other, Linear):
-            a2, elem2, b2 = other.a, other.elem, other.b
+        a1, elem1, b1 = self.a, self.elem, self.b
+        a2, elem2, b2 = lin_other.a, lin_other.elem, lin_other.b
 
-            a1, elem1, b1 = self.a, self.elem, self.b
+        if elem1 == elem2:
+            return Linear(a1 + a2, elem1, b1 + b2)
 
-            if elem1 == elem2:
-                return Linear(a1 + a2, elem1, b1 + b2)
+        if isinstance(a1, int) and isinstance(a2, int):
+            gcd = math.gcd(a1, a2)
 
-
-            if isinstance(a1, int) and isinstance(a2, int):
-                gcd = math.gcd(a1, a2)
-
-                bin_comb = BinaryCombination(a1//gcd, elem1, a2//gcd, elem2)
-                result = bin_comb._simplify2()
-                if result is not None and not isinstance(result, BinaryCombination):
-                    return Linear(gcd, result, b1 + b2)
+            bin_comb = BinaryCombination(a1//gcd, elem1, a2//gcd, elem2)
+            result = bin_comb._simplify2()
+            if result is not None and not isinstance(result, BinaryCombination):
+                return Linear(gcd, result, b1 + b2)
 
         return super().add(other)
 

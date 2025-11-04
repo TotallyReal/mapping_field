@@ -31,6 +31,8 @@ class TreeLogger:
     _depth = 0  # shared depth for all instances
     _max_depth = 30
     _paused = False
+    _log_count = 0
+    _max_logs = -1
 
     @classmethod
     def set_log_state(cls, paused: bool = False) -> None:
@@ -47,6 +49,9 @@ class TreeLogger:
     def log(self, message, action=TreeAction.NEUTRAL):
         if self.__class__._paused:
             return
+        self.__class__._log_count += 1
+        if self.__class__._log_count >= self.__class__._max_logs > 0:
+            raise Exception('Too many logs')
         tab_symbols = ['| '] * TreeLogger._depth
         if action == TreeAction.GO_DOWN:
             tab_symbols.append('┌ ')
