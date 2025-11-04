@@ -1,8 +1,11 @@
 import pytest
 from typing import List
 
+from mapping_field.new_code.conditions import TrueCondition
+from mapping_field.new_code.conditions import FalseCondition
 from mapping_field.new_code.mapping_field import MapElement, Var, convert_to_map
 from mapping_field.new_code.linear import Linear
+from mapping_field.new_code.ranged_condition import RangeCondition, IntervalRange
 
 
 @pytest.fixture(autouse=True)
@@ -99,37 +102,45 @@ def test_multiplication():
     assert func2 == result
 
 
-#
-# # ============================== ranged condition ==============================
-#
-# def test_linear_ranged_condition():
-#     dummy = DummyMap(0)
-#     linear_dummy = Linear.of(dummy)
-#
-#     def ranged_condition(a, b, low, high) -> Condition:
-#         func = a*linear_dummy + b
-#         condition = RangeCondition(func, (low, high))
-#         condition = condition.simplify()
-#         return condition
-#
-#     condition = ranged_condition(a=2, b=3, low=5, high=15)
-#     result = RangeCondition(dummy, (1,6))
-#     assert condition == result
-#
-#     # test negative coefficient
-#     condition = ranged_condition(a=-2, b=3, low=5, high=15)
-#     result = RangeCondition(dummy, (-5,0))
-#     assert condition == result
-#
-#     # test zero coefficient - False
-#     condition = ranged_condition(a=0, b=3, low=5, high=15)
-#     result = FalseCondition
-#     assert condition == result
-#
-#     # test zero coefficient - True
-#     condition = ranged_condition(a=0, b=7, low=5, high=15)
-#     result = TrueCondition
-#     assert condition == result
+
+# ============================== ranged condition ==============================
+
+def test_simplify_linear_ranged_condition(simple_logs):
+    dummy = Linear.of(DummyMap(0))
+
+    def inner_test(a, b, low, high) -> None:
+        cond1 = RangeCondition(dummy, (low, high))
+        low, high = a*low + b, a*high + b
+        if a<0:
+            cond2 = RangeCondition(a*dummy+b, IntervalRange(high, low, False, True))
+        else:
+            cond2 = RangeCondition(a*dummy+b, (low, high))
+
+        cond2 = cond2.simplify2()
+        assert cond1 == cond2
+
+    inner_test(a=2, b=3, low=1, high=6)
+    inner_test(a=-2, b=3, low=-5, high=0)
+
+    # test zero coefficient - False
+    condition = RangeCondition(0*dummy+3, (5, 15))
+    condition = condition.simplify2()
+    assert condition == FalseCondition
+
+    # test zero coefficient - False
+    condition = RangeCondition(0*dummy+7, (5, 15))
+    condition = condition.simplify2()
+    assert condition == TrueCondition
+
+def test_general_assignment():
+    dummy = DummyMap()
+    lin_dummy = -3*Linear.of(dummy)+2
+
+    condition1 = (lin_dummy.where() == 17).simplify2()
+    condition2 = (dummy.where() == -5).simplify2()
+    assert condition1 == condition2
+
+
 #
 #
 # def test_assignment_condition():
@@ -253,12 +264,4 @@ def test_multiplication():
 #     cond2 = cond2 & SingleAssignmentCondition(vv[3], 0)
 #     assert cond1 == cond2
 #
-#
-# def test_general_assignment():
-#     dummy = DummyMap()
-#     lin_dummy = -3*Linear.of(dummy)+2
-#
-#     condition1 = (lin_dummy.where() == 17)
-#     condition2 = (dummy.where() == -5)
-#     assert condition1 == condition2
 #

@@ -177,7 +177,7 @@ class Linear(MapElement, DefaultSerializable):
         if function.a == 0:
             return TrueCondition if element.range.contains(function.b) else FalseCondition
 
-        return RangeCondition(function, (element.range-function.b)/function.a)
+        return RangeCondition(function.elem, (element.range-function.b)/function.a)
 
     # </editor-fold>
 
