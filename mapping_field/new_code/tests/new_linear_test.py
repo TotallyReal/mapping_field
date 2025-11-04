@@ -49,6 +49,23 @@ def test_linear_unpacking():
     elem2 = Linear(12, dummy, 21)
     assert elem1 == elem2
 
+def test_conversion_to_linear():
+    dummy = DummyMap(0)
+
+    # linear of general 'simple' functions
+    lin_dummy = Linear(1, dummy, 0)
+    assert Linear.of(dummy) == lin_dummy
+
+    # linear of linear functions: same function (not just equals)
+    lin_dummy = Linear(3, dummy, 4)
+    assert Linear.of(lin_dummy) is lin_dummy
+
+    arith_dummy = 3 * dummy + 4
+    assert Linear.of(arith_dummy) == lin_dummy
+
+    arith_dummy = 4 + dummy * 3
+    assert Linear.of(arith_dummy) == lin_dummy
+
 def single_addition(func1: MapElement, func2: MapElement, addition: MapElement):
     result = func1 + func2
     func2 = convert_to_map(func2)
@@ -72,37 +89,16 @@ def test_linear_addition():
     # Add unpacked linear
     single_addition(5*lin_dummy + 3, 11*dummy     + 7, 16*lin_dummy + 10)
 
+def test_multiplication():
+    dummy = Linear.of(DummyMap())
 
-def test_linear_arithmetic():
-    dummy = Linear.of(DummyMap(0))
+    func1 = 4 * dummy + 5
+    func2 = 3 * func1 + 6
+    result = 12 * dummy + 21
 
-    func1 = 5*dummy + 3
-    func2 = 11*dummy + 7
+    assert func2 == result
 
-    func = func1 + func2
-    result = 16*dummy + 10
-    assert func == result
 
-    func = func1 - func2
-    result = -6*dummy - 4
-    assert func == result
-#
-# def test_conversion_to_linear():
-#     dummy = DummyMap(0)
-#
-#     # linear of general functions
-#     lin_dummy = Linear(1, dummy, 0)
-#     assert Linear.of(dummy) == lin_dummy
-#
-#     # linear of linear functions: same function (not just equals)
-#     lin_dummy = Linear(3, dummy, 4)
-#     assert Linear.of(lin_dummy) is lin_dummy
-#
-#     arith_dummy = 3 * dummy + 4
-#     assert Linear.of(arith_dummy) == lin_dummy
-#
-#     arith_dummy = 4 + dummy * 3
-#     assert Linear.of(arith_dummy) == lin_dummy
 #
 # # ============================== ranged condition ==============================
 #
