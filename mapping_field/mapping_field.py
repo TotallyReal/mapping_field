@@ -83,8 +83,8 @@ def params_to_maps(f):
 # 5. If no simplification was found, save as generic (Composition) H(x0, y0).
 
 # TODO: find how to switch the order
-ElemSimplifier = ParamProcessor[VarDict, 'MapElement']
-ClassSimplifier = Processor['MapElement', VarDict]
+ElemSimplifier = ParamProcessor[VarDict, 'MapElement']      # (VarDict)               -> Optional['MapElement']
+ClassSimplifier = Processor['MapElement', VarDict]          # ('MapElement', VarDict) -> Optional['MapElement']
 
 class OutputPromise:
     def __init__(self, name: Optional[str] = None):
