@@ -25,7 +25,7 @@ def convert_to_map(elem):
     if isinstance(elem, MapElement):
         return elem
 
-    if isinstance(elem, int) or isinstance(elem, FieldElement):
+    if isinstance(elem, (int, float)) or isinstance(elem, FieldElement):
         return MapElementConstant(elem)
 
     if isinstance(elem, str):
@@ -98,12 +98,15 @@ class OutputValidator(MultiValidator['MapElement']):
 
 
 OutputValidatorType = TypeVar('OutputValidatorType', bound=OutputValidator)
+class InvalidInput(Exception):
+    pass
 
 def validate_promises_var_dict(var_dict: VarDict) -> bool:
     # TODO: Do I really need this, or should I calidate the promises inside Var?
     for v, value in var_dict.items():
-        for validator in v.promises.output_promises():
-            assert validator(value), f'{v}={value} does not satisfy the promise of {validator}'
+        for promise in v.promises.output_promises():
+            if not value.has_promise(promise):
+                raise InvalidInput(f'{v}={value} does not satisfy the promise of {promise}')
 
 T = TypeVar('T', bound='MapElement')
 
@@ -679,7 +682,8 @@ class Var(MapElement, DefaultSerializable):
         if value is None:
             return self
         for promise in self.promises.output_promises():
-            assert value.has_promise(promise)
+            if not value.has_promise(promise):
+                raise InvalidInput(f'{self}={value} does not satisfy the promise of {promise}')
         return value
 
     def __eq__(self, other):

@@ -208,6 +208,7 @@ class IntervalRange:
 Range = Tuple[float, float]
 
 class InRange(OutputValidator):
+    # TODO: add tests
 
     def __init__(self, f_range: Union[IntervalRange, Tuple[float, float]]):
         self.range = f_range if isinstance(f_range, IntervalRange) else IntervalRange(*f_range)
