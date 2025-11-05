@@ -1,5 +1,7 @@
 from colorama import init, Fore, Style
 from typing import TypeVar, Generic, Callable, Optional, List, Tuple, Type, Dict
+from colorama import init, Fore, Style, Back
+from typing import TypeVar, Generic, Callable, Optional, List, Type, Dict
 
 from mapping_field.log_utils.tree_loggers import TreeLogger, TreeAction, green, red, yellow, magenta, cyan
 
@@ -59,7 +61,8 @@ class ProcessorCollection(Generic[Elem, Param]):
 
         for processor in self.processors + self.elem_processors.get(id(elem), []) + self.class_processors.get(type(elem), []):
 
-            message = f'Processing {processor.__name__} ( {red(elem)} , {yellow(param)} )'
+            # TODO: Maybe use __qualname__ instead?
+            message = f'Processing {processor.__qualname__} ( {red(elem)} , {yellow(param)} )'
 
             logger.log(message, action=TreeAction.GO_DOWN)
             result = processor(elem, param)
@@ -80,7 +83,7 @@ class ProcessorCollection(Generic[Elem, Param]):
         was_processed = False
 
         message = f'Full Processing ( {red(elem)} , {Fore.YELLOW}{param}{Style.RESET_ALL} ) , [{cyan(elem.__class__.__name__)}]'
-        logger.log(message=message, action=TreeAction.GO_DOWN)
+        logger.log(message=message, action=TreeAction.GO_DOWN, back=Back.LIGHTBLACK_EX)
         while True:
             # TODO:
             #   Should I add a mechanism that prevent running the same process that made the change in the
@@ -102,4 +105,5 @@ def named_forgetful_function(func: ParamProcessor) -> Processor:
         return func(param)
 
     wrapper.__name__ = func.__name__
+    wrapper.__qualname__ = func.__qualname__
     return wrapper
