@@ -6,9 +6,9 @@ from mapping_field.mapping_field import get_var_values
 from mapping_field.serializable import DefaultSerializable
 from mapping_field.arithmetics import as_neg, Add, Sub
 from mapping_field.mapping_field import Var, MapElement, MapElementConstant, ExtElement, VarDict, FuncDict
-from mapping_field.conditions import Condition, FalseCondition, TrueCondition, ConditionUnion
+from mapping_field.conditions import Condition, FalseCondition, TrueCondition
 from mapping_field.ranged_condition import SingleAssignmentCondition, RangeCondition, RangeTransformer, Range, \
-    ConditionToRangeTransformer, RangeConditionSimplifier
+    ConditionToRangeTransformer
 from mapping_field.linear import LinearTransformer, Linear
 
 logger = TreeLogger(__name__)
