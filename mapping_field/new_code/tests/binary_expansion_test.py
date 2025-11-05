@@ -1,12 +1,10 @@
+from typing import List, Union
+
 import pytest
 
 from mapping_field.new_code.binary_expansion import BinaryExpansion
 from mapping_field.new_code.mapping_field import MapElementConstant, Var, NamedFunc, InvalidInput
 from mapping_field.new_code.promises import BoolVar
-
-
-# from mapping_field.new_code.binary_expansion import BinaryExpansion, BoolVar
-# from mapping_field.new_code.ranged_condition import RangeCondition, SingleAssignmentCondition
 
 
 @pytest.fixture(autouse=True)
@@ -44,6 +42,30 @@ def test_constant_split():
     constant = 0
     pure = BinaryExpansion([BoolVar('v1'), 0, BoolVar('v2')])
     assert x.split_constant() == (pure, constant)
+
+
+def test_post_generation_independence():
+    v: List[Union[BoolVar, int]] = [BoolVar(f'v_{i}') for i in range(4)]
+
+    v1 = v.copy()
+    v2 = v1[:2] + [0,0]
+    x1 = BinaryExpansion(v1)
+    x2 = BinaryExpansion(v2)
+
+    assert x1.simplify2() != x2.simplify2()
+    str_x1 = str(x1)
+
+    v1[2] = 0
+    v1[3] = 0
+    # Check that the binary expansion can't be changed by changing the list of vars after construction
+    assert v1 == v2
+    assert x1.simplify2() != x2.simplify2()
+    assert str(x1) == str_x1
+
+    # The right way is to call the function:
+    x1 = x1({v[2]:0, v[3]:0})
+    assert x1.simplify2() == x2.simplify2()
+
 
 def addition_test(x, y, x_plus_y):
     result = x + y

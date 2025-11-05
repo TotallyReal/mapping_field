@@ -192,13 +192,13 @@ class BinaryExpansion(MapElement, DefaultSerializable):
 
     def evaluate(self) -> Optional[ExtElement]:
         return self._constant if (self._bool_max_value[-1] == 0) else None
-#
-#     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
-#         coefs = [(c if isinstance(c,int) else var_dict.get(c,c)) for c in self.coefficients]
-#         if self.coefficients == coefs:
-#             return self
-#         return BinaryExpansion(coefs)
-#
+
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
+        coefs = [(c if isinstance(c,int) else var_dict.get(c,c)) for c in self.coefficients]
+        if self.coefficients == coefs:
+            return self
+        return BinaryExpansion(coefs)
+
     def split_constant(self) -> Tuple[Optional['BinaryExpansion'], MapElementConstant]:
         constant_part = MapElementConstant(self._constant)
         if self._constant == 0:
