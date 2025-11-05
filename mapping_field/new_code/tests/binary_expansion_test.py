@@ -121,6 +121,25 @@ def test_arithmetic():
         BinaryExpansion([0, v1, 1])
     )
 
+
+def test_linear_of_binary_expansion():
+    xx = [BoolVar(f'x_{i}') for i in range(4)]
+    full_bin = BinaryExpansion(xx)
+
+    v1 = BinaryExpansion([xx[0], xx[1]])
+    v2 = BinaryExpansion([xx[2], xx[3]])
+    result = v1 + 4 * v2
+    assert result == full_bin
+
+    v1 = BinaryExpansion([xx[0], xx[1], xx[2]])
+    result = v1 + 8 * xx[3]
+    assert result == full_bin
+
+    v1 = BinaryExpansion([xx[1], xx[2], xx[3]])
+    result = 2 * v1 + xx[0]
+    assert result == full_bin
+
+
 def test_shift():
     v1 = BoolVar('v1')
     v2 = BoolVar('v2')
@@ -169,28 +188,6 @@ def test_simplify_range_condition():
 #     result = (x << 1) & (y << 1)
 #
 #     assert condition == result
-#
-# def test_binary_simplifier():
-#     xx = [BoolVar(f'x_{i}') for i in range(4)]
-#     full_bin = BinaryExpansion(xx)
-#
-#     # v1 = BinaryExpansion([xx[0], xx[1]])
-#     # v2 = BinaryExpansion([0, 0, xx[2], xx[3]])
-#     # result = v1 + v2
-#     # assert result == full_bin
-#
-#     v1 = BinaryExpansion([xx[0], xx[1]])
-#     v2 = BinaryExpansion([xx[2], xx[3]])
-#     result = v1 + 4 * v2
-#     assert result == full_bin
-#
-#     v1 = BinaryExpansion([xx[0], xx[1], xx[2]])
-#     result = v1 + 8 * xx[3]
-#     assert result == full_bin
-#
-#     v1 = BinaryExpansion([xx[1], xx[2], xx[3]])
-#     result = 2 * v1 + xx[0]
-#     assert result == full_bin
 #
 
 
