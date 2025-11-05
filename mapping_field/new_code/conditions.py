@@ -467,7 +467,29 @@ class IntersectionCondition(_ListCondition, MapElementProcessor, op_type = _List
                 func = condition.process_function(func, simplify=simplify)
         return func
 
+    @staticmethod
+    def _binary_and_simplify(intersection_cond: MapElement, var_dict: VarDict) -> Optional['MapElement']:
+        assert isinstance(intersection_cond, IntersectionCondition)
+        if len(intersection_cond.conditions) != 2:
+            return None
+
+        cond1, cond2 = intersection_cond.conditions
+        # TODO: use simplifier like methods
+        cond1_ = cond1(condition=cond2)
+        cond2_ = cond2(condition=cond1)
+        if cond1_ == cond1 and cond2_ == cond2:
+            return None
+
+        if cond1_ is TrueCondition:
+            return cond2_
+        if cond2_ is TrueCondition:
+            return cond1_
+        if cond1_ is FalseCondition or cond2_ is FalseCondition:
+            return FalseCondition
+        return cond1_ & cond2_
+
 IntersectionCondition.register_class_simplifier(_binary_simplify)
+IntersectionCondition.register_class_simplifier(IntersectionCondition._binary_and_simplify)
 
 MapElement.intersection = lambda cond1, cond2: IntersectionCondition([cond1, cond2]).simplify2()
 

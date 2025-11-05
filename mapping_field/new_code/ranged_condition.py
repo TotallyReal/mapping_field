@@ -8,7 +8,7 @@ from mapping_field.new_code.conditions import (
 )
 from mapping_field.new_code.mapping_field import (
     MapElement, MapElementConstant, MapElementProcessor, OutputPromises, OutputValidator, Var,
-    VarDict,
+    VarDict, FuncDict,
 )
 from mapping_field.new_code.promises import IsIntegral
 
@@ -262,6 +262,9 @@ class RangeCondition(Condition, MapElementProcessor):
     def __hash__(self) -> int:
         # TODO: Maybe have a better hash?
         return id(self)
+
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
+        return RangeCondition(self.function._call_with_dict(var_dict, func_dict), self.range)
 
     def process_function(self, func: MapElement, simplify: bool = True) -> MapElement:
         value = self.range.is_point

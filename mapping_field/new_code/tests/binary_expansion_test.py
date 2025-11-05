@@ -120,54 +120,46 @@ def test_arithmetic():
         BinaryExpansion([1, v1]),
         BinaryExpansion([0, v1, 1])
     )
-#
-# def test_shift():
-#     v1 = BoolVar('v1')
-#     v2 = BoolVar('v2')
-#
-#     x1 = BinaryExpansion([v1, v2, 0, 1, 1])
-#     x2 = BinaryExpansion([0, 0, v1, v2, 0, 1, 1])
-#     x3 = BinaryExpansion([0, 0, 0, 0, v1, v2, 0, 1, 1])
-#
-#     assert x1.shift(+2) == x2
-#     assert x1.shift(+4) == x3
-#
-#     assert x2.shift(-2) == x1
-#     assert x2.shift(+2) == x3
-#
-#     assert x3.shift(-4) == x1
-#     assert x3.shift(-2) == x2
-#
-# def test_simplify_range_condition():
-#     v = [BoolVar(f'v_{i}') for i in range(4)]
-#     x = BinaryExpansion(v)  # A number in [0,16)
-#
-#     # Note that this should pass without the call to simplified, since it is done automatically when trying to
-#     # compare the conditions. In other words, each condition here is simplified twice, though the second time should
-#     # be quick since the condition already "knows" that it is simplified.
-#     # The reason for that extra "simplified" call is for debugging, namely separate the "real" call to simplify
-#     # and the call to compare the condition.
-#     condition1 = RangeCondition(x, (3, 100)).simplify()
-#     condition2 = RangeCondition(x, (3, 16)).simplify()
-#     assert condition1 == condition2
-#
-#     x = BinaryExpansion([1] + v)  # A number in [1,32), but only odd numbers
-#
-#     condition1 = RangeCondition(x, (0, 10)).simplify()
-#     condition2 = RangeCondition(x, (1, 10)).simplify()
-#     assert condition1 == condition2
-#
-#     # Only odd number in [16, 19) is 17, which is the only integer in [17,18)
-#     condition1 = RangeCondition(x, (16, 19)).simplify()
-#     condition2 = RangeCondition(x, (17, 18)).simplify()
-#     assert condition1 == condition2
-#
-#     condition1 = RangeCondition(x, (17, 100)).simplify()
-#     condition2 = RangeCondition(v[3], (1, 2)).simplify()
-#     assert condition1 == condition2
-#
-#     condition2 = SingleAssignmentCondition(v[3] , 1)
-#     assert condition1 == condition2
+
+def test_shift():
+    v1 = BoolVar('v1')
+    v2 = BoolVar('v2')
+
+    x1 = BinaryExpansion([v1, v2, 0, 1, 1])
+    x2 = BinaryExpansion([0, 0, v1, v2, 0, 1, 1])
+    x3 = BinaryExpansion([0, 0, 0, 0, v1, v2, 0, 1, 1])
+
+    assert x1.shift(+2) == x2
+    assert x1.shift(+4) == x3
+
+    assert x2.shift(-2) == x1
+    assert x2.shift(+2) == x3
+
+    assert x3.shift(-4) == x1
+    assert x3.shift(-2) == x2
+
+def test_simplify_range_condition():
+    v = [BoolVar(f'v_{i}') for i in range(4)]
+    x = BinaryExpansion(v)  # A number in [0,16)
+
+    condition1 = ((3<=x) & (x<100)).simplify2()
+    condition2 = ((3<=x) & (x<16)).simplify2()
+    assert condition1 == condition2
+
+    x = BinaryExpansion([1] + v)  # A number in [1,32), but only odd numbers
+
+    condition1 = ((0<=x) & (x<10)).simplify2()
+    condition2 = ((1<=x) & (x<10)).simplify2()
+    assert condition1 == condition2
+
+    # Only odd number in [16, 19) is 17, which is the only integer in [17,18)
+    condition1 = ((16<=x) & (x<19)).simplify2()
+    condition2 = (x << 17).simplify2()
+    assert condition1 == condition2
+
+    condition1 = ((17<=x) & (x<100)).simplify2()
+    condition2 = (v[3] << 1).simplify2()
+    assert condition1 == condition2
 #
 # def test_sum_of_bool():
 #     x, y = BoolVar('x'), BoolVar('y')
