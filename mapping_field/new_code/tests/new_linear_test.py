@@ -105,7 +105,7 @@ def test_multiplication():
 
 # ============================== ranged condition ==============================
 
-def test_simplify_linear_ranged_condition(simple_logs):
+def test_simplify_linear_ranged_condition():
     dummy = Linear.of(DummyMap(0))
 
     def inner_test(a, b, low, high) -> None:

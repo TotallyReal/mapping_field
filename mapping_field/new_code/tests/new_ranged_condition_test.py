@@ -3,7 +3,8 @@ from typing import List
 
 from mapping_field.new_code.conditions import FalseCondition, UnionCondition, TrueCondition
 from mapping_field.new_code.mapping_field import MapElement, Var, NamedFunc, MapElementConstant
-from mapping_field.new_code.ranged_condition import RangeCondition, InRange, IntervalRange, IsIntegral
+from mapping_field.new_code.promises import IsIntegral
+from mapping_field.new_code.ranged_condition import RangeCondition, InRange, IntervalRange
 from mapping_field.new_code.arithmetics import Add
 
 
@@ -185,7 +186,7 @@ def test_simplify_on_ranged_promised_functions():
     assert condition is None
 
     # Add to dummy a nonnegative output assumption
-    dummy.add_promise( InRange((0, float('inf'))) )
+    dummy.promises.add_promise( InRange((0, float('inf'))) )
 
     condition = (-5 <= dummy)
     condition = condition.simplify2()
@@ -217,7 +218,7 @@ def test_equality_as_integral():
     cond2 = (4.8<=dummy) & (dummy <= 10.4)
     assert cond1 != cond2
 
-    dummy.add_promise( IsIntegral )
+    dummy.promises.add_promise( IsIntegral )
 
     cond1 = (4  < dummy) & (dummy <= 10.2)
     cond2 = (4.8<=dummy) & (dummy <= 10.4)
@@ -231,7 +232,7 @@ def test_union_for_integral_functions():
     result = UnionCondition([cond1, cond2])._simplify2()
     assert result is None
 
-    dummy.add_promise(IsIntegral)
+    dummy.promises.add_promise(IsIntegral)
 
     cond1 = (5.5  <= dummy) & (dummy <= 10.2)
     cond2 = (10.8 <= dummy) & (dummy <= 17.4)
@@ -241,7 +242,7 @@ def test_union_for_integral_functions():
 def test_union_of_integral_points():
     dummy = DummyMap(0)
 
-    dummy.add_promise( IsIntegral )
+    dummy.promises.add_promise( IsIntegral )
 
     conditions = [(dummy << i) for i in range(3, 9)]
     union = UnionCondition(conditions).simplify2()

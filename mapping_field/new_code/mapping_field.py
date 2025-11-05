@@ -1,8 +1,9 @@
 import collections
 import functools
 import inspect
-from typing import Callable, Dict, List, Optional, Tuple, Iterator, Type, TypeVar
+from typing import Callable, Dict, List, Optional, Tuple, Iterator, Type, TypeVar, Set
 
+from mapping_field.new_code.validators import Validator, MultiValidator
 from mapping_field.processors import ProcessorCollection, Processor, ParamProcessor
 from mapping_field.field import FieldElement, ExtElement
 from mapping_field.serializable import DefaultSerializable
@@ -86,21 +87,25 @@ def params_to_maps(f):
 ElemSimplifier = ParamProcessor[VarDict, 'MapElement']      # (VarDict)               -> Optional['MapElement']
 ClassSimplifier = Processor['MapElement', VarDict]          # ('MapElement', VarDict) -> Optional['MapElement']
 
-class OutputPromise:
-    def __init__(self, name: Optional[str] = None):
-        self.name = name or self.__class__.__name__
+class OutputValidator(MultiValidator['MapElement']):
+    def __init__(self, name: Optional[str]):
+        super().__init__(name = name)
+        self.register_validator(self._check_promises_on_element)
 
-    def __repr__(self):
-        return self.name
+    def _check_promises_on_element(self, elem: 'MapElement') -> bool:
+        # TODO: Find a better way
+        return self in elem.promises._promises
 
-PromiseType = TypeVar('PromiseType', bound=OutputPromise)
 
-T = TypeVar('T', bound='MapElement')
+OutputValidatorType = TypeVar('OutputValidatorType', bound=OutputValidator)
 
 def validate_promises_var_dict(var_dict: VarDict) -> bool:
+    # TODO: Do I really need this, or should I calidate the promises inside Var?
     for v, value in var_dict.items():
-        for promise in v.output_promises():
-            assert value.has_promise(promise), f'{v}={value} does not satisfy the promise of {promise}'
+        for validator in v.promises.output_promises():
+            assert validator(value), f'{v}={value} does not satisfy the promise of {validator}'
+
+T = TypeVar('T', bound='MapElement')
 
 def always_validate_promises(cls: Type[T]) -> Type[T]:
 
@@ -113,6 +118,43 @@ def always_validate_promises(cls: Type[T]) -> Type[T]:
 
     cls.__call__ = call_wrapper
     return cls
+
+
+class OutputPromises:
+
+    # TODO: I don't like this mechanism too much. Think if there is a better way
+
+    def __init__(self,
+                 promises: Optional[Set[OutputValidator]] = None,
+                 invalid_promises: Optional[Set[OutputValidator]] = None):
+        self._promises: Set[OutputValidator] = promises.copy() if promises is not None else set()
+        self._invalid_promises: Set[OutputValidator] = invalid_promises.copy() if promises is not None else set()
+
+    def copy(self) -> 'OutputPromises':
+        return OutputPromises(self._promises, set())
+
+    def add_promise(self, promise: OutputValidator):
+        self._promises.add(promise)
+
+    def add_invalid_promise(self, promise: OutputValidator):
+        self._invalid_promises.add(promise)
+
+    def remove_promises(self, promises: List[OutputValidator]):
+        self._promises = [promise for promise in self._promises if promise not in promises]
+
+    def output_promises(self, of_type: Type[OutputValidator] = OutputValidator) -> Iterator[OutputValidator]:
+        for promise in self._promises:
+            if isinstance(promise, of_type):
+                yield promise
+
+    def has_promise(self, promise: OutputValidator) -> Optional[bool]:
+        if promise in self._promises:
+            return True
+        if promise in self._invalid_promises:
+            return False
+        return None
+
+    # </editor-fold>
 
 class MapElement:
     """
@@ -127,7 +169,6 @@ class MapElement:
     the _call_with_dict(var_dict, func_dict) method instead. (see description below)
     """
 
-
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
 
@@ -136,7 +177,7 @@ class MapElement:
             processor.__name__ = f'{cls.__name__}_simplify_with_var_values'
             MapElement._simplifier.register_class_processor(cls, processor)
 
-    def __init__(self, variables: List['Var'], name: Optional[str] = None):
+    def __init__(self, variables: List['Var'], name: Optional[str] = None, promises: Optional[OutputPromises] = None):
         """
         The 'variables' are the ordered list used when calling the function, as in f(a_1,...,a_n).
         """
@@ -147,7 +188,7 @@ class MapElement:
         self.vars = variables
         self.num_vars = len(variables)
         self._simplified = False
-        self._promises = set()
+        self.promises = OutputPromises() if promises is None else promises
 
     def set_var_order(self, variables: List['Var']):
         """
@@ -161,23 +202,17 @@ class MapElement:
 
         self.vars = variables
 
-    # <editor-fold desc=" ------------------------ Output Promises ------------------------ ">
+    def has_promise(self, promise: OutputValidator) -> bool:
+        value = self.promises.has_promise(promise)
+        if value is not None:
+            return value
 
-    def add_promise(self, promise: OutputPromise):
-        self._promises.add(promise)
-
-    def remove_promises(self, promises: List['OutputPromise']):
-        self._promises = [promise for promise in self._promises if promise not in promises]
-
-    def output_promises(self, of_type: Type[PromiseType] = OutputPromise) -> Iterator[PromiseType]:
-        for promise in self._promises:
-            if isinstance(promise, of_type):
-                yield promise
-
-    def has_promise(self, promise: OutputPromise):
-        return promise in self._promises
-
-    # </editor-fold>
+        value = promise(self)
+        if value:
+            self.promises.add_promise(promise)
+        else:
+            self.promises.add_invalid_promise(promise)
+        return value
 
     # <editor-fold desc=" ------------------------ String represnetation ------------------------">
 
@@ -640,7 +675,12 @@ class Var(MapElement, DefaultSerializable):
         return self.name
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
-        return var_dict.get(self, self)
+        value = var_dict.get(self, None)
+        if value is None:
+            return self
+        for promise in self.promises.output_promises():
+            assert value.has_promise(promise)
+        return value
 
     def __eq__(self, other):
         return isinstance(other, Var) and self.name == other.name
@@ -790,9 +830,7 @@ class CompositionFunction(MapElement, DefaultSerializable):
             self.function = function
             self.entries = entries
 
-        # Works under the assumption that the entries satisfy their promises for the given function
-        for promise in self.function.output_promises():
-            self.add_promise(promise)
+        self.promises = function.promises.copy()
 
     def to_string(self, vars_str_list: List[str]):
         # Compute the str representation for each entry, by supplying it the str

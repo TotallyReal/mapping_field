@@ -3,14 +3,13 @@ from typing import Optional, List, Tuple, Type, cast
 
 from mapping_field.new_code.arithmetics import _ArithmeticMapFromFunction
 from mapping_field.field import ExtElement
-from mapping_field.new_code.mapping_field import MapElement, VarDict, CompositionFunction, OutputPromise, \
-    always_validate_promises
+from mapping_field.new_code.mapping_field import MapElement, VarDict, CompositionFunction, always_validate_promises
+from mapping_field.new_code.promises import IsCondition
 from mapping_field.serializable import DefaultSerializable
 from mapping_field.log_utils.tree_loggers import TreeLogger, red, green, yellow
 
 simplify_logger = TreeLogger(__name__)
 
-IsCondition = OutputPromise("Condition")
 
 @always_validate_promises
 class Condition(MapElement):
@@ -37,7 +36,7 @@ class BinaryCondition(Condition, DefaultSerializable):
     def __init__(self, value: bool):
         super().__init__(variables=[])
         self.value = value
-        self.add_promise(IsCondition)
+        self.promises.add_promise(IsCondition)
 
     def to_string(self, entries: List[str]):
         return repr(self.value)
@@ -66,10 +65,10 @@ class _NotCondition(Condition, _ArithmeticMapFromFunction):
 
     def __init__(self):
         super().__init__('Not', lambda a: 1-a)
-        self.add_promise(IsCondition)
+        self.promises.add_promise(IsCondition)
         for v in self.vars:
             # TODO: Maybe switch directly to BoolVars?
-            v.add_promise(IsCondition)
+            v.promises.add_promise(IsCondition)
 
     def to_string(self, entries: List[str]):
         return f'~({entries[0]})'
@@ -139,7 +138,9 @@ class _ListCondition(Condition):
         super().__init__(
             list(set(sum([condition.vars for condition in conditions],[])))
         )
-        self.add_promise(IsCondition)
+        self.promises.add_promise(IsCondition)
+        for condition in conditions:
+            assert condition.has_promise(IsCondition)
         self._simplified = simplified
         self.conditions: List[MapElement] = []
 

@@ -2,8 +2,11 @@ import math
 from typing import Tuple, Optional, List, Union
 
 from mapping_field.new_code.arithmetics import _as_combination
-from mapping_field.new_code.mapping_field import MapElement, VarDict, MapElementConstant, OutputPromise
-from mapping_field.new_code.conditions import Condition, FalseCondition, TrueCondition, IsCondition
+from mapping_field.new_code.mapping_field import MapElement, VarDict, MapElementConstant, OutputPromises, \
+    OutputValidator
+from mapping_field.new_code.conditions import Condition, FalseCondition, TrueCondition, IsCondition, _NotCondition
+from mapping_field.new_code.promises import IsIntegral
+
 
 class IntervalRange:
 
@@ -204,29 +207,33 @@ class IntervalRange:
 
 Range = Tuple[float, float]
 
-class InRange(OutputPromise):
+class InRange(OutputValidator):
 
     def __init__(self, f_range: Union[IntervalRange, Tuple[float, float]]):
-        super().__init__()
         self.range = f_range if isinstance(f_range, IntervalRange) else IntervalRange(*f_range)
+        super().__init__(f'InRange {f_range}')
 
     @staticmethod
-    def consolidate_ranges(element:MapElement) -> Tuple[int, IntervalRange]:
+    def consolidate_ranges(promises: OutputPromises) -> Tuple[Optional[IntervalRange], Optional[OutputPromises]]:
+        promises = promises.copy()
         f_range = IntervalRange.all()
         count = 0
-        promises = []
-        for in_range in element.output_promises(of_type=InRange):
-            promises.append(in_range)
+        in_range_promises = []
+        for in_range in promises.output_promises(of_type=InRange):
+            in_range_promises.append(in_range)
             count += 1
             f_range = f_range.intersection(in_range.range)
             if f_range is None:
-                raise Exception(f'{element} range promises collapse to an empty range')
+                raise Exception(f'InRange promises collapse to an empty range')
         if count > 1:
-            element.remove_promises(promises)
-            element.add_promise(InRange(f_range))
-        return count, f_range
+            promises.remove_promises(in_range_promises)
+            promises.promises.add_promise(InRange(f_range))
+        else:
+            promises = None
+        if count == 0:
+            f_range = None
+        return f_range, promises
 
-IsIntegral = OutputPromise("Integral")
 
 # <editor-fold desc=" --------------- RangeCondition ---------------">
 
@@ -236,7 +243,7 @@ class RangeCondition(Condition):
         super().__init__(function.vars)
         self.function = function
         self.range = f_range if isinstance(f_range, IntervalRange) else IntervalRange(*f_range)
-        self.add_promise(IsCondition)
+        self.promises.add_promise(IsCondition)
 
     def to_string(self, vars_str_list: List[str]):
         return self.range.str_middle(repr(self.function))
@@ -296,39 +303,38 @@ class RangeCondition(Condition):
         return TrueCondition if element.range.contains(value) else FalseCondition
 
     @staticmethod
-    def _ranged_promise_simplifier(element: MapElement, var_dict: VarDict) -> Optional[MapElement]:
-        assert isinstance(element, RangeCondition)
+    def _ranged_promise_simplifier(range_cond: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+        assert isinstance(range_cond, RangeCondition)
 
-        num_range_promises, f_range = InRange.consolidate_ranges(element.function)
+        function = range_cond.function
+        f_range, promises = InRange.consolidate_ranges(function.promises)
+        if promises is not None:
+            # TODO: I don't want to change the function object itself. Consider either adding a 'copy' method
+            #       to the MapElement, or instead move the promises themselves else where.
+            function.promises = promises
 
-        if num_range_promises == 0:
+        if f_range is None:
             return None
 
-        if element.range.contains(f_range):
+        if range_cond.range.contains(f_range):
             return TrueCondition
 
-        f_range = f_range.intersection(element.range)
+        f_range = f_range.intersection(range_cond.range)
         if f_range is None:
             return FalseCondition
 
-        if f_range != element.range:
-            return RangeCondition(element.function, f_range)
-
-        if num_range_promises > 1:
-            # TODO: Element is "simpler" since its function has less (but equivalent) promises.
-            #       I prefer to not change the function, but return a new one. Should think if this is
-            #       really needed.
-            return element
+        if f_range != range_cond.range or promises is not None:
+            return RangeCondition(function, f_range)
 
         return None
 
     @staticmethod
-    def _integral_simplifier(element: MapElement, var_dict: VarDict) -> Optional[MapElement]:
-        assert isinstance(element, RangeCondition)
-        if element.function.has_promise(IsIntegral):
-            f_range = element.range.as_integral()
-            if f_range != element.range:
-                return RangeCondition(element.function, f_range)
+    def _integral_simplifier(range_cond: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+        assert isinstance(range_cond, RangeCondition)
+        if range_cond.function.has_promise(IsIntegral):
+            f_range = range_cond.range.as_integral()
+            if f_range != range_cond.range:
+                return RangeCondition(range_cond.function, f_range)
 
         return None
 

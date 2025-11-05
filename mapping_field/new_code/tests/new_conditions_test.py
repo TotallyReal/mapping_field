@@ -17,7 +17,7 @@ class DummyCondition(MapElement):
         super().__init__([])
         self.values: Set[int] = set([values]) if isinstance(values, int) else values
         self.type = type
-        self.add_promise(IsCondition)
+        self.promises.add_promise(IsCondition)
 
     def to_string(self, vars_str_list: List[str]):
         return f'DummyCond_{self.type}({self.values})'
