@@ -1,13 +1,14 @@
 import collections
 import functools
 import inspect
-from typing import Callable, Dict, List, Optional, Tuple, Iterator, Type, TypeVar, Set
 
-from mapping_field.new_code.validators import Validator, MultiValidator
-from mapping_field.processors import ProcessorCollection, Processor, ParamProcessor
-from mapping_field.field import FieldElement, ExtElement
+from typing import Callable, Dict, Iterator, List, Optional, Set, Tuple, Type, TypeVar
+
+from mapping_field.field import ExtElement, FieldElement
+from mapping_field.log_utils.tree_loggers import TreeAction, TreeLogger, cyan, green, magenta, red
+from mapping_field.new_code.validators import MultiValidator, Validator
+from mapping_field.processors import ParamProcessor, Processor, ProcessorCollection
 from mapping_field.serializable import DefaultSerializable
-from mapping_field.log_utils.tree_loggers import TreeLogger, TreeAction, red, cyan, magenta, green
 
 simplify_logger = TreeLogger(__name__)
 

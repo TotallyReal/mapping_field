@@ -1,11 +1,11 @@
-import pytest
 from typing import List
 
-from mapping_field.new_code.conditions import TrueCondition
-from mapping_field.new_code.conditions import FalseCondition
-from mapping_field.new_code.mapping_field import MapElement, Var, convert_to_map
+import pytest
+
+from mapping_field.new_code.conditions import FalseCondition, TrueCondition
 from mapping_field.new_code.linear import Linear
-from mapping_field.new_code.ranged_condition import RangeCondition, IntervalRange
+from mapping_field.new_code.mapping_field import MapElement, Var, convert_to_map
+from mapping_field.new_code.ranged_condition import IntervalRange, RangeCondition
 
 
 @pytest.fixture(autouse=True)

@@ -1,8 +1,8 @@
 import pytest
 
-from mapping_field.new_code.conditions import TrueCondition, FalseCondition
-from mapping_field.new_code.mapping_field import Var, NamedFunc, InvalidInput
-from mapping_field.new_code.promises import IntVar, BoolVar
+from mapping_field.new_code.conditions import FalseCondition, TrueCondition
+from mapping_field.new_code.mapping_field import InvalidInput, NamedFunc, Var
+from mapping_field.new_code.promises import BoolVar, IntVar
 
 
 @pytest.fixture(autouse=True)

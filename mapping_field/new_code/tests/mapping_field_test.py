@@ -2,8 +2,10 @@ from typing import List, Optional
 
 import pytest
 
-from mapping_field.mapping_field import Var, NamedFunc, Func, CompositionFunction, MapElementFromFunction, MapElement, \
-    VarDict, MapElementConstant
+from mapping_field.mapping_field import (
+    CompositionFunction, Func, MapElement, MapElementConstant, MapElementFromFunction, NamedFunc,
+    Var, VarDict,
+)
 
 
 @pytest.fixture(autouse=True)

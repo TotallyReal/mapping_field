@@ -1,11 +1,15 @@
 import operator
-from typing import List, Union, Set, Type, Optional
+
+from typing import List, Optional, Set, Type, Union
 
 import pytest
 
-from mapping_field.new_code.conditions import TrueCondition, FalseCondition, IsCondition, IntersectionCondition, \
-    UnionCondition, _ListCondition
+from mapping_field.new_code.conditions import (
+    FalseCondition, IntersectionCondition, IsCondition, TrueCondition, UnionCondition,
+    _ListCondition,
+)
 from mapping_field.new_code.mapping_field import MapElement
+
 
 class DummyMap(MapElement):
     def __init__(self, value=0):

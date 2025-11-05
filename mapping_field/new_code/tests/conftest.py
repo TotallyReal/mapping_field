@@ -1,6 +1,7 @@
-import logging
-from pathlib import Path
 import functools
+import logging
+
+from pathlib import Path
 
 import pytest
 

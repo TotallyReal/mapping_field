@@ -1,14 +1,16 @@
-from abc import abstractmethod
 import math
-from typing import List, Tuple, Optional
+
+from abc import abstractmethod
+from typing import List, Optional, Tuple
 
 from mapping_field.log_utils.tree_loggers import TreeLogger
-from mapping_field.new_code.arithmetics import _as_combination, BinaryCombination
+from mapping_field.new_code.arithmetics import BinaryCombination, _as_combination
 from mapping_field.new_code.conditions import FalseCondition, TrueCondition
+from mapping_field.new_code.mapping_field import (
+    ExtElement, FuncDict, MapElement, MapElementConstant, VarDict, params_to_maps,
+)
 from mapping_field.new_code.ranged_condition import RangeCondition
 from mapping_field.serializable import DefaultSerializable
-from mapping_field.new_code.mapping_field import MapElement, VarDict, FuncDict, MapElementConstant, ExtElement, \
-    params_to_maps
 
 logger = TreeLogger(__name__)
 

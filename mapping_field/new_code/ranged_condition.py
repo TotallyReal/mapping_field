@@ -1,10 +1,14 @@
 import math
-from typing import Tuple, Optional, List, Union
+
+from typing import List, Optional, Tuple, Union
 
 from mapping_field.new_code.arithmetics import _as_combination
-from mapping_field.new_code.mapping_field import MapElement, VarDict, MapElementConstant, OutputPromises, \
-    OutputValidator
-from mapping_field.new_code.conditions import Condition, FalseCondition, TrueCondition, IsCondition, _NotCondition
+from mapping_field.new_code.conditions import (
+    Condition, FalseCondition, IsCondition, TrueCondition, _NotCondition,
+)
+from mapping_field.new_code.mapping_field import (
+    MapElement, MapElementConstant, OutputPromises, OutputValidator, VarDict,
+)
 from mapping_field.new_code.promises import IsIntegral
 
 

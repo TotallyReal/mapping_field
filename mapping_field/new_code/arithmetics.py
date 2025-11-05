@@ -1,9 +1,11 @@
+from typing import Callable, List, Optional, Tuple
+
 from mapping_field.log_utils.tree_loggers import TreeLogger
-from mapping_field.new_code.mapping_field import (MapElement, MapElementFromFunction, MapElementConstant,
-                                                  CompositionFunction,
-                                                  convert_to_map, VarDict, ExtElement)
+from mapping_field.new_code.mapping_field import (
+    CompositionFunction, ExtElement, MapElement, MapElementConstant, MapElementFromFunction,
+    VarDict, convert_to_map,
+)
 from mapping_field.serializable import DefaultSerializable
-from typing import List, Tuple, Optional, Callable
 
 simplify_logger = TreeLogger(__name__)
 

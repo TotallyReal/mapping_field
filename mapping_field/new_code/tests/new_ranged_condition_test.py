@@ -1,11 +1,12 @@
-import pytest
 from typing import List
 
-from mapping_field.new_code.conditions import FalseCondition, UnionCondition, TrueCondition
-from mapping_field.new_code.mapping_field import MapElement, Var, NamedFunc, MapElementConstant
-from mapping_field.new_code.promises import IsIntegral
-from mapping_field.new_code.ranged_condition import RangeCondition, InRange, IntervalRange
+import pytest
+
 from mapping_field.new_code.arithmetics import Add
+from mapping_field.new_code.conditions import FalseCondition, TrueCondition, UnionCondition
+from mapping_field.new_code.mapping_field import MapElement, MapElementConstant, NamedFunc, Var
+from mapping_field.new_code.promises import IsIntegral
+from mapping_field.new_code.ranged_condition import InRange, IntervalRange, RangeCondition
 
 
 @pytest.fixture(autouse=True)

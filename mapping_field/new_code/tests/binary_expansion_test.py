@@ -3,7 +3,7 @@ from typing import List, Union
 import pytest
 
 from mapping_field.new_code.binary_expansion import BinaryExpansion
-from mapping_field.new_code.mapping_field import MapElementConstant, Var, NamedFunc, InvalidInput
+from mapping_field.new_code.mapping_field import InvalidInput, MapElementConstant, NamedFunc, Var
 from mapping_field.new_code.promises import BoolVar
 
 

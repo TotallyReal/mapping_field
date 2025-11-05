@@ -1,5 +1,5 @@
 from mapping_field.mapping_field import MapElement
-from mapping_field.new_code.mapping_field import OutputValidator, always_validate_promises, Var
+from mapping_field.new_code.mapping_field import OutputValidator, Var, always_validate_promises
 from mapping_field.serializable import DefaultSerializable
 
 IsCondition = OutputValidator("Condition")
