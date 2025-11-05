@@ -87,27 +87,39 @@ def test_arithmetic_constant():
         BinaryExpansion([1, 0, 1, 1])
     )
 
-# def test_arithmetic():
-#     v1 = BoolVar('v1')
-#     v2 = BoolVar('v2')
-#
-#     addition_test(
-#         BinaryExpansion([v1, 0, 1]),
-#         BinaryExpansion([0, v2, 1]),
-#         BinaryExpansion([v1, v2, 0, 1])
-#     )
-#
-#     addition_test(
-#         BinaryExpansion([v1, 0, 1]),
-#         BinaryExpansion([0, v2, 0, 1]),
-#         BinaryExpansion([v1, v2, 1, 1])
-#     )
-#
-#     addition_test(
-#         BinaryExpansion([1, 1]),
-#         BinaryExpansion([1, v1]),
-#         BinaryExpansion([0, v1, 1])
-#     )
+def test_arithmetic_construction():
+    v1 = BoolVar('v1')
+    v2 = BoolVar('v2')
+
+    result = v1 + 2*v2
+    bin_expa = BinaryExpansion([v1, v2])
+    assert result == bin_expa
+
+    result = 1 + 4 * result
+    bin_expa = BinaryExpansion([1, 0, v1, v2])
+    assert result == bin_expa
+
+def test_arithmetic():
+    v1 = BoolVar('v1')
+    v2 = BoolVar('v2')
+
+    addition_test(
+        BinaryExpansion([v1, 0, 1]),
+        BinaryExpansion([0, v2, 1]),
+        BinaryExpansion([v1, v2, 0, 1])
+    )
+
+    addition_test(
+        BinaryExpansion([v1, 0, 1]),
+        BinaryExpansion([0, v2, 0, 1]),
+        BinaryExpansion([v1, v2, 1, 1])
+    )
+
+    addition_test(
+        BinaryExpansion([1, 1]),
+        BinaryExpansion([1, v1]),
+        BinaryExpansion([0, v1, 1])
+    )
 #
 # def test_shift():
 #     v1 = BoolVar('v1')

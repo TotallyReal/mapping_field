@@ -325,6 +325,8 @@ class MapElement:
         """
         Returns the constant this map defines. If it is not constant, raises an error.
         """
+        # TODO: This call to simplify can be a problem, if when simplifying we call evaluate.
+        #       Think of a way to avoid this.
         map_elem = self.simplify2()
         return map_elem.evaluate() if isinstance(map_elem, MapElementConstant) else None
 

@@ -6,7 +6,7 @@ from mapping_field.new_code.linear import Linear
 from mapping_field.new_code.mapping_field import get_var_values, always_validate_promises
 from mapping_field.new_code.promises import IsIntegral, BoolVar
 from mapping_field.serializable import DefaultSerializable
-from mapping_field.new_code.arithmetics import as_neg, Add, Sub
+from mapping_field.new_code.arithmetics import as_neg, Add, Sub, BinaryCombination
 from mapping_field.new_code.mapping_field import Var, MapElement, MapElementConstant, ExtElement, VarDict, FuncDict
 from mapping_field.new_code.conditions import Condition, FalseCondition, TrueCondition
 # from mapping_field.new_code.linear import LinearTransformer, Linear
@@ -116,13 +116,13 @@ logger = TreeLogger(__name__)
 #
 # RangeCondition.register_simplifier(_range_sum_bools_simplifier)
 #
-# def _two_power(k):
-#     k = abs(k)
-#     m = 0
-#     while k%2==0:
-#         k /= 2
-#         m += 1
-#     return m
+def _two_power(k):
+    k = abs(k)
+    m = 0
+    while k%2==0:
+        k /= 2
+        m += 1
+    return m
 #
 class BinaryExpansion(MapElement, DefaultSerializable):
 #
@@ -236,219 +236,218 @@ class BinaryExpansion(MapElement, DefaultSerializable):
 #
 #     # <editor-fold desc=" ------------------------ Arithmetic ------------------------">
 #
-#     def linear_combination(self, k1: int, k2: int, elem2: MapElement) -> Optional[Tuple[int, MapElement]]:
-#         if not isinstance(elem2, BinaryExpansion):
-#             return None
-#
-#         elem1 = self
-#         logger.log(f'Trying to linear combine to Binary Expansion {red(k1)} * {red(elem1)} + {red(k2)} * {red(elem2)}')
-#
-#         coef1 = elem1.coefficients
-#         non_zero1 = [i for i, v in enumerate(coef1) if v!=0]
-#         if k1 == 0 or len(non_zero1) == 0:
-#             return k2, elem2
-#
-#         coef2 = elem2.coefficients
-#         non_zero2 = [i for i, v in enumerate(coef2) if v!=0]
-#         if k2 == 0 or len(non_zero2) == 0:
-#             return k1, elem1
-#
-#         # Check if both elements are the same up to a power of 2
-#         if len(non_zero1) == len(non_zero2):
-#             diff = non_zero1[0] - non_zero2[0]
-#             if all( ((coef1[i1] == coef2[i2]) and (i1 - i2 == diff)) for i1,i2 in zip(non_zero1, non_zero2)):
-#                 if diff >= 0:
-#                     return (2 ** diff) * k1 + k2, elem2
-#                 else:
-#                     return (2 ** (-diff)) * k2 + k1, elem1
-#
-#         # Under assumption, k1 and k2 are coprime
-#
-#         m1 = _two_power(k1)
-#         m2 = _two_power(k2)
-#         if abs(k1) != 2**m1 or abs(k2) != 2**m2:
-#             return None
-#
-#         elem1 = self
-#         if m2 > m1:
-#             m1, m2 = m2, m1
-#             k1, k2 = k2, k1
-#             elem1, elem2 = elem2, elem1
-#
-#         # now m1 >= m2, and since k1, k2 are coprime, this means that m2 = 0
-#
-#         elem1 = elem1.shift(m1)
-#
-#         result = BinaryExpansion._combination(1 if k1 > 0 else -1, elem1, 1 if k2 > 0 else -1, elem2)
-#         if result is None:
-#             return None
-#
-#         return as_neg(result)
-#
-#
-#     @staticmethod
-#     def _combination(sign1: int, elem1: 'BinaryExpansion', sign2: int, elem2: 'BinaryExpansion') -> Optional[MapElement]:
-#
-#         if sign1 == sign2:
-#             result = elem1.try_add_binary_expansion(elem2)
-#             if result is not None:
-#                 return result if sign1==1 else -result
-#         else:
-#             result = elem1.try_sub_binary_expansion(elem2)
-#             if result is not None:
-#                 return result if sign1==1 else -result
-#
-#             result = elem2.try_sub_binary_expansion(elem1)
-#             if result is not None:
-#                 return result if sign2==1 else -result
-#
-#         return None
-#
-#     def try_add_binary_expansion(self, other: 'BinaryExpansion') -> Optional['BinaryExpansion']:
-#
-#         coef1 = self.coefficients
-#         coef2 = other.coefficients
-#
-#         n = max(len(coef1), len(coef2))
-#         coef1 = list(coef1) + [0] * (n-len(coef1))
-#         coef2 = list(coef2) + [0] * (n-len(coef2))
-#
-#         carry = 0
-#         coefs = []
-#         for c1, c2 in zip(coef1, coef2):
-#             if carry == 1:
-#
-#                 if c1 == 1:
-#                     coefs.append(c2)
-#                     carry = 1
-#                     continue
-#                 if c2 == 1:
-#                     coefs.append(c1)
-#                     carry = 1
-#                     continue
-#
-#                 if (isinstance(c1, int) and isinstance(c2, int)):
-#                     # must be c1 = c2 = 0
-#                     coefs.append(1)
-#                     carry = 0
-#                     continue
-#
-#                 return None
-#
-#             if c1 == 0:
-#                 coefs.append(c2)
-#                 continue
-#
-#             if c2 == 0:
-#                 coefs.append(c1)
-#                 continue
-#
-#             if not (isinstance(c1, int) and isinstance(c2, int)):
-#                 return None
-#
-#             c = c1 + c2
-#             if c < 2:
-#                 coefs.append(c)
-#                 carry = 0
-#             else:
-#                 coefs.append(c - 2)
-#                 carry = 1
-#
-#         if carry > 0:
-#             coefs += [1]
-#
-#         return BinaryExpansion(coefs)
-#
-#     def add(self, other: MapElement) -> Optional[MapElement]:
-#         sign, other_elem = as_neg(other)
-#
-#         if isinstance(other_elem, BinaryExpansion):
-#
-#             result = BinaryExpansion._combination(1, self, sign, other_elem)
-#             if result is not None:
-#                 return result
-#
-#         return super().add(other)
-#
-#     def radd(self, other: MapElement) -> Optional[MapElement]:
-#         return self.add(other)
-#
-#     def try_sub_binary_expansion(self, other: 'BinaryExpansion') -> Optional['BinaryExpansion']:
-#         coef1 = self.coefficients
-#         coef2 = other.coefficients
-#
-#         n = max(len(coef1), len(coef2))
-#         coef1 = list(coef1) + [0] * (n - len(coef1))
-#         coef2 = list(coef2) + [0] * (n - len(coef2))
-#
-#         carry = 0
-#         coefs = []
-#         for c1, c2 in zip(coef1, coef2):
-#
-#             if carry == -1:
-#
-#                 if c2 == 1:
-#                     coefs.append(c1)
-#                     carry = -1
-#                     continue
-#
-#                 if c1 == c2:
-#                     coefs.append(1)
-#                     carry = -1
-#                     continue
-#
-#                 if (isinstance(c1, int) and isinstance(c2, int)):
-#                     # must be c2 = 0 and c1 = 1
-#                     coefs.append(0)
-#                     carry = 0
-#                     continue
-#
-#                 return None
-#
-#             if c1 == c2:
-#                 coefs.append(0)
-#                 continue
-#
-#             if c2 == 0:
-#                 coefs.append(c1)
-#                 continue
-#
-#             if not (isinstance(c1, int) and isinstance(c2, int)):
-#                 return None
-#
-#             # only remaining possibility is c1 = 0 and c2 = 1
-#
-#             coefs.append(1)
-#             carry = -1
-#
-#         if carry < 0:
-#             return None
-#
-#         return BinaryExpansion(coefs)
-#
-#     def sub(self, other: MapElement) -> Optional[MapElement]:
-#         sign, other_elem = as_neg(other)
-#         if isinstance(other, BinaryExpansion):
-#
-#             result = BinaryExpansion._combination(1, self, -sign, other_elem)
-#             if result is not None:
-#                 return result
-#
-#         return super().sub(other)
-#
-#     def shift(self, k: int) -> Optional['BinaryExpansion']:
-#         if k < 0:
-#             deg = 0
-#             for c in self.coefficients:
-#                 if c!=0:
-#                     break
-#                 deg += 1
-#             if deg + k < 0:
-#                 return None
-#
-#             return BinaryExpansion(self.coefficients[-k:])
-#
-#         return BinaryExpansion([0] * k + list(self.coefficients))
+    @staticmethod
+    def linear_combination(k1: int, elem1: MapElement, k2: int, elem2: MapElement) -> Optional[Tuple[int, MapElement]]:
+        if not (isinstance(elem1, BinaryExpansion) and isinstance(elem2, BinaryExpansion)):
+            return None
+
+        logger.log(f'Trying to linear combine to Binary Expansion {red(k1)} * {red(elem1)} + {red(k2)} * {red(elem2)}')
+
+        coef1 = elem1.coefficients
+        non_zero1 = [i for i, v in enumerate(coef1) if v!=0]
+        if k1 == 0 or len(non_zero1) == 0:
+            return k2, elem2
+
+        coef2 = elem2.coefficients
+        non_zero2 = [i for i, v in enumerate(coef2) if v!=0]
+        if k2 == 0 or len(non_zero2) == 0:
+            return k1, elem1
+
+        # Check if both elements are the same up to a power of 2
+        if len(non_zero1) == len(non_zero2):
+            diff = non_zero1[0] - non_zero2[0]
+            if all( ((coef1[i1] == coef2[i2]) and (i1 - i2 == diff)) for i1,i2 in zip(non_zero1, non_zero2)):
+                if diff >= 0:
+                    return (2 ** diff) * k1 + k2, elem2
+                else:
+                    return (2 ** (-diff)) * k2 + k1, elem1
+
+        # Under assumption, k1 and k2 are coprime
+
+        m1 = _two_power(k1)
+        m2 = _two_power(k2)
+        if abs(k1) != 2**m1 or abs(k2) != 2**m2:
+            return None
+
+        if m2 > m1:
+            m1, m2 = m2, m1
+            k1, k2 = k2, k1
+            elem1, elem2 = elem2, elem1
+
+        # now m1 >= m2, and since k1, k2 are coprime, this means that m2 = 0
+
+        elem1 = elem1.shift(m1)
+
+        result = BinaryExpansion._combination(1 if k1 > 0 else -1, elem1, 1 if k2 > 0 else -1, elem2)
+        if result is None:
+            return None
+
+        return as_neg(result)
+
+
+    @staticmethod
+    def _combination(sign1: int, elem1: 'BinaryExpansion', sign2: int, elem2: 'BinaryExpansion') -> Optional[MapElement]:
+
+        if sign1 == sign2:
+            result = elem1.try_add_binary_expansion(elem2)
+            if result is not None:
+                return result if sign1==1 else -result
+        else:
+            result = elem1.try_sub_binary_expansion(elem2)
+            if result is not None:
+                return result if sign1==1 else -result
+
+            result = elem2.try_sub_binary_expansion(elem1)
+            if result is not None:
+                return result if sign2==1 else -result
+
+        return None
+
+    def try_add_binary_expansion(self, other: 'BinaryExpansion') -> Optional['BinaryExpansion']:
+
+        coef1 = self.coefficients
+        coef2 = other.coefficients
+
+        n = max(len(coef1), len(coef2))
+        coef1 = list(coef1) + [0] * (n-len(coef1))
+        coef2 = list(coef2) + [0] * (n-len(coef2))
+
+        carry = 0
+        coefs = []
+        for c1, c2 in zip(coef1, coef2):
+            if carry == 1:
+
+                if c1 == 1:
+                    coefs.append(c2)
+                    carry = 1
+                    continue
+                if c2 == 1:
+                    coefs.append(c1)
+                    carry = 1
+                    continue
+
+                if (isinstance(c1, int) and isinstance(c2, int)):
+                    # must be c1 = c2 = 0
+                    coefs.append(1)
+                    carry = 0
+                    continue
+
+                return None
+
+            if c1 == 0:
+                coefs.append(c2)
+                continue
+
+            if c2 == 0:
+                coefs.append(c1)
+                continue
+
+            if not (isinstance(c1, int) and isinstance(c2, int)):
+                return None
+
+            c = c1 + c2
+            if c < 2:
+                coefs.append(c)
+                carry = 0
+            else:
+                coefs.append(c - 2)
+                carry = 1
+
+        if carry > 0:
+            coefs += [1]
+
+        return BinaryExpansion(coefs)
+
+    def add(self, other: MapElement) -> Optional[MapElement]:
+        sign, other_elem = as_neg(other)
+
+        if isinstance(other_elem, BinaryExpansion):
+
+            result = BinaryExpansion._combination(1, self, sign, other_elem)
+            if result is not None:
+                return result
+
+        return super().add(other)
+
+    def radd(self, other: MapElement) -> Optional[MapElement]:
+        return self.add(other)
+
+    def try_sub_binary_expansion(self, other: 'BinaryExpansion') -> Optional['BinaryExpansion']:
+        coef1 = self.coefficients
+        coef2 = other.coefficients
+
+        n = max(len(coef1), len(coef2))
+        coef1 = list(coef1) + [0] * (n - len(coef1))
+        coef2 = list(coef2) + [0] * (n - len(coef2))
+
+        carry = 0
+        coefs = []
+        for c1, c2 in zip(coef1, coef2):
+
+            if carry == -1:
+
+                if c2 == 1:
+                    coefs.append(c1)
+                    carry = -1
+                    continue
+
+                if c1 == c2:
+                    coefs.append(1)
+                    carry = -1
+                    continue
+
+                if (isinstance(c1, int) and isinstance(c2, int)):
+                    # must be c2 = 0 and c1 = 1
+                    coefs.append(0)
+                    carry = 0
+                    continue
+
+                return None
+
+            if c1 == c2:
+                coefs.append(0)
+                continue
+
+            if c2 == 0:
+                coefs.append(c1)
+                continue
+
+            if not (isinstance(c1, int) and isinstance(c2, int)):
+                return None
+
+            # only remaining possibility is c1 = 0 and c2 = 1
+
+            coefs.append(1)
+            carry = -1
+
+        if carry < 0:
+            return None
+
+        return BinaryExpansion(coefs)
+
+    def sub(self, other: MapElement) -> Optional[MapElement]:
+        sign, other_elem = as_neg(other)
+        if isinstance(other, BinaryExpansion):
+
+            result = BinaryExpansion._combination(1, self, -sign, other_elem)
+            if result is not None:
+                return result
+
+        return super().sub(other)
+
+    def shift(self, k: int) -> Optional['BinaryExpansion']:
+        if k < 0:
+            deg = 0
+            for c in self.coefficients:
+                if c!=0:
+                    break
+                deg += 1
+            if deg + k < 0:
+                return None
+
+            return BinaryExpansion(self.coefficients[-k:])
+
+        return BinaryExpansion([0] * k + list(self.coefficients))
 #
 #     # </editor-fold>
 #
@@ -554,32 +553,58 @@ class BinaryExpansion(MapElement, DefaultSerializable):
             return constant
         # TODO: I think I want to just return elem + constant, and not use Linear
         return Linear(1, elem, constant.evaluate())
-#
-# def binary_signed_addition_simplifier(var_dict: VarDict, sign: int) -> Optional[MapElement]:
-#     add_vars = get_var_values((Add if sign == 1 else Sub).vars, var_dict)
-#     if add_vars is None:
-#         return None
-#     logger.log(f'Trying to combine (Binary Expansion) {red(add_vars[0])} {"+" if sign>0 else "-"} {red(add_vars[1])}')
-#
-#     linear_var1 = Linear.of(add_vars[0])
-#     linear_var2 = sign*Linear.of(add_vars[1])
-#
-#     bin_1 = BinaryExpansion.of(linear_var1.elem)
-#     bin_2 = BinaryExpansion.of(linear_var2.elem)
-#     if bin_1 is None or bin_2 is None:
-#         return None
-#
-#     result = bin_1.linear_combination(linear_var1.a, linear_var2.a, bin_2)
-#     if result is not None:
-#         coef, elem = result
-#         return Linear(coef, elem, linear_var1.b + linear_var2.b)
-#     return None
-#
-# def binary_addition_simplifier(var_dict: VarDict) -> Optional[MapElement]:
-#     return binary_signed_addition_simplifier(var_dict=var_dict, sign=1)
-#
-# def binary_subtraction_simplifier(var_dict: VarDict) -> Optional[MapElement]:
-#     return binary_signed_addition_simplifier(var_dict=var_dict, sign=-1)
+
+# TODO: there are now two simplifiers to combination to expansion
+#       After the big refactorzation, delete one of them.
+
+def _binary_combination_to_expansion_simplifier(bin_comb:MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    assert isinstance(bin_comb, BinaryCombination)
+
+    elem1 = bin_comb.elem1
+    if isinstance(elem1, BoolVar):
+        elem1 = BinaryExpansion([elem1])
+    if not isinstance(elem1, BinaryExpansion):
+        return None
+
+    elem2 = bin_comb.elem2
+    if isinstance(elem2, BoolVar):
+        elem2 = BinaryExpansion([elem2])
+    if not isinstance(elem2, BinaryExpansion):
+        return None
+
+    result = BinaryExpansion.linear_combination(bin_comb.c1, elem1, bin_comb.c2, elem2)
+    if result is not None:
+        coef, elem = result
+        return Linear(coef, elem, 0)
+    return None
+
+BinaryCombination.register_class_simplifier(_binary_combination_to_expansion_simplifier)
+
+def binary_signed_addition_simplifier(var_dict: VarDict, sign: int) -> Optional[MapElement]:
+    add_vars = get_var_values((Add if sign == 1 else Sub).vars, var_dict)
+    if add_vars is None:
+        return None
+    logger.log(f'Trying to combine (Binary Expansion) {red(add_vars[0])} {"+" if sign>0 else "-"} {red(add_vars[1])}')
+
+    linear_var1 = Linear.of(add_vars[0])
+    linear_var2 = sign*Linear.of(add_vars[1])
+
+    bin_1 = BinaryExpansion.of(linear_var1.elem)
+    bin_2 = BinaryExpansion.of(linear_var2.elem)
+    if bin_1 is None or bin_2 is None:
+        return None
+
+    result = BinaryExpansion.linear_combination(linear_var1.a, bin_1, linear_var2.a, bin_2)
+    if result is not None:
+        coef, elem = result
+        return Linear(coef, elem, linear_var1.b + linear_var2.b)
+    return None
+
+def binary_addition_simplifier(var_dict: VarDict) -> Optional[MapElement]:
+    return binary_signed_addition_simplifier(var_dict=var_dict, sign=1)
+
+def binary_subtraction_simplifier(var_dict: VarDict) -> Optional[MapElement]:
+    return binary_signed_addition_simplifier(var_dict=var_dict, sign=-1)
 #
 # Add.register_simplifier(binary_addition_simplifier)
 #

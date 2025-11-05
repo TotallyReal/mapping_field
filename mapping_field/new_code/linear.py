@@ -3,7 +3,7 @@ import math
 from typing import List, Tuple, Optional
 
 from mapping_field.log_utils.tree_loggers import TreeLogger
-from mapping_field.new_code.arithmetics import _as_combination, Add, Sub
+from mapping_field.new_code.arithmetics import _as_combination, BinaryCombination
 from mapping_field.new_code.conditions import FalseCondition, TrueCondition
 from mapping_field.new_code.ranged_condition import RangeCondition
 from mapping_field.serializable import DefaultSerializable
@@ -11,37 +11,6 @@ from mapping_field.new_code.mapping_field import MapElement, VarDict, FuncDict, 
     params_to_maps
 
 logger = TreeLogger(__name__)
-
-class BinaryCombination(MapElement):
-    # TODO: Right now this is ONLY used for the simplification process inside Linear. Don't generate it for other
-    #       reasons.
-    #       Later, I should just make a LinearCombination element for expressions of the form sum c_i f_i
-
-    def __init__(self, c1: int, elem1: MapElement, c2: int, elem2: MapElement):
-        super().__init__(
-            list(set(elem1.vars + elem2.vars))
-        )
-        self.c1 = c1
-        self.elem1 = elem1
-        self.c2 = c2
-        self.elem2 = elem2
-
-    def to_string(self, vars_str_list: List[str]):
-        return f'Comb[{self.c1}*{self.elem1}+{self.c2}*{self.elem2}]'
-
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
-        if self.c1 == 0:
-            return Linear(self.c2, self.elem2)
-        if self.c2 == 0:
-            return Linear(self.c1, self.elem1)
-
-        elem1 = self.elem1._simplify2(var_dict)
-        elem2 = self.elem2._simplify2(var_dict)
-        if elem1 is not None or elem2 is not None:
-            elem1 = elem1 or self.elem1
-            elem2 = elem2 or self.elem2
-            return BinaryCombination(self.c1, elem1, self.c2, elem2)
-        return None
 
 class Linear(MapElement, DefaultSerializable):
 
