@@ -603,20 +603,25 @@ class MapElement:
     # <editor-fold desc=" ------------------------ Comparison condition ------------------------">
 
     """
-    All the comparison methods are implemented in the condition.py file.
+    All the comparison methods are implemented in the ranged_condition.py file. The return a RangedCondition,
+    and not a bool. The left shift operator `elem << n` returns the condition element `elem == n` (in contrast to
+    __eq__ which returns a bool which compares the two functions). 
     For now, these are only defined for comparison with an integer.
     """
 
-    def __le__(self, n: int) -> 'Condition':
+    def __le__(self, n: int) -> 'MapElement':
         raise NotImplementedError()
 
-    def __lt__(self, n: int) -> 'Condition':
+    def __lt__(self, n: int) -> 'MapElement':
         raise NotImplementedError()
 
-    def __ge__(self, n: int) -> 'Condition':
+    def __ge__(self, n: int) -> 'MapElement':
         raise NotImplementedError()
 
-    def __gt__(self, n: int) -> 'Condition':
+    def __gt__(self, n: int) -> 'MapElement':
+        raise NotImplementedError()
+
+    def __lshift__(self, n: int) -> 'MapElement':
         raise NotImplementedError()
 
     # </editor-fold>

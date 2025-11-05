@@ -140,6 +140,9 @@ class Linear(MapElement, DefaultSerializable):
 
     @staticmethod
     def _transform_range(element: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+        """
+        If the range is over a Linear function, move to a range over the argument of this linear function.
+        """
         assert isinstance(element, RangeCondition)
         function = element.function
         if not isinstance(function, Linear):

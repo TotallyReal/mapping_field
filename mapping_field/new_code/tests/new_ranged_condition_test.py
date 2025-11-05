@@ -225,6 +225,27 @@ def test_equality_as_integral():
     cond2 = (4.8<=dummy) & (dummy <= 10.4)
     assert cond1 == cond2
 
+    cond1 = (4  < dummy) & (dummy <= 5.2)
+    cond2 = dummy << 5
+    assert cond1 == cond2
+
+def test_integral_product():
+    dummy = DummyMap(0)
+    dummy.promises.add_promise( IsIntegral )
+    dummy2 = 2 * dummy      # Only even integers
+
+    cond1 = (6.5 <= dummy2).simplify2()
+    cond2 = (8 <= dummy2).simplify2()
+    cond3 = (10 <= dummy2).simplify2()
+    assert cond1 == cond2
+    assert cond1 != cond3
+
+    dummy.promises.add_promise(InRange(IntervalRange(5,float('inf'), True, False)))
+    # Now dummy is an integer >=5, so that dummy2 is an even integer >= 10
+    cond1 = (6.5 <= dummy2).simplify2()
+    cond2 = (10 <= dummy2).simplify2()
+    assert cond1 == cond2
+
 def test_union_for_integral_functions():
     dummy = DummyMap(0)
 

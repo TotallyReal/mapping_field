@@ -352,7 +352,7 @@ class RangeCondition(Condition):
             # Trivial combination
             return None
 
-        if elem2 is not MapElementConstant.one:
+        if (c2 != 0) and (elem2 is not MapElementConstant.one):
             # Too complicated combination
             return None
 
