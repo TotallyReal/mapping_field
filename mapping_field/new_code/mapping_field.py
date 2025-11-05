@@ -2,10 +2,12 @@ import collections
 import functools
 import inspect
 
+from abc import abstractmethod
 from typing import Callable, Dict, Iterator, List, Optional, Set, Tuple, Type, TypeVar
 
 from mapping_field.field import ExtElement, FieldElement
 from mapping_field.log_utils.tree_loggers import TreeAction, TreeLogger, cyan, green, magenta, red
+from mapping_field.mapping_field import MapElement
 from mapping_field.new_code.validators import MultiValidator, Validator
 from mapping_field.processors import ParamProcessor, Processor, ProcessorCollection
 from mapping_field.serializable import DefaultSerializable
@@ -40,6 +42,15 @@ def convert_to_map(elem):
 
     return NotImplemented
 
+class MapElementProcessor:
+    # TODO: Later change it to event registers.
+    #       This is basically another function processor, where its main application was
+    #       implemented in _call_with_dict, since the assignment is a type of condition.
+    #       More generally we should have:
+    #       function_at(func: MapElement, cond: Condition, simplify: bool)
+    @abstractmethod
+    def process_function(self, func: MapElement, simplify: bool = True) -> MapElement:
+        pass
 
 VarDict = Dict['Var', 'MapElement']
 FuncDict = Dict['NamedFunc', 'MapElement']
@@ -159,6 +170,17 @@ class OutputPromises:
         return None
 
     # </editor-fold>
+
+
+KeywordValue = TypeVar('KWValue')
+def extract_keyword(kwargs, key:str, value_type: Type[KeywordValue]) -> KeywordValue:
+    if key not in kwargs:
+        return None
+    value = kwargs[key]
+    if not isinstance(value, value_type):
+        raise Exception(f'The {key} flag must be a {value_type}, instead got {value}')
+    del kwargs[key]
+    return value
 
 class MapElement:
     """
@@ -290,26 +312,26 @@ class MapElement:
         To implement this method in a subclass, you must implement the function _call_with_dict below.
         """
         # Extract simplify flag
-        simplify = True
-        if 'simplify' in kwargs:
-            simplify = kwargs['simplify']
-            if not isinstance(simplify, bool):
-                raise Exception(f'The "simplify" flag must be a boolean, instead got {simplify}')
-            del kwargs['simplify']
+        simplify = extract_keyword(kwargs, 'simplify', bool)
+        if simplify is None:
+            simplify = True
+        validate_promises = extract_keyword(kwargs, 'validate_promises', bool)
+        if validate_promises is None:
+            validate_promises = False
+        condition = extract_keyword(kwargs, 'condition', MapElement)
 
-        validate_promises = False
-        if 'validate_promises' in kwargs:
-            validate_promises = kwargs['validate_promises']
-            if not isinstance(validate_promises, bool):
-                raise Exception(f'The "validate_promises" flag must be a boolean, instead got {validate_promises}')
-            del kwargs['validate_promises']
+        # TODO: Should I keep this here?
+        if isinstance(condition, MapElementProcessor):
+            result = condition.process_function(self, simplify=simplify)
+        else:
+            var_dict, func_dict = self._extract_var_dicts(args, kwargs)
+            if validate_promises:
+                validate_promises_var_dict(var_dict)
+            result = self
 
-        var_dict, func_dict = self._extract_var_dicts(args, kwargs)
-        if validate_promises:
-            validate_promises_var_dict(var_dict)
-        result = self
-        if len(func_dict) > 0 or any([v in var_dict for v in self.vars]):
-            result = self._call_with_dict(var_dict, func_dict)
+            if len(func_dict) > 0 or any([v in var_dict for v in self.vars]):
+                result = self._call_with_dict(var_dict, func_dict)
+
         return result.simplify2() if simplify else result
 
     # Override when needed

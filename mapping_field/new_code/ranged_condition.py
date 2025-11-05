@@ -7,7 +7,8 @@ from mapping_field.new_code.conditions import (
     Condition, FalseCondition, IsCondition, TrueCondition, _NotCondition,
 )
 from mapping_field.new_code.mapping_field import (
-    MapElement, MapElementConstant, OutputPromises, OutputValidator, VarDict,
+    MapElement, MapElementConstant, MapElementProcessor, OutputPromises, OutputValidator, Var,
+    VarDict,
 )
 from mapping_field.new_code.promises import IsIntegral
 
@@ -41,7 +42,7 @@ class IntervalRange:
         self.contain_high = contain_high if high != float('inf') else False
         self.is_empty = ((self.high < self.low) or
                          (self.high == self.low and not (self.contain_low and self.contain_high)))
-        self.is_point = None
+        self.is_point: Optional[float] = None
         if self.low == self.high and self.contain_low and self.contain_high:
             self.is_point = self.low
 
@@ -242,7 +243,7 @@ class InRange(OutputValidator):
 
 # <editor-fold desc=" --------------- RangeCondition ---------------">
 
-class RangeCondition(Condition):
+class RangeCondition(Condition, MapElementProcessor):
 
     def __init__(self, function: MapElement, f_range: Union[IntervalRange, Tuple[float, float]]):
         super().__init__(function.vars)
@@ -261,6 +262,14 @@ class RangeCondition(Condition):
     def __hash__(self) -> int:
         # TODO: Maybe have a better hash?
         return id(self)
+
+    def process_function(self, func: MapElement, simplify: bool = True) -> MapElement:
+        value = self.range.is_point
+        if (value is not None) and (isinstance(self.function, Var)):
+            return func({self.function: value}, simplify=simplify)
+        return func
+
+    # <editor-fold desc=" ======= Binary arithmetics ======= ">
 
     def invert(self) -> Optional[MapElement]:
         range1, range2 = self.range.complement()
@@ -285,6 +294,8 @@ class RangeCondition(Condition):
             return None if (f_range is None) else RangeCondition(condition.function, f_range)
 
         return None
+
+    # </editor-fold>
 
     # <editor-fold desc=" ======= Simplifiers ======= ">
 

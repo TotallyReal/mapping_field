@@ -6,7 +6,7 @@ from mapping_field.field import ExtElement
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red, yellow
 from mapping_field.new_code.arithmetics import _ArithmeticMapFromFunction
 from mapping_field.new_code.mapping_field import (
-    CompositionFunction, MapElement, VarDict, always_validate_promises,
+    CompositionFunction, MapElement, MapElementProcessor, VarDict, always_validate_promises,
 )
 from mapping_field.new_code.promises import IsCondition
 from mapping_field.serializable import DefaultSerializable
@@ -459,8 +459,13 @@ def _binary_simplify(elem: MapElement, var_dict: VarDict) -> Optional['MapElemen
     return getattr(cond2, method_name)(cond1)
 
 
-class IntersectionCondition(_ListCondition, op_type = _ListCondition.AND):
-    pass
+class IntersectionCondition(_ListCondition, MapElementProcessor, op_type = _ListCondition.AND):
+
+    def process_function(self, func: MapElement, simplify: bool = True) -> MapElement:
+        for condition in self.conditions:
+            if isinstance(condition, MapElementProcessor):
+                func = condition.process_function(func, simplify=simplify)
+        return func
 
 IntersectionCondition.register_class_simplifier(_binary_simplify)
 

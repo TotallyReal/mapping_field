@@ -272,3 +272,13 @@ def test_union_of_integral_points():
     result = (3 <= dummy) & (dummy <= 8)
     assert union == result
 
+def test_ranged_condition_as_input():
+    x, y, z = Var('x'), Var('y'), Var('z')
+    a, b = Var('a'), Var('b')
+
+    func = (x + y) + z
+    condition = (x<<1) & (y<<2) & (z<<3) & (a<<4) & (b < 10)
+    assigned = func(condition=condition , simplify = False)
+    assert str(assigned) == '((1+2)+3)'
+    assert assigned.simplify2() == 6
+
