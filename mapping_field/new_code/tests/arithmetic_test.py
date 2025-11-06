@@ -219,7 +219,7 @@ def test_as_combination_linear():
 
 def test_as_combination_full():
     dummy0 = DummyMap(0)
-    dummy1 = DummyMap(0)
+    dummy1 = DummyMap(1)
 
     a, elem_a, b, elem_b = _as_combination(3 * dummy0 + 4 * dummy1)
     assert (a, elem_a, b, elem_b) == (3, dummy0, 4, dummy1)
