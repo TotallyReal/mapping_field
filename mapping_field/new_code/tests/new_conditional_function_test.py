@@ -48,72 +48,66 @@ def test_post_generation_independence():
     assert str(func) == '[ DummyMap(0)<0 -> x  ;  x<0 -> DummyMap(0) ]'
 
 def test_evaluate():
-    dummy = DummyMap(0)
-    dummy_cond0, dummy_cond1 = DummyCondition(0), DummyCondition(1)
+    dummy_conditions = [DummyCondition(i) for i in range(3)]
 
     func = ConditionalFunction([
-        (dummy_cond0, MapElementConstant(5)),
-        (dummy_cond1, MapElementConstant(5)),
+        (dummy_conditions[0], MapElementConstant(5)),
+        (dummy_conditions[1], MapElementConstant(5)),
+        (dummy_conditions[2], MapElementConstant(5)),
     ])
     assert func.evaluate() == 5
 
     func = ConditionalFunction([
-        (dummy_cond0, dummy),
-        (dummy_cond1, MapElementConstant(5)),
+        (dummy_conditions[0], MapElementConstant(3)),
+        (dummy_conditions[1], MapElementConstant(5)),
+        (dummy_conditions[2], MapElementConstant(5)),
     ])
     assert func.evaluate() is None
-#
-#
-# def test_equality_to_standard_function():
-#     dummies = [DummyCondition(i) for i in range(3)]
-#     cc = [MapElementConstant(i) for i in range(3)]
-#
-#     cond_func = ConditionalFunction([
-#         (dummies[0], cc[0]),
-#         (dummies[1], cc[1]),
-#         (dummies[2], cc[2]),
-#     ])
-#
-#     assert cond_func.evaluate() is None
-#
-#     cond_func = ConditionalFunction([
-#         (dummies[0], cc[1]),
-#         (dummies[1], cc[1]),
-#         (dummies[2], cc[1]),
-#     ])
-#
-#     assert cond_func.evaluate() == 1
-#     assert cond_func == 1
-#
-#     dummy_map = DummyMap(0)
-#
-#     cond_func = ConditionalFunction([
-#         (dummies[0], dummy_map),
-#         (dummies[1], dummy_map),
-#         (dummies[2], dummy_map),
-#     ])
-#
-#     assert cond_func == dummy_map
-#
-#
-# def test_equality_to_conditional_function():
-#
-#     dummies = [DummyCondition(i) for i in range(3)]
-#     cc = [MapElementConstant(i) for i in range(3)]
-#
-#
-#     cond_func1 = ConditionalFunction([
-#         (dummies[0], cc[0]),
-#         (dummies[1], cc[1]),
-#         (dummies[2], cc[2]),
-#     ])
-#     cond_func2 = ConditionalFunction([
-#         (dummies[0], cc[0]),
-#         (dummies[1], cc[1]),
-#         (dummies[2], cc[2]),
-#     ])
-#
-#     assert cond_func1 == cond_func2
+
+    func = ConditionalFunction([
+        (dummy_conditions[0], MapElementConstant(3)),
+        (dummy_conditions[1], DummyMap(0)),
+    ])
+    assert func.evaluate() is None
+
+def test_equality_to_standard_function():
+    dummy_conditions = [DummyCondition(i) for i in range(3)]
+    dummy = DummyMap(0)
+
+    cond_func = ConditionalFunction([
+        (dummy_conditions[0], dummy),
+        (dummy_conditions[1], dummy),
+        (dummy_conditions[2], dummy),
+    ])
+
+    assert cond_func.simplify2() is dummy
+
+    cond_func = ConditionalFunction([
+        (dummy_conditions[0], dummy),
+        (dummy_conditions[1], dummy),
+        (dummy_conditions[2], 0),
+    ])
+
+    assert cond_func.simplify2() != dummy
+
+
+def test_equality_to_conditional_function():
+
+    dummies = [DummyCondition(values={i}) for i in range(3)]  # Two distinct dummies do not intersect
+    cc = [MapElementConstant(i) for i in range(3)]
+
+    cond_func1 = ConditionalFunction([
+        (dummies[0], cc[0]),
+        (dummies[1], cc[1]),
+        (dummies[2], cc[2]),
+    ])
+    cond_func2 = ConditionalFunction([
+        (dummies[0], cc[0]),
+        (dummies[1], cc[1]),
+        (dummies[2], cc[2]),
+    ])
+
+    assert cond_func1 == cond_func2
 #
 # def test_combining_regions():
 #     x, y = BoolVar('x'), BoolVar('y')
