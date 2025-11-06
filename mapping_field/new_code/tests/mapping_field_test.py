@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict
+from typing import Dict, Optional
 
 import pytest
 
@@ -7,10 +7,6 @@ from mapping_field.new_code.mapping_field import (
     Var, VarDict,
 )
 
-@pytest.fixture(autouse=True)
-def reset_static_variables():
-    Var.clear_vars()
-    NamedFunc.clear_vars()
 
 class DummyMap(MapElement):
 

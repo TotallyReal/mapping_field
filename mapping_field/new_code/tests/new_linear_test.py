@@ -1,16 +1,10 @@
-from typing import List, Dict
-
-import pytest
+from typing import Dict
 
 from mapping_field.new_code.conditions import FalseCondition, TrueCondition
 from mapping_field.new_code.linear import Linear
 from mapping_field.new_code.mapping_field import MapElement, Var, convert_to_map
 from mapping_field.new_code.ranged_condition import IntervalRange, RangeCondition
 
-
-@pytest.fixture(autouse=True)
-def reset_static_variables():
-    Var.clear_vars()
 
 class DummyMap(MapElement):
     def __init__(self, value=0):

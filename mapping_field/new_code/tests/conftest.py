@@ -5,6 +5,14 @@ from pathlib import Path
 
 import pytest
 
+from mapping_field.new_code.mapping_field import NamedFunc, Var
+
+
+@pytest.fixture(autouse=True)
+def reset_static_variables():
+    Var._instances = {}
+    NamedFunc._instances = {}
+
 FULL_FORMAT = '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
 SIMPLE_FORMAT = '%(message)s'
 

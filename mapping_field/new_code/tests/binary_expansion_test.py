@@ -7,11 +7,6 @@ from mapping_field.new_code.mapping_field import InvalidInput, MapElementConstan
 from mapping_field.new_code.promises import BoolVar
 
 
-@pytest.fixture(autouse=True)
-def reset_static_variables():
-    Var.clear_vars()
-    NamedFunc.clear_vars()
-
 def test_simple_construction():
     x, y = BoolVar('x'), BoolVar('y')
     func = BinaryExpansion([x, y, 0, 1])

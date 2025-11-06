@@ -1,20 +1,16 @@
 import operator
 
-from typing import List, Optional, Set, Type, Union, Dict
+from typing import Dict, List, Optional, Set, Type, Union
 
 import pytest
 
 from mapping_field.new_code.conditions import (
-    FalseCondition, IntersectionCondition, IsCondition, TrueCondition, UnionCondition,
-    _ListCondition, NotCondition,
+    FalseCondition, IntersectionCondition, IsCondition, NotCondition, TrueCondition, UnionCondition,
+    _ListCondition,
 )
-from mapping_field.new_code.mapping_field import MapElement, Var, NamedFunc
+from mapping_field.new_code.mapping_field import MapElement, Var
 from mapping_field.new_code.promises import BoolVar
 
-@pytest.fixture(autouse=True)
-def reset_static_variables():
-    Var.clear_vars()
-    NamedFunc.clear_vars()
 
 class DummyMap(MapElement):
     def __init__(self, value=0):

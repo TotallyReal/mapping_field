@@ -1,6 +1,4 @@
-from typing import List, Dict
-
-import pytest
+from typing import Dict
 
 from mapping_field.new_code.arithmetics import Add
 from mapping_field.new_code.conditions import FalseCondition, TrueCondition, UnionCondition
@@ -8,11 +6,6 @@ from mapping_field.new_code.mapping_field import MapElement, MapElementConstant,
 from mapping_field.new_code.promises import IsIntegral
 from mapping_field.new_code.ranged_condition import InRange, IntervalRange, RangeCondition
 
-
-@pytest.fixture(autouse=True)
-def reset_static_variables():
-    Var.clear_vars()
-    NamedFunc.clear_vars()
 
 class DummyMap(MapElement):
     def __init__(self, value=0):

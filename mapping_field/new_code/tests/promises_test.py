@@ -5,11 +5,6 @@ from mapping_field.new_code.mapping_field import InvalidInput, NamedFunc, Var
 from mapping_field.new_code.promises import BoolVar, IntVar
 
 
-@pytest.fixture(autouse=True)
-def reset_static_variables():
-    Var.clear_vars()
-    NamedFunc.clear_vars()
-
 def test_int_var_promise():
     x = IntVar('x')
 

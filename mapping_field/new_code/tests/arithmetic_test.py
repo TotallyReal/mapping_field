@@ -6,11 +6,6 @@ from mapping_field.arithmetics import _as_combination
 from mapping_field.mapping_field import Func, MapElement, NamedFunc, Var, VarDict
 
 
-@pytest.fixture(autouse=True)
-def reset_static_variables():
-    Var._instances = {}
-    NamedFunc._instances = {}
-
 class DummyMap(MapElement):
     def __init__(self, value=0):
         super().__init__([], f'DummyMap({value})')
