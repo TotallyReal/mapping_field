@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 
 import pytest
 
@@ -19,7 +19,7 @@ class DummyMap(MapElement):
         super().__init__([])
         self.value = value
 
-    def to_string(self, vars_str_list: List[str]):
+    def to_string(self, vars_to_str: Dict[Var, str]):
         return f'DummyMap({self.value})'
 
 # TODO: Most of the logic moved to the IntervalRange class, so the test should move there as well.

@@ -1,12 +1,12 @@
 import operator
 
-from typing import List, Optional, Tuple, Type, cast
+from typing import List, Optional, Tuple, Type, cast, Dict
 
 from mapping_field.field import ExtElement
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red, yellow
 from mapping_field.new_code.arithmetics import _ArithmeticMapFromFunction
 from mapping_field.new_code.mapping_field import (
-    CompositionFunction, MapElement, MapElementProcessor, VarDict, always_validate_promises,
+    CompositionFunction, MapElement, MapElementProcessor, VarDict, always_validate_promises, Var,
 )
 from mapping_field.new_code.promises import IsCondition
 from mapping_field.serializable import DefaultSerializable
@@ -41,7 +41,7 @@ class BinaryCondition(Condition, DefaultSerializable):
         self.value = value
         self.promises.add_promise(IsCondition)
 
-    def to_string(self, entries: List[str]):
+    def to_string(self, vars_to_str: Dict[Var, str]):
         return repr(self.value)
 
     def evaluate(self) -> Optional[ExtElement]:
@@ -73,7 +73,8 @@ class _NotCondition(Condition, _ArithmeticMapFromFunction):
             # TODO: Maybe switch directly to BoolVars?
             v.promises.add_promise(IsCondition)
 
-    def to_string(self, entries: List[str]):
+    def to_string(self, vars_to_str: Dict[Var, str]):
+        entries = [vars_to_str.get(v, v) for v in self.vars]
         return f'~({entries[0]})'
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
@@ -158,12 +159,13 @@ class _ListCondition(Condition):
                 continue
             self.conditions.append(condition)
 
-    def to_string(self, vars_str_list: List[str]):
+    def to_string(self, vars_to_str: Dict[Var, str]):
+        entries = [vars_to_str.get(v, v) for v in self.vars]
         delim = self.__class__.join_delim
         if hasattr(self, '_binary_flag'):
             delim = delim * 2
         delim = f' {delim} '
-        conditions_rep = delim.join(condition.to_string(vars_str_list) for condition in self.conditions)
+        conditions_rep = delim.join(condition.to_string(vars_to_str) for condition in self.conditions)
         return f'[{conditions_rep}]'
 
     def __eq__(self, other: MapElement) -> bool:

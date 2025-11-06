@@ -1,9 +1,9 @@
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple, Dict
 
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.new_code.mapping_field import (
     CompositionFunction, ExtElement, MapElement, MapElementConstant, MapElementFromFunction,
-    VarDict, convert_to_map,
+    VarDict, convert_to_map, Var,
 )
 from mapping_field.serializable import DefaultSerializable
 
@@ -66,8 +66,8 @@ class _Negative(_ArithmeticMapFromFunction):
     def __init__(self):
         super().__init__('Neg', lambda a: -a)
 
-    def to_string(self, entries: List[str]):
-        return f'(-{entries[0]})'
+    def to_string(self, vars_to_str: Dict[Var,str]):
+        return f'(-{vars_to_str.get(self.vars[0])})'
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
         entries = [var_dict.get(v,v) for v in self.vars]
@@ -120,7 +120,8 @@ class _Add(_ArithmeticMapFromFunction):
         # sign0 == sign1 == 1
         return super()._simplify_with_var_values2(var_dict)
 
-    def to_string(self, entries: List[str]):
+    def to_string(self, vars_to_str: Dict[Var,str]):
+        entries = [vars_to_str.get(v, v) for v in self.vars]
         return f'({entries[0]}+{entries[1]})'
 
 
@@ -155,7 +156,8 @@ class _Sub(_ArithmeticMapFromFunction):
         # sign0 == sign1 == 1
         return super()._simplify_with_var_values2(var_dict)
 
-    def to_string(self, entries: List[str]):
+    def to_string(self, vars_to_str: Dict[Var, str]):
+        entries = [vars_to_str.get(v, v) for v in self.vars]
         return f'({entries[0]}-{entries[1]})'
 
 def _as_scalar_mult(map_elem: MapElement) -> Tuple[int, MapElement]:
@@ -265,7 +267,8 @@ class _Mult(_ArithmeticMapFromFunction):
         abs_value = numerator / denominator
         return abs_value.simplify2() if sign0 * sign1 == 1 else (-abs_value).simplify2()
 
-    def to_string(self, entries: List[str]):
+    def to_string(self, vars_to_str: Dict[Var, str]):
+        entries = [vars_to_str.get(v, v) for v in self.vars]
         return f'({entries[0]}*{entries[1]})'
 
 
@@ -293,7 +296,8 @@ class _Div(_ArithmeticMapFromFunction):
         abs_value = ((numerator0 * denominator1) / (denominator0 * numerator1))
         return abs_value if sign0 * sign1 == 1 else -abs_value
 
-    def to_string(self, entries: List[str]):
+    def to_string(self, vars_to_str: Dict[Var, str]):
+        entries = [vars_to_str.get(v, v) for v in self.vars]
         return f'( {entries[0]}/{entries[1]} )'
 
 
@@ -361,8 +365,8 @@ class BinaryCombination(MapElement):
         self.c2 = c2
         self.elem2 = elem2
 
-    def to_string(self, vars_str_list: List[str]):
-        return f'Comb[{self.c1}*{self.elem1}+{self.c2}*{self.elem2}]'
+    def to_string(self, vars_to_str: Dict[Var, str]):
+        return f'Comb[{self.c1}*{self.elem1.to_string(vars_to_str)}+{self.c2}*{self.elem2.to_string(vars_to_str)}]'
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
         if self.c1 == 0:

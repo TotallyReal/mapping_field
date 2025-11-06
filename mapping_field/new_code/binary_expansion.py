@@ -1,11 +1,11 @@
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Dict
 
 from mapping_field.log_utils.tree_loggers import TreeLogger, red
 from mapping_field.new_code.arithmetics import Add, BinaryCombination, Sub, as_neg
 from mapping_field.new_code.conditions import FalseCondition, TrueCondition
 from mapping_field.new_code.linear import Linear
 from mapping_field.new_code.mapping_field import (
-    ExtElement, FuncDict, MapElement, MapElementConstant, VarDict, get_var_values,
+    ExtElement, FuncDict, MapElement, MapElementConstant, VarDict, get_var_values, Var,
 )
 from mapping_field.new_code.promises import BoolVar, IsIntegral
 from mapping_field.new_code.ranged_condition import InRange, IntervalRange, RangeCondition
@@ -186,14 +186,15 @@ class BinaryExpansion(MapElement, DefaultSerializable):
         )))
         self.promises.add_promise(IsIntegral)
 
-    def to_string(self, vars_str_list: List[str]):
+    def to_string(self, vars_to_str: Dict[Var, str]):
         indices = [i for i,v in enumerate(self.coefficients) if v!=0]
         if len(indices) == 0:
             return '0'
+        str_coefficients = [c.to_string(vars_to_str) if isinstance(c, MapElement) else str(c) for c in self.coefficients]
         if indices[-1] == 0:
-            return str(self.coefficients[0])
+            return str_coefficients[0]
         # TODO: use the vars_str_list
-        vars_str = ', '.join([str(v) for v in self.coefficients[:1+indices[-1]]])
+        vars_str = ', '.join([str(v) for v in str_coefficients[:1+indices[-1]]])
         return f'Bin[{vars_str}]'
 
     def evaluate(self) -> Optional[ExtElement]:

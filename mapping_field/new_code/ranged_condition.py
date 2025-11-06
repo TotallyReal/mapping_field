@@ -1,6 +1,6 @@
 import math
 
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Dict
 
 from mapping_field.new_code.arithmetics import _as_combination
 from mapping_field.new_code.conditions import (
@@ -251,8 +251,8 @@ class RangeCondition(Condition, MapElementProcessor):
         self.range = f_range if isinstance(f_range, IntervalRange) else IntervalRange(*f_range)
         self.promises.add_promise(IsCondition)
 
-    def to_string(self, vars_str_list: List[str]):
-        return self.range.str_middle(repr(self.function))
+    def to_string(self, vars_to_str: Dict[Var, str]):
+        return self.range.str_middle(self.function.to_string(vars_to_str))
 
     def __eq__(self, condition: MapElement) -> bool:
         if isinstance(condition, RangeCondition):

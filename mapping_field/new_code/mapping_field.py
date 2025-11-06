@@ -246,17 +246,16 @@ class MapElement:
         return str(self)
 
     def __str__(self):
-        vars_str_list = [var.name for var in self.vars]
-        return self.to_string(vars_str_list)
+        return self.to_string({v: v.name for v in self.vars})
 
-    def to_string(self, vars_str_list: List[str]):
+    def to_string(self, vars_to_str: Dict['Var',str]):
         """
         --------------- Override ---------------
         Represents the function, given the string representations of its variables
         """
-        if len(vars_str_list) == 0:
+        if len(vars_to_str) == 0:
             return self.name
-        vars_str = ','.join(vars_str_list)
+        vars_str = ','.join([vars_to_str[v] for v in self.vars])
         return f'{self.name}({vars_str})'
 
     # </editor-fold>
@@ -707,8 +706,9 @@ class Var(MapElement, DefaultSerializable):
         self.initialized = True
         self._simplified = True
 
-    def to_string(self, vars_str_list: List[str]):
-        return vars_str_list[0]
+    def to_string(self, vars_to_str: Dict['Var', str]):
+        entries = [vars_to_str.get(v, v) for v in self.vars]
+        return entries[0]
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
         value = var_dict.get(self, None)
@@ -872,14 +872,13 @@ class CompositionFunction(MapElement, DefaultSerializable):
 
         self.promises = function.promises.copy()
 
-    def to_string(self, vars_str_list: List[str]):
+    def to_string(self, vars_to_str: Dict[Var, str]):
         # Compute the str representation for each entry, by supplying it the str
         # representations of its variables
-        var_str_dict = {var: var_str for var, var_str in zip(self.vars, vars_str_list)}
-        entries_str_list = [
-            entry.to_string([var_str_dict[var] for var in entry.vars])
-            for entry in self.entries]
-        return self.function.to_string(entries_str_list)
+        entries_to_str = {
+            v: entry.to_string(vars_to_str)
+            for v, entry in zip(self.function.vars, self.entries)}
+        return self.function.to_string(entries_to_str)
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
         if len(var_dict) == 0 and len(func_dict) == 0:

@@ -1,6 +1,6 @@
 import operator
 
-from typing import List, Optional, Set, Type, Union
+from typing import List, Optional, Set, Type, Union, Dict
 
 import pytest
 
@@ -28,7 +28,7 @@ class DummyCondition(MapElement):
         self.type = type
         self.promises.add_promise(IsCondition)
 
-    def to_string(self, vars_str_list: List[str]):
+    def to_string(self, vars_to_str: Dict[Var, str]):
         return f'DummyCond_{self.type}({self.values})'
 
     def and_(self, condition: MapElement) -> Optional[MapElement]:
@@ -121,19 +121,31 @@ def test_post_generation_independence_not():
     # Some indication that func is frozen
     assert str(func) == '~(x)'
 
-# TODO: continue here
-# def test_post_generation_independence_and():
-#     x, y, z = BoolVar('x'), BoolVar('y'), BoolVar('z')
-#     func = x & y
-#     assert str(func) == '[x & y]'
-#
-#     # Calling the function
-#     assigned_func = func({x: z})
-#
-#     assert assigned_func != func
-#     assert str(assigned_func) == '[z & y]'
-#     # Some indication that func is frozen
-#     assert str(func) == '[x & y]'
+def test_post_generation_independence_and():
+    x, y, z = BoolVar('x'), BoolVar('y'), BoolVar('z')
+    func = x & y
+    assert str(func) == '[x & y]'
+
+    # Calling the function
+    assigned_func = func({x: z})
+
+    assert assigned_func != func
+    assert str(assigned_func) == '[z & y]'
+    # Some indication that func is frozen
+    assert str(func) == '[x & y]'
+
+def test_post_generation_independence_or():
+    x, y, z = BoolVar('x'), BoolVar('y'), BoolVar('z')
+    func = x | y
+    assert str(func) == '[x | y]'
+
+    # Calling the function
+    assigned_func = func({x: z})
+
+    assert assigned_func != func
+    assert str(assigned_func) == '[z | y]'
+    # Some indication that func is frozen
+    assert str(func) == '[x | y]'
 
 #       ╭─────────────────────────────────────────────────╮
 #       │                 List Conditions                 │

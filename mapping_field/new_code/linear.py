@@ -1,13 +1,13 @@
 import math
 
 from abc import abstractmethod
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict
 
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.new_code.arithmetics import BinaryCombination, _as_combination
 from mapping_field.new_code.conditions import FalseCondition, TrueCondition
 from mapping_field.new_code.mapping_field import (
-    ExtElement, FuncDict, MapElement, MapElementConstant, VarDict, params_to_maps,
+    ExtElement, FuncDict, MapElement, MapElementConstant, VarDict, params_to_maps, Var,
 )
 from mapping_field.new_code.ranged_condition import RangeCondition
 from mapping_field.serializable import DefaultSerializable
@@ -39,14 +39,14 @@ class Linear(MapElement, DefaultSerializable):
         self.b = b
         self.elem = elem
 
-    def to_string(self, vars_str_list: List[str]):
+    def to_string(self, vars_to_str: Dict[Var, str]):
         a_str = f'{str(self.a)}*' if self.a != 1 else ''
         b_str = ''
         if self.b > 0:
             b_str = f' + {self.b}'
         if self.b < 0:
             b_str = f' - {-self.b}'
-        return f'Lin[{a_str}{self.elem}{b_str}]'
+        return f'Lin[{a_str}{self.elem.to_string(vars_to_str)}{b_str}]'
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
         elem = self.elem._call_with_dict(var_dict, func_dict)
