@@ -1,16 +1,14 @@
 import math
 
-from typing import List, Optional, Tuple, Union, Dict
+from typing import Dict, Optional, Tuple, Union
 
 from mapping_field.new_code.arithmetics import _as_combination
-from mapping_field.new_code.conditions import (
-    Condition, FalseCondition, IsCondition, TrueCondition, _NotCondition,
-)
+from mapping_field.new_code.conditions import Condition, FalseCondition, TrueCondition
 from mapping_field.new_code.mapping_field import (
-    MapElement, MapElementConstant, MapElementProcessor, OutputPromises, OutputValidator, Var,
-    VarDict, FuncDict,
+    FuncDict, MapElement, MapElementConstant, MapElementProcessor, OutputPromises, OutputValidator,
+    Var, VarDict, always_validate_promises,
 )
-from mapping_field.new_code.promises import IsIntegral
+from mapping_field.new_code.promises import IsCondition, IsIntegral
 
 
 class IntervalRange:
@@ -45,6 +43,21 @@ class IntervalRange:
         self.is_point: Optional[float] = None
         if self.low == self.high and self.contain_low and self.contain_high:
             self.is_point = self.low
+
+    def __class_getitem__(cls, params) -> 'IntervalRange':
+        # Normalize to tuple
+        if not isinstance(params, tuple):
+            params = (params,)
+
+        # Check count
+        if len(params) != 2:
+            raise TypeError(f"{cls.__name__} expects exactly 2 numeric parameters (got {len(params)})")
+
+        # Check types
+        if not all(isinstance(p, (int, float)) for p in params):
+            raise TypeError(f"{cls.__name__} expects int or float parameters (got {params!r})")
+
+        return IntervalRange(params[0], params[1], True, True)
 
     def __str__(self):
         if self.is_empty:
@@ -212,12 +225,13 @@ class IntervalRange:
 
 Range = Tuple[float, float]
 
-class InRange(OutputValidator):
+class InRange(OutputValidator[IntervalRange]):
     # TODO: add tests
 
     def __init__(self, f_range: Union[IntervalRange, Tuple[float, float]]):
         self.range = f_range if isinstance(f_range, IntervalRange) else IntervalRange(*f_range)
-        super().__init__(f'InRange {f_range}')
+        super().__init__(f'InRange {f_range}', context=self.range)
+        self.register_validator(self._validate_constant_in_range)
 
     @staticmethod
     def consolidate_ranges(promises: OutputPromises) -> Tuple[Optional[IntervalRange], Optional[OutputPromises]]:
@@ -239,6 +253,10 @@ class InRange(OutputValidator):
         if count == 0:
             f_range = None
         return f_range, promises
+
+    def _validate_constant_in_range(self, elem: MapElement) -> bool:
+        value = elem.evaluate()
+        return False if value is None else self.range.contains(value)
 
 
 # <editor-fold desc=" --------------- RangeCondition ---------------">
@@ -411,3 +429,15 @@ class WhereFunction:
 # TODO: Refactor this entire nightmare!
 MapElement.where = lambda self: WhereFunction(self)
 # </editor-fold>
+
+@always_validate_promises
+class BoolVar(Var):
+
+    def __new__(cls, var_name: str):
+        return super(BoolVar, cls).__new__(cls, var_name)
+
+    def __init__(self, name: str):
+        super().__init__(name)
+        self.promises.add_promise(IsIntegral)
+        self.promises.add_promise(InRange(IntervalRange(0, 1, True, True)))
+        # TODO: has promise on range

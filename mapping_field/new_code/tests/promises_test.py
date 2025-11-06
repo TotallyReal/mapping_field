@@ -2,7 +2,8 @@ import pytest
 
 from mapping_field.new_code.conditions import FalseCondition, TrueCondition
 from mapping_field.new_code.mapping_field import InvalidInput, NamedFunc, Var
-from mapping_field.new_code.promises import BoolVar, IntVar
+from mapping_field.new_code.promises import IntVar
+from mapping_field.new_code.ranged_condition import BoolVar
 
 
 def test_int_var_promise():

@@ -1,5 +1,6 @@
-from mapping_field.new_code.mapping_field import MapElement
-from mapping_field.new_code.mapping_field import OutputValidator, Var, always_validate_promises
+from mapping_field.new_code.mapping_field import (
+    MapElement, OutputValidator, Var, always_validate_promises,
+)
 from mapping_field.serializable import DefaultSerializable
 
 IsCondition = OutputValidator("Condition")
@@ -29,12 +30,3 @@ class IntVar(Var, DefaultSerializable):
         super().__init__(name)
         self.promises.add_promise(IsIntegral)
 
-@always_validate_promises
-class BoolVar(Var, DefaultSerializable):
-
-    def __new__(cls, var_name: str):
-        return super(BoolVar, cls).__new__(cls, var_name)
-
-    def __init__(self, name: str):
-        super().__init__(name)
-        self.promises.add_promise(IsCondition)

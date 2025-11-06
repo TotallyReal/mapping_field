@@ -5,6 +5,30 @@ from mapping_field.new_code.promises import IsIntegral
 from mapping_field.new_code.ranged_condition import InRange, IntervalRange, RangeCondition
 from mapping_field.new_code.tests.utils import DummyMap
 
+
+def test_in_range_promise():
+    dummy = DummyMap()
+
+    cond1 = (dummy << 0) | (dummy << 1)
+    cond2 = (0 <= dummy) & (dummy <= 1)
+    cond3 = RangeCondition(dummy, IntervalRange(0, 1, True, True))
+
+    assert cond1.simplify2() != TrueCondition
+    assert cond2.simplify2() != TrueCondition
+    assert cond3.simplify2() != TrueCondition
+
+    # Now make it only take values in 0 or 1 (namely BoolVar)
+    dummy.promises.add_promise(InRange(IntervalRange[0,1]))
+    dummy.promises.add_promise(IsIntegral)
+
+    cond1 = (dummy << 0) | (dummy << 1)
+    cond2 = (0 <= dummy) & (dummy <= 1)
+    cond3 = RangeCondition(dummy, IntervalRange(0, 1, True, True))
+
+    assert cond1.simplify2() is TrueCondition
+    assert cond2.simplify2() is TrueCondition
+    assert cond3.simplify2() is TrueCondition
+
 # TODO: Most of the logic moved to the IntervalRange class, so the test should move there as well.
 
 def test_simple_construction():

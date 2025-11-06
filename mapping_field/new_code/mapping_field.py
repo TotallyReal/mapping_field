@@ -3,11 +3,11 @@ import functools
 import inspect
 
 from abc import abstractmethod
-from typing import Callable, Dict, Iterator, List, Optional, Set, Tuple, Type, TypeVar
+from typing import Callable, Dict, Generic, Iterator, List, Optional, Set, Tuple, Type, TypeVar
 
 from mapping_field.field import ExtElement, FieldElement
 from mapping_field.log_utils.tree_loggers import TreeAction, TreeLogger, cyan, green, magenta, red
-from mapping_field.new_code.validators import MultiValidator
+from mapping_field.new_code.validators import Context, MultiValidator
 from mapping_field.processors import ParamProcessor, Processor, ProcessorCollection
 from mapping_field.serializable import DefaultSerializable
 
@@ -98,9 +98,9 @@ def params_to_maps(f):
 ElemSimplifier = ParamProcessor[VarDict, 'MapElement']      # (VarDict)               -> Optional['MapElement']
 ClassSimplifier = Processor['MapElement', VarDict]          # ('MapElement', VarDict) -> Optional['MapElement']
 
-class OutputValidator(MultiValidator['MapElement']):
-    def __init__(self, name: Optional[str]):
-        super().__init__(name = name)
+class OutputValidator(MultiValidator['MapElement', Context], Generic[Context]):
+    def __init__(self, name: Optional[str] = None, context: Optional[Context] = None):
+        super().__init__(name = name, context = context)
         self.register_validator(self._check_promises_on_element)
 
     def _check_promises_on_element(self, elem: 'MapElement') -> bool:
