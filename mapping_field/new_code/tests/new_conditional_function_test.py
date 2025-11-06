@@ -3,8 +3,12 @@ import logging
 import pytest
 
 from mapping_field.log_utils.tree_loggers import TreeLogger
-from mapping_field.new_code.conditional_function import ConditionalFunction
+from mapping_field.new_code.binary_expansion import BinaryExpansion
+from mapping_field.new_code.conditional_function import ConditionalFunction, ReLU
+from mapping_field.new_code.linear import Linear
 from mapping_field.new_code.mapping_field import MapElementConstant, Var
+from mapping_field.new_code.promises import BoolVar
+from mapping_field.new_code.ranged_condition import RangeCondition, IntervalRange
 from mapping_field.new_code.tests.utils import DummyCondition, DummyMap
 
 logger = logging.getLogger(__name__)
@@ -108,138 +112,138 @@ def test_equality_to_conditional_function():
     ])
 
     assert cond_func1 == cond_func2
-#
-# def test_combining_regions():
-#     x, y = BoolVar('x'), BoolVar('y')
-#
-#     func = ConditionalFunction([
-#         ( (x << 0) & (y << 0) , MapElementConstant(0)),
-#         ( (x << 1) & (y << 0) , MapElementConstant(1)),
-#         ( (y << 1) , x),
-#     ])
-#
-#     func = func.simplify2()
-#     assert func == x
-#
-#
-# def test_equality_region_wise():
-#     x = Var('x')
-#
-#     cond_func = ConditionalFunction([
-#         (SingleAssignmentCondition(x, 0), MapElementConstant(0)),
-#         (SingleAssignmentCondition(x, 2), MapElementConstant(2)),
-#         (RangeCondition(x, (7, 17)), x),
-#     ])
-#
-#     assert cond_func == x
-#
-#
-# def test_addition():
-#     dummies = [DummyCondition(i) for i in range(5)]
-#
-#     cond_func1 = ConditionalFunction([
-#         (dummies[0] | dummies[1], MapElementConstant(0)),
-#         (dummies[2], MapElementConstant(10))
-#     ])
-#
-#     cond_func2 = ConditionalFunction([
-#         (dummies[0], MapElementConstant(100)),
-#         (dummies[1] | dummies[2], MapElementConstant(200))
-#     ])
-#
-#     cond_add = cond_func1 + cond_func2
-#
-#     result = ConditionalFunction([
-#         (dummies[0], MapElementConstant(100)),
-#         (dummies[1], MapElementConstant(200)),
-#         (dummies[2], MapElementConstant(210))
-#     ])
-#
-#     assert result == cond_add, f'could not match:\n{result}\n{cond_add}'
-#
-#
-# def test_addition_with_ranges():
-#     dummy_map = DummyMap(0)
-#
-#     def ranged(low, high):
-#         return RangeCondition(dummy_map, (low, high))
-#
-#     cond_func1 = ConditionalFunction([
-#         (ranged(0,10), MapElementConstant(0)),
-#         (ranged(10,30), MapElementConstant(10))
-#     ])
-#
-#     cond_func2 = ConditionalFunction([
-#         (ranged(0,20), MapElementConstant(100)),
-#         (ranged(20,30), MapElementConstant(200))
-#     ])
-#
-#     cond_add = cond_func1 + cond_func2
-#
-#     result = ConditionalFunction([
-#         (ranged(10,20), MapElementConstant(110)),
-#         (ranged(0,10), MapElementConstant(100)),
-#         (ranged(20,30), MapElementConstant(210))
-#     ])
-#
-#     assert  result == cond_add
-#
-#
-# def test_simplification():
-#
-#     # combine regions with the same function
-#     dummy_cond = [DummyCondition(i) for i in range(5)]
-#     dummy_func = [DummyMap(i) for i in range(5)]
-#
-#     cond_func = ConditionalFunction([
-#         (dummy_cond[0], dummy_func[0]),
-#         (dummy_cond[1], dummy_func[1]),
-#         (dummy_cond[2], dummy_func[0]),
-#     ])
-#     cond_func = cond_func.simplify2()
-#
-#     simplified = ConditionalFunction([
-#         (dummy_cond[0] | dummy_cond[2], dummy_func[0]),
-#         (dummy_cond[1], dummy_func[1]),
-#     ])
-#
-#     assert cond_func == simplified
-#
-#     # Combine regions with assignemtns
-#     x = Var('x')
-#     xx = Linear.of(x)
-#
-#     cond_func = ConditionalFunction([
-#         (RangeCondition(x, (0, 10)), xx + 3),
-#         (SingleAssignmentCondition(x, 10), MapElementConstant(13)),
-#     ])
-#
-#     cond_func = cond_func.simplify2()
-#
-#     assert cond_func == xx + 3
-#
-#
-# def test_linear_ranged_condition_subtraction():
-#     vv = [BoolVar(f'x_{i}') for i in range(4)]
-#     x = BinaryExpansion(vv)
-#     xx = Linear.of(x)
-#
-#     v1 = ReLU(xx-7)
-#     v2 = ReLU(xx-8)
-#     v = v1 - v2
-#     v = v.simplify2()
-#
-#     # TODO: improve union \ intersection of conditions
-#
-#     assert v == x.coefficients[3]
-#
-#     v = 8 * v
-#     u = xx - v
-#
-#     result = BinaryExpansion(vv[:3])
-#     assert u == result
-#
-#
+
+def test_combining_regions():
+    x, y = BoolVar('x'), BoolVar('y')
+
+    func = ConditionalFunction([
+        ( (x << 0) & (y << 0) , MapElementConstant(0)),
+        ( (x << 1) & (y << 0) , MapElementConstant(1)),
+        ( (y << 1) , x),
+    ])
+
+    func = func.simplify2()
+    assert func is x
+
+
+def test_equality_region_wise():
+    x = Var('x')
+
+    cond_func = ConditionalFunction([
+        (x << 0, MapElementConstant(0)),
+        (x << 2, MapElementConstant(2)),
+        ( (7 <= x) & (x < 17), x),
+    ])
+
+    assert cond_func == x
+
+
+def test_addition():
+    dummies = [DummyCondition(values={i}) for i in range(5)]
+
+    cond_func1 = ConditionalFunction([
+        (dummies[0] | dummies[1], MapElementConstant(0)),
+        (dummies[2], MapElementConstant(10))
+    ])
+
+    cond_func2 = ConditionalFunction([
+        (dummies[0], MapElementConstant(100)),
+        (dummies[1] | dummies[2], MapElementConstant(200))
+    ])
+
+    cond_add = cond_func1 + cond_func2
+
+    result = ConditionalFunction([
+        (dummies[0], MapElementConstant(100)),
+        (dummies[1], MapElementConstant(200)),
+        (dummies[2], MapElementConstant(210))
+    ])
+
+    assert result == cond_add, f'could not match:\n{result}\n{cond_add}'
+
+
+def test_addition_with_ranges():
+    dummy_map = DummyMap(0)
+
+    def ranged(low, high):
+        return RangeCondition(dummy_map, (low, high))
+
+    cond_func1 = ConditionalFunction([
+        (ranged(0,10), MapElementConstant(0)),
+        (ranged(10,30), MapElementConstant(10))
+    ])
+
+    cond_func2 = ConditionalFunction([
+        (ranged(0,20), MapElementConstant(100)),
+        (ranged(20,30), MapElementConstant(200))
+    ])
+
+    cond_add = cond_func1 + cond_func2
+
+    result = ConditionalFunction([
+        (ranged(10,20), MapElementConstant(110)),
+        (ranged(0,10), MapElementConstant(100)),
+        (ranged(20,30), MapElementConstant(210))
+    ])
+
+    assert  result == cond_add
+
+
+def test_simplification():
+
+    # combine regions with the same function
+    dummy_cond = [DummyCondition(values={i}) for i in range(5)]
+    dummy_func = [DummyMap(i) for i in range(5)]
+
+    cond_func = ConditionalFunction([
+        (dummy_cond[0], dummy_func[0]),
+        (dummy_cond[1], dummy_func[1]),
+        (dummy_cond[2], dummy_func[0]),
+    ])
+    cond_func = cond_func.simplify2()
+
+    simplified = ConditionalFunction([
+        (dummy_cond[0] | dummy_cond[2], dummy_func[0]),
+        (dummy_cond[1], dummy_func[1]),
+    ])
+
+    assert cond_func == simplified
+
+    # Combine regions with assignments
+    x = Var('x')
+    xx = Linear.of(x)
+
+    cond_func = ConditionalFunction([
+        (RangeCondition(x, (0, 10)), xx + 3),
+        (x << 10, MapElementConstant(13)),
+    ])
+
+    cond_func = cond_func.simplify2()
+
+    assert cond_func == xx + 3
+
+
+def test_linear_ranged_condition_subtraction():
+    vv = [BoolVar(f'x_{i}') for i in range(4)]
+    x = BinaryExpansion(vv)
+    xx = Linear.of(x)
+
+    v1 = ReLU(xx-7)
+    v2 = ReLU(xx-8)
+    v = v1 - v2
+    v = v.simplify2()
+
+    # TODO: improve union \ intersection of conditions
+
+    assert v == x.coefficients[3]
+
+    v = 8 * v
+    u = xx - v
+
+    result = BinaryExpansion(vv[:3])
+    assert u == result
+
+
 # def test_general_assignment():
 #     x = Linear.of(Var('x'))
 #

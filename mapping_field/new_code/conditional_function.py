@@ -266,23 +266,23 @@ class ConditionalFunction(MapElement):
 #     return ConditionUnion([condition & (func.where() == self.value) for condition, func in self.elem.regions]).simplify()
 # GeneralAssignment.simplify = new_assignment_simplify
 #
-# def ReLU(map_elem: MapElement):
-#     zero = MapElementConstant.zero
-#     if isinstance(map_elem, ConditionalFunction):
-#         regions = []
-#         for condition, func in map_elem.regions:
-#             non_negative = (func >= 0)
-#             if (func >= 0) == TrueCondition:
-#                 # Make your and my life a little bit simpler
-#                 regions.append( (condition, func) )
-#             elif (func <= 0) == FalseCondition:
-#                 regions.append( (condition, zero) )
-#             else:
-#                 regions.append( (condition & (func > 0), func) )
-#                 regions.append( (condition & (func <= 0), zero) )
-#         regions = [(cond, func) for cond, func in regions if FalseCondition != cond]
-#         return ConditionalFunction(regions)
-#     return ConditionalFunction([
-#         ((map_elem > 0), map_elem),
-#         ((map_elem <= 0), zero)
-#     ])
+def ReLU(map_elem: MapElement):
+    zero = MapElementConstant.zero
+    if isinstance(map_elem, ConditionalFunction):
+        regions = []
+        for condition, func in map_elem.regions:
+            non_negative = (func >= 0)
+            if (func >= 0) == TrueCondition:
+                # Make your and my life a little bit simpler
+                regions.append( (condition, func) )
+            elif (func <= 0) == FalseCondition:
+                regions.append( (condition, zero) )
+            else:
+                regions.append( (condition & (func > 0), func) )
+                regions.append( (condition & (func <= 0), zero) )
+        regions = [(cond, func) for cond, func in regions if FalseCondition != cond]
+        return ConditionalFunction(regions)
+    return ConditionalFunction([
+        ((map_elem > 0), map_elem),
+        ((map_elem <= 0), zero)
+    ])
