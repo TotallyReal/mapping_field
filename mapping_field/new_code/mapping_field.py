@@ -318,11 +318,14 @@ class MapElement:
         validate_promises = extract_keyword(kwargs, 'validate_promises', bool)
         if validate_promises is None:
             validate_promises = False
-        condition = extract_keyword(kwargs, 'condition', MapElement)
 
-        # TODO: Should I keep this here?
-        if isinstance(condition, MapElementProcessor):
-            result = condition.process_function(self, simplify=simplify)
+        # TODO: Should I keep this here? In any case, handle the 'condition' parameter better.
+        condition = extract_keyword(kwargs, 'condition', MapElement)
+        if condition is not None:
+            if isinstance(condition, MapElementProcessor):
+                result = condition.process_function(self, simplify=simplify)
+            else:
+                result = self
         else:
             var_dict, func_dict = self._extract_var_dicts(args, kwargs)
             if validate_promises:
@@ -705,7 +708,7 @@ class Var(MapElement, DefaultSerializable):
         self._simplified = True
 
     def to_string(self, vars_str_list: List[str]):
-        return self.name
+        return vars_str_list[0]
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
         value = var_dict.get(self, None)
@@ -721,6 +724,9 @@ class Var(MapElement, DefaultSerializable):
 
     def __hash__(self):
         return hash(('Var', self.name))
+
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
+        return var_dict.get(self, None)
 
 
 class NamedFunc(MapElement, DefaultSerializable):

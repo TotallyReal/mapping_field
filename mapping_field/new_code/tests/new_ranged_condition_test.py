@@ -24,6 +24,26 @@ class DummyMap(MapElement):
 
 # TODO: Most of the logic moved to the IntervalRange class, so the test should move there as well.
 
+def test_simple_construction():
+    dummy = DummyMap(0)
+    RangeCondition(dummy, IntervalRange(0, 1))
+
+def test_post_generation_independence():
+    x = Var('x')
+    f_range = IntervalRange(0, 1)
+    func = RangeCondition(x, f_range)
+    assert str(func) == '0<=x<1'
+
+    # TODO: Both range and x should be frozen. Keeping this reminder here until I actually make them such.
+
+    # Calling the function
+    assigned_func = func({x: DummyMap(0)})
+
+    assert assigned_func != func
+    assert str(assigned_func) == '0<=DummyMap(0)<1'
+    # Some indication that func is frozen
+    assert str(func) == '0<=x<1'
+
 def test_comparison_operators():
     dummy = DummyMap(0)
 

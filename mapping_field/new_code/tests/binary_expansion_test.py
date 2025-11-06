@@ -12,6 +12,34 @@ def reset_static_variables():
     Var.clear_vars()
     NamedFunc.clear_vars()
 
+def test_simple_construction():
+    x, y = BoolVar('x'), BoolVar('y')
+    func = BinaryExpansion([x, y, 0, 1])
+
+def test_post_generation_independence():
+    v: List[Union[BoolVar, int]] = [BoolVar(f'v_{i}') for i in range(4)]
+
+    v_copy = v.copy()
+    func = BinaryExpansion(v_copy)
+
+    assert str(func) == 'Bin[v_0, v_1, v_2, v_3]'
+
+    # Changing the input list v_copy should not change func
+    v_copy[1] = 0
+    v_copy[2] = 0
+    func00 = BinaryExpansion(v_copy)
+
+    assert func.simplify2() != func00.simplify2()
+    assert str(func) == 'Bin[v_0, v_1, v_2, v_3]'
+    assert str(func00) == 'Bin[v_0, 0, 0, v_3]'
+
+    # Calling the function
+    assigned = func({v[1]:0, v[2]:0})
+
+    assert assigned.simplify2() == func00.simplify2()
+    assert str(assigned) == 'Bin[v_0, 0, 0, v_3]'
+    # Some indication that func is frozen
+    assert str(func) == 'Bin[v_0, v_1, v_2, v_3]'
 
 def test_equality_constant():
     x1 = BinaryExpansion([1, 0, 1, 1]).simplify2()
@@ -42,29 +70,6 @@ def test_constant_split():
     constant = 0
     pure = BinaryExpansion([BoolVar('v1'), 0, BoolVar('v2')])
     assert x.split_constant() == (pure, constant)
-
-
-def test_post_generation_independence():
-    v: List[Union[BoolVar, int]] = [BoolVar(f'v_{i}') for i in range(4)]
-
-    v1 = v.copy()
-    v2 = v1[:2] + [0,0]
-    x1 = BinaryExpansion(v1)
-    x2 = BinaryExpansion(v2)
-
-    assert x1.simplify2() != x2.simplify2()
-    str_x1 = str(x1)
-
-    v1[2] = 0
-    v1[3] = 0
-    # Check that the binary expansion can't be changed by changing the list of vars after construction
-    assert v1 == v2
-    assert x1.simplify2() != x2.simplify2()
-    assert str(x1) == str_x1
-
-    # The right way is to call the function:
-    x1 = x1({v[2]:0, v[3]:0})
-    assert x1.simplify2() == x2.simplify2()
 
 
 def addition_test(x, y, x_plus_y):

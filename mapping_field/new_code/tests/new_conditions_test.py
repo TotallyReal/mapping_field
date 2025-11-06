@@ -6,10 +6,15 @@ import pytest
 
 from mapping_field.new_code.conditions import (
     FalseCondition, IntersectionCondition, IsCondition, TrueCondition, UnionCondition,
-    _ListCondition,
+    _ListCondition, NotCondition,
 )
-from mapping_field.new_code.mapping_field import MapElement
+from mapping_field.new_code.mapping_field import MapElement, Var, NamedFunc
+from mapping_field.new_code.promises import BoolVar
 
+@pytest.fixture(autouse=True)
+def reset_static_variables():
+    Var.clear_vars()
+    NamedFunc.clear_vars()
 
 class DummyMap(MapElement):
     def __init__(self, value=0):
@@ -91,6 +96,44 @@ def test_binary_or_with_invert():
     assert dummy0 | ~dummy0 == TrueCondition
     assert ~dummy0 | dummy0 == TrueCondition
     assert str((~dummy0) | (~dummy1)) == str(~(dummy0 & dummy1))
+
+#       ╭─────────────────────────────────────────────────╮
+#       │                Simple construction              │
+#       ╰─────────────────────────────────────────────────╯
+
+def test_simple_construction():
+    dummy0, dummy1 = DummyCondition(type=0), DummyCondition(type=1)
+    UnionCondition([dummy0, dummy1])
+    IntersectionCondition([dummy0, dummy1])
+    # Remark: The NotCondition(...) is a function calling and not a constructor
+    NotCondition(dummy0)
+
+def test_post_generation_independence_not():
+    x, y = BoolVar('x'), BoolVar('y')
+    func = NotCondition(x)
+    assert str(func) == '~(x)'
+
+    # Calling the function
+    assigned_func = func({x: y})
+
+    assert assigned_func != func
+    assert str(assigned_func) == '~(y)'
+    # Some indication that func is frozen
+    assert str(func) == '~(x)'
+
+# TODO: continue here
+# def test_post_generation_independence_and():
+#     x, y, z = BoolVar('x'), BoolVar('y'), BoolVar('z')
+#     func = x & y
+#     assert str(func) == '[x & y]'
+#
+#     # Calling the function
+#     assigned_func = func({x: z})
+#
+#     assert assigned_func != func
+#     assert str(assigned_func) == '[z & y]'
+#     # Some indication that func is frozen
+#     assert str(func) == '[x & y]'
 
 #       ╭─────────────────────────────────────────────────╮
 #       │                 List Conditions                 │

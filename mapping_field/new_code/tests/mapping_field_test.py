@@ -2,11 +2,10 @@ from typing import List, Optional
 
 import pytest
 
-from mapping_field.mapping_field import (
+from mapping_field.new_code.mapping_field import (
     CompositionFunction, Func, MapElement, MapElementConstant, MapElementFromFunction, NamedFunc,
     Var, VarDict,
 )
-
 
 @pytest.fixture(autouse=True)
 def reset_static_variables():
@@ -46,7 +45,8 @@ def test_var_string():
 def test_var_assignment():
     dummy = DummyMap(0)
     x = Var('x')
-    assert x(dummy) == dummy
+    assert x(dummy) is dummy
+    assert x({x: dummy}) is dummy
 
 
 # ----------------- named function tests -----------------
@@ -102,6 +102,15 @@ def test_composition_top_function():
     fg = f(g)
     comp_function: CompositionFunction = fg(h)
     assert comp_function.function == f
+
+def test_assignment_using_composition():
+    x = Var('x')
+    dummy = DummyMap(0)
+    comp_function = CompositionFunction(x, [dummy])
+    assert str(x) == 'x'
+    assert str(comp_function) == 'DummyMap(0)'
+
+    assert comp_function.simplify2() is dummy
 
 
 # ----------------- simplify test -----------------
