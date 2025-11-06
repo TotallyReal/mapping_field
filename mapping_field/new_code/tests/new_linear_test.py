@@ -1,21 +1,9 @@
-from typing import Dict
-
 from mapping_field.new_code.conditions import FalseCondition, TrueCondition
 from mapping_field.new_code.linear import Linear
-from mapping_field.new_code.mapping_field import MapElement, Var, convert_to_map
+from mapping_field.new_code.mapping_field import MapElement, convert_to_map
 from mapping_field.new_code.ranged_condition import IntervalRange, RangeCondition
+from mapping_field.new_code.tests.utils import DummyMap
 
-
-class DummyMap(MapElement):
-    def __init__(self, value=0):
-        super().__init__([])
-        self.value = value
-
-    def to_string(self, vars_to_str: Dict[Var, str]):
-        return f'DummyMap({self.value})'
-
-    def __eq__(self, other):
-        return isinstance(other, DummyMap) and other.value == self.value
 
 def test_linear_generation():
 

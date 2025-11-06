@@ -2,17 +2,10 @@ from typing import Optional, Tuple
 
 import pytest
 
-from mapping_field.arithmetics import _as_combination
-from mapping_field.mapping_field import Func, MapElement, NamedFunc, Var, VarDict
+from mapping_field.new_code.arithmetics import _as_combination
+from mapping_field.new_code.mapping_field import Func, MapElement, Var, VarDict
+from mapping_field.new_code.tests.utils import DummyMap
 
-
-class DummyMap(MapElement):
-    def __init__(self, value=0):
-        super().__init__([], f'DummyMap({value})')
-        self.value = value
-
-    def __eq__(self, other):
-        return isinstance(other, DummyMap) and other.value == self.value
 
 class ImprovedDummyMap(MapElement):
     def __init__(self, value: Tuple =(0,)):

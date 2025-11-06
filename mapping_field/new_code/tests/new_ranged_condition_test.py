@@ -1,19 +1,9 @@
-from typing import Dict
-
 from mapping_field.new_code.arithmetics import Add
 from mapping_field.new_code.conditions import FalseCondition, TrueCondition, UnionCondition
-from mapping_field.new_code.mapping_field import MapElement, MapElementConstant, NamedFunc, Var
+from mapping_field.new_code.mapping_field import MapElementConstant, Var
 from mapping_field.new_code.promises import IsIntegral
 from mapping_field.new_code.ranged_condition import InRange, IntervalRange, RangeCondition
-
-
-class DummyMap(MapElement):
-    def __init__(self, value=0):
-        super().__init__([])
-        self.value = value
-
-    def to_string(self, vars_to_str: Dict[Var, str]):
-        return f'DummyMap({self.value})'
+from mapping_field.new_code.tests.utils import DummyMap
 
 # TODO: Most of the logic moved to the IntervalRange class, so the test should move there as well.
 

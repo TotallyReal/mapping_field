@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Optional
 
 import pytest
 
@@ -6,17 +6,7 @@ from mapping_field.new_code.mapping_field import (
     CompositionFunction, Func, MapElement, MapElementConstant, MapElementFromFunction, NamedFunc,
     Var, VarDict,
 )
-
-
-class DummyMap(MapElement):
-
-    def __init__(self, value: int):
-        super().__init__([])
-        self.value = value
-
-    def to_string(self, vars_to_str: Dict[Var, str]):
-        return f'DummyMap({self.value})'
-
+from mapping_field.new_code.tests.utils import DummyMap
 
 # ----------------- var tests -----------------
 

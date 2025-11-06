@@ -7,8 +7,7 @@ from typing import Callable, Dict, Iterator, List, Optional, Set, Tuple, Type, T
 
 from mapping_field.field import ExtElement, FieldElement
 from mapping_field.log_utils.tree_loggers import TreeAction, TreeLogger, cyan, green, magenta, red
-from mapping_field.mapping_field import MapElement
-from mapping_field.new_code.validators import MultiValidator, Validator
+from mapping_field.new_code.validators import MultiValidator
 from mapping_field.processors import ParamProcessor, Processor, ProcessorCollection
 from mapping_field.serializable import DefaultSerializable
 
@@ -49,7 +48,7 @@ class MapElementProcessor:
     #       More generally we should have:
     #       function_at(func: MapElement, cond: Condition, simplify: bool)
     @abstractmethod
-    def process_function(self, func: MapElement, simplify: bool = True) -> MapElement:
+    def process_function(self, func: 'MapElement', simplify: bool = True) -> 'MapElement':
         pass
 
 VarDict = Dict['Var', 'MapElement']
@@ -113,8 +112,8 @@ OutputValidatorType = TypeVar('OutputValidatorType', bound=OutputValidator)
 class InvalidInput(Exception):
     pass
 
-def validate_promises_var_dict(var_dict: VarDict) -> bool:
-    # TODO: Do I really need this, or should I calidate the promises inside Var?
+def validate_promises_var_dict(var_dict: VarDict):
+    # TODO: Do I really need this, or should I validate the promises inside Var?
     for v, value in var_dict.items():
         for promise in v.promises.output_promises():
             if not value.has_promise(promise):
