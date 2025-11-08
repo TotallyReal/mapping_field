@@ -11,7 +11,7 @@ def test_in_range_promise():
 
     cond1 = (dummy << 0) | (dummy << 1)
     cond2 = (0 <= dummy) & (dummy <= 1)
-    cond3 = RangeCondition(dummy, IntervalRange(0, 1, True, True))
+    cond3 = RangeCondition(dummy, IntervalRange[0, 1])
 
     assert cond1.simplify2() != TrueCondition
     assert cond2.simplify2() != TrueCondition
@@ -23,7 +23,7 @@ def test_in_range_promise():
 
     cond1 = (dummy << 0) | (dummy << 1)
     cond2 = (0 <= dummy) & (dummy <= 1)
-    cond3 = RangeCondition(dummy, IntervalRange(0, 1, True, True))
+    cond3 = RangeCondition(dummy, IntervalRange[0, 1])
 
     assert cond1.simplify2() is TrueCondition
     assert cond2.simplify2() is TrueCondition

@@ -181,9 +181,9 @@ class BinaryExpansion(MapElement, DefaultSerializable):
             else:
                 self._bool_max_value.append(self._bool_max_value[-1] + two_power)
             two_power *= 2
-        self.promises.add_promise(InRange(IntervalRange(
-            self._constant, self._constant + self._bool_max_value[-1], True, True
-        )))
+        self.promises.add_promise(InRange(
+            IntervalRange[self._constant, self._constant + self._bool_max_value[-1]]
+        ))
         self.promises.add_promise(IsIntegral)
 
     def to_string(self, vars_to_str: Dict[Var, str]):

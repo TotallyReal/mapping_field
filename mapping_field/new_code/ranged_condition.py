@@ -22,7 +22,7 @@ class IntervalRange:
 
     @staticmethod
     def of_point(value: float):
-        return IntervalRange(value, value, True, True)
+        return IntervalRange[value, value]
 
     @staticmethod
     def all():
@@ -224,7 +224,7 @@ class IntervalRange:
         high = self.high if self.high == float('inf') else int(math.floor(self.high))
         if high == self.high and not self.contain_high:
             high -= 1
-        return IntervalRange(low, high, True, True)
+        return IntervalRange[low, high]
 
 Range = Tuple[float, float]
 
@@ -452,5 +452,4 @@ class BoolVar(Var):
     def __init__(self, name: str):
         super().__init__(name)
         self.promises.add_promise(IsIntegral)
-        self.promises.add_promise(InRange(IntervalRange(0, 1, True, True)))
-        # TODO: has promise on range
+        self.promises.add_promise(InRange(IntervalRange[0, 1]))
