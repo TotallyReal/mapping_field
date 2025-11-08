@@ -56,11 +56,11 @@ class TreeLogger:
         tab_symbols = ['|'] * TreeLogger._depth
         if action == TreeAction.GO_DOWN:
             self.__class__._tab_styles.append(f'{fore}{back}')
-            tab_symbols.append('┌')
+            tab_symbols.append('┌>')
             TreeLogger._depth += 1
         elif action == TreeAction.GO_UP:
             TreeLogger._depth = max(0, TreeLogger._depth - 1)
-            tab_symbols[-1] = '└'
+            tab_symbols[-1] = '└>'
         tab_symbols = [f'{s}{c}{Style.RESET_ALL} ' for c, s in zip(tab_symbols, self.__class__._tab_styles)]
         initial = ''.join(tab_symbols)
         self.logger.info(f'{initial}{message}')
