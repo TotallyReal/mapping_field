@@ -40,6 +40,7 @@ class IntervalRange:
         self.contain_high = contain_high if high != float('inf') else False
         self.is_empty = ((self.high < self.low) or
                          (self.high == self.low and not (self.contain_low and self.contain_high)))
+        self.is_all = (low == float('-inf') and high == float('inf'))
         self.is_point: Optional[float] = None
         if self.low == self.high and self.contain_low and self.contain_high:
             self.is_point = self.low
@@ -69,6 +70,8 @@ class IntervalRange:
             return '!∅!'
         if self.is_point is not None:
             return f'({middle} = {self.is_point})'
+        # TODO: I can use ≤ instead of <=. However, it doesn't always looks good in terminal, and sometimes I
+        #       just see the ASCII \u2264 instead.
         lower = '' if self.low == float('-inf')  else (str(self.low) + ('<=' if self.contain_low else '<'))
         upper = '' if self.high == float('-inf') else (('<=' if self.contain_high else '<') + str(self.high))
         return f'{lower}{middle}{upper}'
@@ -232,6 +235,7 @@ class InRange(OutputValidator[IntervalRange]):
         self.range = f_range if isinstance(f_range, IntervalRange) else IntervalRange(*f_range)
         super().__init__(f'InRange {f_range}', context=self.range)
         self.register_validator(self._validate_constant_in_range)
+        self.register_validator(self._validate_using_other_ranges)
 
     @staticmethod
     def consolidate_ranges(promises: OutputPromises) -> Tuple[Optional[IntervalRange], Optional[OutputPromises]]:
@@ -257,6 +261,15 @@ class InRange(OutputValidator[IntervalRange]):
     def _validate_constant_in_range(self, elem: MapElement) -> bool:
         value = elem.evaluate()
         return False if value is None else self.range.contains(value)
+
+    def _validate_using_other_ranges(self, elem: MapElement) -> bool:
+        # TODO : add test
+        if self.range.is_all:
+            return True
+        f_range, _ = InRange.consolidate_ranges(elem.promises)
+        if f_range is None:
+            return False
+        return self.range.contains(f_range)
 
 
 # <editor-fold desc=" --------------- RangeCondition ---------------">
