@@ -137,6 +137,10 @@ class Linear(MapElement, DefaultSerializable):
             return Linear(int(a * a_), element.elem.elem, int(a * b_ + b))
         return None
 
+    def _evaluate_simplifier(self, var_dict: VarDict) -> Optional[MapElement]:
+        value = self.evaluate()
+        return MapElementConstant(value) if value is not None else None
+
     @staticmethod
     def _transform_range(element: MapElement, var_dict: VarDict) -> Optional[MapElement]:
         """
@@ -152,10 +156,21 @@ class Linear(MapElement, DefaultSerializable):
 
         return RangeCondition(function.elem, (element.range-function.b)/function.a)
 
+    @staticmethod
+    def _binary_combination_linearization(element: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+        assert isinstance(element, BinaryCombination)
+        elem1 = element.c1 * Linear.of(element.elem1)
+        elem2 = element.c2 * Linear.of(element.elem2)
+        if elem1.elem == elem2.elem:
+            return Linear(elem1.a + elem2.a, elem1.elem, elem1.b + elem2.b)
+        return None
+
     # </editor-fold>
 
 RangeCondition.register_class_simplifier(Linear._transform_range)
+Linear.register_class_simplifier(Linear._evaluate_simplifier)
 Linear.register_class_simplifier(Linear._transform_linear)
+BinaryCombination.register_class_simplifier(Linear._binary_combination_linearization)
 
 
 
