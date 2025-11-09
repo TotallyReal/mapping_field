@@ -120,6 +120,8 @@ class ConditionalFunction(MapElement):
                    for region in self.regions]
         return ConditionalFunction(regions)
 
+    # <editor-fold desc=" ------------------------ Simplifiers and Validators ------------------------ ">
+
     def _simplify_with_var_values2(self, var_dict: VarDict) -> 'MapElement':
         # TODO: combine this simplification with the _ListCondition simplification for a general simplification of
         #       a commutative associative binary function.
@@ -194,47 +196,52 @@ class ConditionalFunction(MapElement):
 
         return ConditionalFunction([tuple(region) for region in regions]) if is_simpler else None
 
-def promise_validate_conditional_function(validator: OutputValidator, elem: MapElement) -> bool:
-    if not isinstance(elem, ConditionalFunction):
-        return False
-    for condition, function in elem.regions:
-        if not function.has_promise(validator):
+    def mult_condition_by_element(var_dict: VarDict) -> Optional[MapElement]:
+        a, b = [var_dict.get(v,v) for v in var_dict]
+        a_is_cond = a.has_promise(IsCondition)
+        b_is_cond = b.has_promise(IsCondition)
+        if a_is_cond == b_is_cond:
+            return None
+
+        if b_is_cond:
+            a, b = b, a
+        if isinstance(a, (Var, MapElementConstant)):
+            return None
+        return ConditionalFunction([(a, b), (~a, MapElementConstant.zero)])
+
+    @staticmethod
+    def new_assignment_simplify(ranged_cond: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+        assert isinstance(ranged_cond, RangeCondition)
+        cond_function = ranged_cond.function
+        if not isinstance(cond_function, ConditionalFunction):
+            return None
+
+        f_range = ranged_cond.range
+        return UnionCondition([condition & RangeCondition(func, f_range) for condition, func in cond_function.regions])
+
+    @staticmethod
+    def promise_validate_conditional_function(validator: OutputValidator, elem: MapElement) -> bool:
+        if not isinstance(elem, ConditionalFunction):
             return False
-    return True
+        for condition, function in elem.regions:
+            if not function.has_promise(validator):
+                return False
+        return True
+
+    # </editor-fold>
+
+Mult.register_simplifier(ConditionalFunction.mult_condition_by_element)
+RangeCondition.register_class_simplifier(ConditionalFunction.new_assignment_simplify)
+
 # TODO: Make it work for any validator in the future
-IsIntegral.register_validator(lambda elem: promise_validate_conditional_function(IsIntegral, elem))
+IsIntegral.register_validator(lambda elem: ConditionalFunction.promise_validate_conditional_function(IsIntegral, elem))
 # TODO: Don't think of ConditionalFunction as a condition for now
 # IsCondition.register_validator(lambda elem: promise_validate_conditional_function(IsCondition, elem))
 
-def mult_condition_by_element(var_dict: VarDict) -> Optional[MapElement]:
-    a, b = [var_dict.get(v,v) for v in var_dict]
-    a_is_cond = a.has_promise(IsCondition)
-    b_is_cond = b.has_promise(IsCondition)
-    if a_is_cond == b_is_cond:
-        return None
-
-    if b_is_cond:
-        a, b = b, a
-    if isinstance(a, (Var, MapElementConstant)):
-        return None
-    return ConditionalFunction([(a, b), (~a, MapElementConstant.zero)])
-
-Mult.register_simplifier(mult_condition_by_element)
 
 #
 # _T = TypeVar('_T', bound=Union[Condition, MapElement])
 #
-# # TODO: Think of a better way of overriding this function
-# #       Also, should __mul__ be used for condition * condition = condition also, or only use __and__ for that?
-# @params_to_maps
-# def condition_mul(self, func: MapElement) -> MapElement:
-#
-#     return ConditionalFunction([
-#         (self, func),
-#         (~self, MapElementConstant.zero)
-#     ]).simplify2()
-# Condition.__mul__ = condition_mul
-# Condition.__rmul__ = condition_mul
 #
 #
 # def bool_var_simplifier(map_elem: MapElement, var_dict: VarDict) -> Optional[MapElement]:
@@ -271,19 +278,7 @@ Mult.register_simplifier(mult_condition_by_element)
 #
 # ConditionalFunction.register_class_simplifier(bool_var_simplifier)
 #
-# # TODO: another refactoring nightmare
-# original_assignment_simplify = GeneralAssignment.simplify
-#
-def new_assignment_simplify(ranged_cond:MapElement, var_dict:VarDict) -> Optional[MapElement]:
-    assert isinstance(ranged_cond, RangeCondition)
-    cond_function = ranged_cond.function
-    if not isinstance(cond_function, ConditionalFunction):
-        return None
 
-    f_range = ranged_cond.range
-    return UnionCondition([condition & RangeCondition(func, f_range) for condition, func in cond_function.regions])
-RangeCondition.register_class_simplifier(new_assignment_simplify)
-#
 def ReLU(map_elem: MapElement):
     zero = MapElementConstant.zero
     if isinstance(map_elem, ConditionalFunction):

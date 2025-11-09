@@ -120,7 +120,7 @@ class Linear(MapElement, DefaultSerializable):
     def __eq__(self, other: MapElement):
         return (self-Linear.of(other)).evaluate() == 0
 
-    # <editor-fold desc=" ======= Simplifiers ======= ">
+    # <editor-fold desc=" ------------------------ Simplifiers ------------------------ ">
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
         if self.a == 0:

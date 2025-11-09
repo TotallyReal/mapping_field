@@ -469,70 +469,6 @@ class BinaryExpansion(MapElement, DefaultSerializable):
 #         else:
 #             return a, elem, b
 #
-    @staticmethod
-    def transform_range(range_cond: MapElement, var_dict: VarDict) -> Optional[MapElement]:
-        """
-        Simplify ranges over a binary expansion.
-        """
-        assert isinstance(range_cond, RangeCondition)
-        bin_exp = range_cond.function
-        if not isinstance(bin_exp, BinaryExpansion):
-            return None
-
-        f_range = range_cond.range
-        if f_range.is_empty:
-            return FalseCondition
-        f_range = f_range.as_integral()
-
-        a, b = f_range.low, f_range.high
-        # a = max(a, bin_exp._constant)
-        # b = min(b, bin_exp._constant + bin_exp._bool_max_value[-1] + 1)
-
-        # remove constant part
-        a -= bin_exp._constant
-        b -= bin_exp._constant
-        coefs = [(0 if cc == 1 else cc) for cc in bin_exp.coefficients]
-        if bin_exp._constant > 0:
-            simplify_logger.log(f'Removed constant {bin_exp._constant}. Now simplifying: {red(f"{a}<={coefs}<={b}")}')
-
-        # # remove zeros at the beginning
-        # for i, c in enumerate(coefs):
-        #     if c != 0:
-        #         coefs = coefs[i:]
-        #         break
-        #     a = (a // 2) + (a % 2)
-        #     b = (b // 2) + (b % 2)
-
-        condition = TrueCondition
-
-        two_power = 2**len(coefs)
-        for i in range(len(coefs)-1,-1,-1):
-            c = coefs[i]
-            two_power //= 2
-            if c == 0:
-                continue
-
-            # BoolVar
-            if bin_exp._bool_max_value[i] < a:
-                condition &= ( c << 1 )
-                a -= two_power
-                b -= two_power
-                continue
-
-            if b < two_power:
-                condition &= (c << 0)
-                continue
-
-            break
-        else:
-            i = -1
-
-        if a <= 0 and bin_exp._bool_max_value[i+1] <= b: # TODO: +1 ?
-            return condition
-        else:
-            if condition is TrueCondition and (a, b) == (f_range.low, f_range.high):
-                return None
-            return condition & RangeCondition(BinaryExpansion(coefs[:i+1]), IntervalRange[a,b])
 
     def _min_max_assignment_in_range(self, low: int, high: int) -> Tuple[Dict[BoolVar, int], Dict[BoolVar, int]]:
         # TODO: this has similar logic to transform_range method. Avoid it!
@@ -666,7 +602,6 @@ class BinaryExpansion(MapElement, DefaultSerializable):
 
         return used_vars
 
-
     def as_binary_range_containing(self, condition: MapElement, low: int, high: int) -> Optional[Tuple[int, int]]:
         """
         Tries to view the condition as a ranged condition on this BinaryExpansion (not necessarily interval range).
@@ -708,8 +643,8 @@ class BinaryExpansion(MapElement, DefaultSerializable):
 
         return self(low_point).evaluate() if check_low else low, self(high_point).evaluate() if check_high else high
 
+    # <editor-fold desc=" ------------------------ Simplifiers ------------------------ ">
 
-#
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
         elem, constant = self.split_constant()
         if constant == 0:
@@ -719,78 +654,154 @@ class BinaryExpansion(MapElement, DefaultSerializable):
         # TODO: I think I want to just return elem + constant, and not use Linear
         return Linear(1, elem, constant.evaluate())
 
+    @staticmethod
+    def transform_range(range_cond: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+        """
+        Simplify an interval RangedCondition over a binary expansion.
+        """
+        assert isinstance(range_cond, RangeCondition)
+        bin_exp = range_cond.function
+        if not isinstance(bin_exp, BinaryExpansion):
+            return None
+
+        f_range = range_cond.range
+        if f_range.is_empty:
+            return FalseCondition
+        f_range = f_range.as_integral()
+
+        a, b = f_range.low, f_range.high
+        # a = max(a, bin_exp._constant)
+        # b = min(b, bin_exp._constant + bin_exp._bool_max_value[-1] + 1)
+
+        # remove constant part
+        a -= bin_exp._constant
+        b -= bin_exp._constant
+        coefs = [(0 if cc == 1 else cc) for cc in bin_exp.coefficients]
+        if bin_exp._constant > 0:
+            simplify_logger.log(f'Removed constant {bin_exp._constant}. Now simplifying: {red(f"{a}<={coefs}<={b}")}')
+
+        # # remove zeros at the beginning
+        # for i, c in enumerate(coefs):
+        #     if c != 0:
+        #         coefs = coefs[i:]
+        #         break
+        #     a = (a // 2) + (a % 2)
+        #     b = (b // 2) + (b % 2)
+
+        condition = TrueCondition
+
+        two_power = 2**len(coefs)
+        for i in range(len(coefs)-1,-1,-1):
+            c = coefs[i]
+            two_power //= 2
+            if c == 0:
+                continue
+
+            # BoolVar
+            if bin_exp._bool_max_value[i] < a:
+                condition &= ( c << 1 )
+                a -= two_power
+                b -= two_power
+                continue
+
+            if b < two_power:
+                condition &= (c << 0)
+                continue
+
+            break
+        else:
+            i = -1
+
+        if a <= 0 and bin_exp._bool_max_value[i+1] <= b: # TODO: +1 ?
+            return condition
+        else:
+            if condition is TrueCondition and (a, b) == (f_range.low, f_range.high):
+                return None
+            return condition & RangeCondition(BinaryExpansion(coefs[:i+1]), IntervalRange[a,b])
+
+    @staticmethod
+    def _union_with_range_over_binary_expansion(union_elem: MapElement, var_dict: VarDict) -> Optional['MapElement']:
+        """
+        If one of the factors in a union operation is a RangedCondition over a BinaryExpansion, try to write the union
+        as another RangedCondition over the same BinaryExpansion.
+        """
+        assert isinstance(union_elem, UnionCondition)
+        if len(union_elem.conditions) != 2:
+            return None
+
+        cond1, cond2 = union_elem.conditions
+        if isinstance(cond1, RangeCondition) and isinstance(cond1.function, BinaryExpansion):
+            simplify_logger.log(f'1st condition is ranged binary expansion: {red(cond1)}')
+            c_range = cond1.range.as_integral()
+            interval = cond1.function.as_binary_range_containing(cond2, c_range.low, c_range.high)
+            if interval is not None:
+                return RangeCondition(cond1.function, IntervalRange[*interval])
+        if isinstance(cond2, RangeCondition) and isinstance(cond2.function, BinaryExpansion):
+            simplify_logger.log(f'2nd condition is ranged binary expansion: {red(cond2)}')
+            c_range = cond2.range.as_integral()
+            interval = cond2.function.as_binary_range_containing(cond1, c_range.low, c_range.high)
+            if interval is not None:
+                return RangeCondition(cond2.function, IntervalRange[*interval])
+
+        return None
+
+    # TODO: there are now two simplifiers to combination to expansion
+    #       After the big refactorzation, delete one of them.
+
+    @staticmethod
+    def _binary_combination_to_expansion_simplifier(bin_comb:MapElement, var_dict: VarDict) -> Optional[MapElement]:
+        """
+        Try to simplify a binary linear combination into a binary expansion
+        """
+        assert isinstance(bin_comb, BinaryCombination)
+
+        elem1 = BinaryExpansion.of(bin_comb.elem1)
+        if elem1 is None:
+            return None
+
+        elem2 = BinaryExpansion.of(bin_comb.elem2)
+        if elem2 is None:
+            return None
+
+        result = BinaryExpansion.linear_combination(bin_comb.c1, elem1, bin_comb.c2, elem2)
+        if result is not None:
+            coef, elem = result
+            return Linear(coef, elem, 0)
+        return None
+
+    # </editor-fold>
+
+
 RangeCondition.register_class_simplifier(BinaryExpansion.transform_range)
+UnionCondition.register_class_simplifier(BinaryExpansion._union_with_range_over_binary_expansion)
+BinaryCombination.register_class_simplifier(BinaryExpansion._binary_combination_to_expansion_simplifier)
 
-def _union_with_range_over_binary_expansion(elem: MapElement, var_dict: VarDict) -> Optional['MapElement']:
-    assert isinstance(elem, UnionCondition)
-    if len(elem.conditions) != 2:
-        return None
-
-    cond1, cond2 = elem.conditions
-    if isinstance(cond1, RangeCondition) and isinstance(cond1.function, BinaryExpansion):
-        simplify_logger.log(f'1st condition is ranged binary expansion: {red(cond1)}')
-        c_range = cond1.range.as_integral()
-        interval = cond1.function.as_binary_range_containing(cond2, c_range.low, c_range.high)
-        if interval is not None:
-            return RangeCondition(cond1.function, IntervalRange[*interval])
-    if isinstance(cond2, RangeCondition) and isinstance(cond2.function, BinaryExpansion):
-        simplify_logger.log(f'2nd condition is ranged binary expansion: {red(cond2)}')
-        c_range = cond2.range.as_integral()
-        interval = cond2.function.as_binary_range_containing(cond1, c_range.low, c_range.high)
-        if interval is not None:
-            return RangeCondition(cond2.function, IntervalRange[*interval])
-
-    return None
-
-UnionCondition.register_class_simplifier(_union_with_range_over_binary_expansion)
-
-# TODO: there are now two simplifiers to combination to expansion
-#       After the big refactorzation, delete one of them.
-
-def _binary_combination_to_expansion_simplifier(bin_comb:MapElement, var_dict: VarDict) -> Optional[MapElement]:
-    assert isinstance(bin_comb, BinaryCombination)
-
-    elem1 = BinaryExpansion.of(bin_comb.elem1)
-    if elem1 is None:
-        return None
-
-    elem2 = BinaryExpansion.of(bin_comb.elem2)
-    if elem2 is None:
-        return None
-
-    result = BinaryExpansion.linear_combination(bin_comb.c1, elem1, bin_comb.c2, elem2)
-    if result is not None:
-        coef, elem = result
-        return Linear(coef, elem, 0)
-    return None
-
-BinaryCombination.register_class_simplifier(_binary_combination_to_expansion_simplifier)
-
-def binary_signed_addition_simplifier(var_dict: VarDict, sign: int) -> Optional[MapElement]:
-    add_vars = get_var_values((Add if sign == 1 else Sub).vars, var_dict)
-    if add_vars is None:
-        return None
-    simplify_logger.log(f'Trying to combine (Binary Expansion) {red(add_vars[0])} {"+" if sign > 0 else "-"} {red(add_vars[1])}')
-
-    linear_var1 = Linear.of(add_vars[0])
-    linear_var2 = sign*Linear.of(add_vars[1])
-
-    bin_1 = BinaryExpansion.of(linear_var1.elem)
-    bin_2 = BinaryExpansion.of(linear_var2.elem)
-    if bin_1 is None or bin_2 is None:
-        return None
-
-    result = BinaryExpansion.linear_combination(linear_var1.a, bin_1, linear_var2.a, bin_2)
-    if result is not None:
-        coef, elem = result
-        return Linear(coef, elem, linear_var1.b + linear_var2.b)
-    return None
-
-def binary_addition_simplifier(var_dict: VarDict) -> Optional[MapElement]:
-    return binary_signed_addition_simplifier(var_dict=var_dict, sign=1)
-
-def binary_subtraction_simplifier(var_dict: VarDict) -> Optional[MapElement]:
-    return binary_signed_addition_simplifier(var_dict=var_dict, sign=-1)
+# TODO: I don't think I need this anymore. Keep it here for now just in case.
+# def binary_signed_addition_simplifier(var_dict: VarDict, sign: int) -> Optional[MapElement]:
+#     add_vars = get_var_values((Add if sign == 1 else Sub).vars, var_dict)
+#     if add_vars is None:
+#         return None
+#     simplify_logger.log(f'Trying to combine (Binary Expansion) {red(add_vars[0])} {"+" if sign > 0 else "-"} {red(add_vars[1])}')
+#
+#     linear_var1 = Linear.of(add_vars[0])
+#     linear_var2 = sign*Linear.of(add_vars[1])
+#
+#     bin_1 = BinaryExpansion.of(linear_var1.elem)
+#     bin_2 = BinaryExpansion.of(linear_var2.elem)
+#     if bin_1 is None or bin_2 is None:
+#         return None
+#
+#     result = BinaryExpansion.linear_combination(linear_var1.a, bin_1, linear_var2.a, bin_2)
+#     if result is not None:
+#         coef, elem = result
+#         return Linear(coef, elem, linear_var1.b + linear_var2.b)
+#     return None
+#
+# def binary_addition_simplifier(var_dict: VarDict) -> Optional[MapElement]:
+#     return binary_signed_addition_simplifier(var_dict=var_dict, sign=1)
+#
+# def binary_subtraction_simplifier(var_dict: VarDict) -> Optional[MapElement]:
+#     return binary_signed_addition_simplifier(var_dict=var_dict, sign=-1)
 #
 # Add.register_simplifier(binary_addition_simplifier)
 #
