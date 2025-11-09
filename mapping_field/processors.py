@@ -61,13 +61,15 @@ class ProcessorCollection(Generic[Elem, Param]):
 
             # TODO: Maybe use __qualname__ instead?
             message = f'Processing {processor.__qualname__} ( {red(elem)} , {yellow(param)} )'
-
+            title_start = f'Step: {processor.__qualname__} ( {red(elem)} , {yellow(param)} )'
             logger.log(message, action=TreeAction.GO_DOWN)
             result = processor(elem, param)
 
             if result is None:
+                logger.set_context_title(f'{title_start} = {magenta("- - -")}')
                 logger.log(message=f'{magenta("- - -")}', action=TreeAction.GO_UP)
                 continue
+            logger.set_context_title(f'{title_start} => {green(result)}')
             logger.log(message=f'Produced {green(result)}', action=TreeAction.GO_UP)
             return result
 
@@ -80,7 +82,8 @@ class ProcessorCollection(Generic[Elem, Param]):
         """
         was_processed = False
 
-        message = f'Full Processing ( {red(elem)} , {Fore.YELLOW}{param}{Style.RESET_ALL} ) , [{cyan(elem.__class__.__name__)}]'
+        title_start = f'Full: [{cyan(elem.__class__.__name__)}] ( {red(elem)} , {yellow(param)} )'
+        message = f'Full Processing ( {red(elem)} , {yellow(param)} ) , [{cyan(elem.__class__.__name__)}]'
         logger.log(message=message, action=TreeAction.GO_DOWN, back=Back.LIGHTBLACK_EX)
         while True:
             # TODO:
@@ -93,8 +96,10 @@ class ProcessorCollection(Generic[Elem, Param]):
             was_processed = True
 
         if was_processed:
+            logger.set_context_title(f'{title_start} => {green(elem)}')
             logger.log(f'Full Produced {green(elem)}', action=TreeAction.GO_UP)
             return elem
+        logger.set_context_title(f'{title_start} = {magenta("X X X")}')
         logger.log(f'{magenta("X X X")} ', action=TreeAction.GO_UP)
         return None
 

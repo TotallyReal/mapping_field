@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from mapping_field.log_utils.tree_loggers import simplify_tree
 from mapping_field.new_code.mapping_field import NamedFunc, Var
 
 
@@ -53,6 +54,24 @@ def log_to_file(log_format: str = FULL_FORMAT):
         return wrapper
     return decorator
 
+
+def pytest_runtest_makereport(item, call):
+    """Hook called when pytest makes a test report."""
+    # We only care about the actual test call phase
+    if call.when == "call" and call.excinfo is not None:
+        save_logs_to_file(item)
+
+def save_logs_to_file(item):
+    # Determine log folder
+    log_dir = Path(__file__).parent / "logs"
+    log_dir.mkdir(exist_ok=True)
+
+    # Build log filename: <test_file>__<test_name>.log
+    test_file = item.fspath.basename[:-3]   # remove the '.py' at the end
+    test_name = item.name
+    log_file = log_dir / f"{test_file}__{test_name}.log_context"
+
+    simplify_tree.context.save_element(log_file)
 
 _DEBUG_STATE = 0
 

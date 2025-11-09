@@ -69,6 +69,8 @@ class DefaultSerializable(Serializable):
 
     @staticmethod
     def _dictify(element):
+        if element is None:
+            return None
         if isinstance(element, (int, float, bool, str)):
             return element
         if isinstance(element, Serializable):

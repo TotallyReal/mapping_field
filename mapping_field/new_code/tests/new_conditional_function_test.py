@@ -2,7 +2,7 @@ import logging
 
 import pytest
 
-from mapping_field.log_utils.tree_loggers import TreeLogger
+from mapping_field.log_utils.tree_loggers import TreeLogger, simplify_tree
 from mapping_field.new_code.binary_expansion import BinaryExpansion
 from mapping_field.new_code.conditional_function import ConditionalFunction, ReLU
 from mapping_field.new_code.conditions import FalseCondition, TrueCondition
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 @pytest.fixture(autouse=True)
 def reset_logs():
-    TreeLogger.reset()
+    simplify_tree.reset()
 
 def test_simple_construction():
     dummy = DummyMap(0)
