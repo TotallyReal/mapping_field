@@ -357,3 +357,15 @@ def test_sub_ranged_equality():
     cond1 = ((dummy1 - dummy2) << 1).simplify2()
     cond2 = (dummy1 << 1) & (dummy2 << 0)
     assert cond1 == cond2
+
+def test_addition_arithmetic_and_ranged():
+    dummy1, dummy2 = DummyMap(1), DummyMap(2)
+
+    dummy1.promises.add_promise(InRange(IntervalRange[0, 1]))
+    dummy1.promises.add_promise(IsIntegral)
+    dummy2.promises.add_promise(InRange(IntervalRange[0, 1]))
+    dummy2.promises.add_promise(IsIntegral)
+
+    cond = RangeCondition(dummy1 - dummy2, IntervalRange(0,1, False, True))
+    cond = cond.simplify2()
+    assert cond == ((dummy1 << 1) & (dummy2 << 0))

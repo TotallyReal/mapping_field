@@ -3,14 +3,18 @@ import operator
 
 from typing import Dict, Optional, Tuple, Union
 
+from mapping_field.log_utils.tree_loggers import TreeLogger, green
 from mapping_field.new_code.arithmetics import Add, Mult, Sub, _as_combination
-from mapping_field.new_code.conditions import Condition, FalseCondition, TrueCondition
+from mapping_field.new_code.conditions import (
+    Condition, FalseCondition, IntersectionCondition, TrueCondition,
+)
 from mapping_field.new_code.mapping_field import (
     CompositionFunction, FuncDict, MapElement, MapElementConstant, MapElementProcessor,
     OutputPromises, OutputValidator, Var, VarDict, always_validate_promises,
 )
 from mapping_field.new_code.promises import IsCondition, IsIntegral
 
+simplify_logger = TreeLogger(__name__)
 
 class IntervalRange:
 
@@ -310,6 +314,7 @@ class InRange(OutputValidator[IntervalRange]):
 
         elem.promises.add_promise(InRange(interval))
         count, promises = InRange.consolidate_ranges(elem.promises)
+        simplify_logger.log(f'Added range {green(interval)} to {green(elem)}')
         if promises is not None:
             elem.promises = promises
         return elem
@@ -322,6 +327,7 @@ def _arithmetic_op_integral_simplifier(elem: MapElement, var_dict: VarDict) -> O
     elem1, elem2 = elem.entries
     if elem1.has_promise(IsIntegral) and elem2.has_promise(IsIntegral) and elem.promises.has_promise(IsIntegral) is None:
         elem.promises.add_promise(IsIntegral)
+        simplify_logger.log(f'Adding {green("IsIntegral")} promise to {green(elem)}')
         return elem
     return None
 
@@ -501,22 +507,9 @@ class RangeCondition(Condition, MapElementProcessor):
         if f_range1_updated is None or f_range2_updated is None:
             return FalseCondition
 
-        if f_range1.contains(f_range1_updated) and f_range1 != f_range1_updated:
-            # TODO: this whole procedure of updating the InRange is weird. Fix it
-            elem1.promises.add_promise(InRange(f_range1_updated))
-            _, promises = InRange.consolidate_ranges(elem1.promises)
-            if promises is not None:
-                elem1.promises = promises
-
-        if f_range2.contains(f_range2_updated) and f_range1 != f_range2_updated:
-            elem2.promises.add_promise(InRange(f_range2_updated))
-            _, promises = InRange.consolidate_ranges(elem2.promises)
-            if promises is not None:
-                elem2.promises = promises
-
         total_range_updated = op(f_range1_updated, f_range2_updated)
         if total_range.contains(total_range_updated):
-            return RangeCondition(elem1, f_range1_updated) & RangeCondition(elem2, f_range2_updated)
+            return IntersectionCondition([RangeCondition(elem1, f_range1_updated), RangeCondition(elem2, f_range2_updated)])
 
         return None
 
