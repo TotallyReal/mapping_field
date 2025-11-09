@@ -113,7 +113,7 @@ def _as_inversion(condition: MapElement) -> Tuple[bool, MapElement]:
 
 # </editor-fold>
 
-class _ListCondition(Condition):
+class _ListCondition(Condition, DefaultSerializable):
     # For intersection \ union of conditions
 
     AND = 0
@@ -167,6 +167,9 @@ class _ListCondition(Condition):
         delim = f' {delim} '
         conditions_rep = delim.join(condition.to_string(vars_to_str) for condition in self.conditions)
         return f'[{conditions_rep}]'
+
+    def serialization_name_conversion(self):
+        return {'simplified': self._simplify_with_var_values2}
 
     def __eq__(self, other: MapElement) -> bool:
         if not isinstance(other, self.__class__):
