@@ -1,12 +1,13 @@
 import math
+import operator
 
 from typing import Dict, Optional, Tuple, Union
 
-from mapping_field.new_code.arithmetics import _as_combination
+from mapping_field.new_code.arithmetics import Add, Mult, Sub, _as_combination
 from mapping_field.new_code.conditions import Condition, FalseCondition, TrueCondition
 from mapping_field.new_code.mapping_field import (
-    FuncDict, MapElement, MapElementConstant, MapElementProcessor, OutputPromises, OutputValidator,
-    Var, VarDict, always_validate_promises,
+    CompositionFunction, FuncDict, MapElement, MapElementConstant, MapElementProcessor,
+    OutputPromises, OutputValidator, Var, VarDict, always_validate_promises,
 )
 from mapping_field.new_code.promises import IsCondition, IsIntegral
 
@@ -173,10 +174,15 @@ class IntervalRange:
         result = range1.union(range2)
         return None if result is None else result.as_integral(half_open=False)
 
-    def __add__(self, value: Union[int, float]) -> 'IntervalRange':
-        if value == 0:
-            return self
-        return IntervalRange(self.low + value, self.high + value, self.contain_low, self.contain_high)
+    def __neg__(self):
+        return IntervalRange(-self.high, -self.low, self.contain_high, self.contain_low)
+
+    def __add__(self, value: Union[int, float, 'IntervalRange']) -> 'IntervalRange':
+        if not isinstance(value, IntervalRange):
+            if value == 0:
+                return self
+            value = IntervalRange.of_point(value)
+        return IntervalRange(self.low + value.low, self.high + value.high, self.contain_low & value.contain_low, self.contain_high & value.contain_high)
 
     def __radd__(self, value: Union[int, float]) -> 'IntervalRange':
         return self.__add__(value)
@@ -231,6 +237,14 @@ Range = Tuple[float, float]
 class InRange(OutputValidator[IntervalRange]):
     # TODO: add tests
 
+    @classmethod
+    def get_range_of(cls, elem: MapElement) -> Optional[IntervalRange]:
+        in_range = next(elem.promises.output_promises(of_type=InRange), None)
+        if in_range is None and isinstance(elem, MapElementConstant):
+            value = elem.evaluate()
+            return IntervalRange.of_point(value)
+        return None if in_range is None else in_range.range
+
     def __init__(self, f_range: Union[IntervalRange, Tuple[float, float]]):
         self.range = f_range if isinstance(f_range, IntervalRange) else IntervalRange(*f_range)
         super().__init__(f'InRange {f_range}', context=self.range)
@@ -251,7 +265,7 @@ class InRange(OutputValidator[IntervalRange]):
                 raise Exception(f'InRange promises collapse to an empty range')
         if count > 1:
             promises.remove_promises(in_range_promises)
-            promises.promises.add_promise(InRange(f_range))
+            promises.add_promise(InRange(f_range))
         else:
             promises = None
         if count == 0:
@@ -271,6 +285,45 @@ class InRange(OutputValidator[IntervalRange]):
             return False
         return self.range.contains(f_range)
 
+    @staticmethod
+    def _arithmetic_op_range_simplifier(elem: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+        assert isinstance(elem, CompositionFunction)
+        if elem.function is Add:
+            op = operator.add
+        elif elem.function is Sub:
+            op = operator.sub
+        else:
+            return None
+        elem1, elem2 = elem.entries
+        f_range1 = InRange.get_range_of(elem1)
+        f_range2 = InRange.get_range_of(elem2)
+        if f_range1 is None or f_range2 is None:
+            return None
+        interval = op(f_range1, f_range2)
+        orig_interval = InRange.get_range_of(elem)
+        if orig_interval is not None:
+            interval = orig_interval.intersection(interval)
+            if interval.contains(orig_interval):
+                return None
+
+        elem.promises.add_promise(InRange(interval))
+        count, promises = InRange.consolidate_ranges(elem.promises)
+        if promises is not None:
+            elem.promises = promises
+        return elem
+
+def _arithmetic_op_integral_simplifier(elem: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    assert isinstance(elem, CompositionFunction)
+    if elem.function not in (Add, Sub, Mult):
+        return None
+
+    elem1, elem2 = elem.entries
+    if elem1.has_promise(IsIntegral) and elem2.has_promise(IsIntegral):
+        pass
+    return None
+
+CompositionFunction.register_class_simplifier(lambda elem, var_dict: InRange._arithmetic_op_range_simplifier(elem, var_dict))
+CompositionFunction.register_class_simplifier(lambda elem, var_dict: InRange._arithmetic_op_range_simplifier(elem, var_dict))
 
 # <editor-fold desc=" --------------- RangeCondition ---------------">
 
@@ -416,12 +469,62 @@ class RangeCondition(Condition, MapElementProcessor):
         f_range = (element.range - c2) / c1
 
         return RangeCondition(elem1, f_range)
+
+    @staticmethod
+    def _in_range_arithmetic_simplification(ranged_cond: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+        assert isinstance(ranged_cond, RangeCondition)
+        elem = ranged_cond.function
+        if not isinstance(elem, CompositionFunction):
+            return None
+        if elem.function is Add:
+            op = operator.add
+            op1 = operator.sub
+            op2 = operator.sub
+        elif elem.function is Sub:
+            op = operator.sub
+            op1 = operator.add
+            op2 = lambda e1, e2: e2-e1
+        else:
+            return None
+        elem1, elem2 = elem.entries
+        total_range = ranged_cond.range
+        f_range1 = InRange.get_range_of(elem1) or IntervalRange.all()
+        f_range2 = InRange.get_range_of(elem2) or IntervalRange.all()
+
+        f_range1_updated = f_range1.intersection(op1(total_range, f_range2))
+        f_range2_updated = f_range2.intersection(op2(total_range, f_range1))
+
+        if f_range1_updated is None or f_range2_updated is None:
+            return FalseCondition
+
+        if f_range1.contains(f_range1_updated) and f_range1 != f_range1_updated:
+            # TODO: this whole procedure of updating the InRange is weird. Fix it
+            elem1.promises.add_promise(InRange(f_range1_updated))
+            _, promises = InRange.consolidate_ranges(elem1.promises)
+            if promises is not None:
+                elem1.promises = promises
+
+        if f_range2.contains(f_range2_updated) and f_range1 != f_range2_updated:
+            elem2.promises.add_promise(InRange(f_range2_updated))
+            _, promises = InRange.consolidate_ranges(elem2.promises)
+            if promises is not None:
+                elem2.promises = promises
+
+        total_range_updated = op(f_range1_updated, f_range2_updated)
+        if total_range.contains(total_range_updated):
+            return RangeCondition(elem1, f_range1_updated) & RangeCondition(elem2, f_range2_updated)
+
+        return None
+
+
+
     # </editor-fold>
 
 RangeCondition.register_class_simplifier(RangeCondition._evaluated_simplifier)
 RangeCondition.register_class_simplifier(RangeCondition._ranged_promise_simplifier)
 RangeCondition.register_class_simplifier(RangeCondition._integral_simplifier)
 RangeCondition.register_class_simplifier(RangeCondition._linear_combination_simplifier)
+RangeCondition.register_class_simplifier(RangeCondition._in_range_arithmetic_simplification)
 
 def _ranged(elem: MapElement, low: int, high: int, contains_low: bool = True, contains_high: bool = False) -> RangeCondition:
     if isinstance(low, (int, float)) and isinstance(high, (int, float)):

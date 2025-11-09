@@ -316,3 +316,44 @@ def test_ranged_condition_as_input():
     assert str(assigned) == '((1+2)+3)'
     assert assigned.simplify2() == 6
 
+
+def test_add_ranged_functions():
+    dummy1, dummy2 = DummyMap(1), DummyMap(2)
+
+    dummy1.promises.add_promise(InRange(IntervalRange[1,4]))
+    dummy2.promises.add_promise(InRange(IntervalRange[3,5]))
+    result = dummy1 + dummy2
+    f_range = InRange.get_range_of(result)
+    assert f_range is not None
+    assert f_range == IntervalRange[4,9]
+
+
+def test_sub_ranged_functions():
+    dummy1, dummy2 = DummyMap(1), DummyMap(2)
+
+    dummy1.promises.add_promise(InRange(IntervalRange[1,4]))
+    dummy2.promises.add_promise(InRange(IntervalRange[3,5]))
+    result = dummy1 - dummy2
+    f_range = InRange.get_range_of(result)
+    assert f_range is not None
+    assert f_range == IntervalRange[-4,1]
+
+def test_add_ranged_equality():
+    dummy1, dummy2 = DummyMap(1), DummyMap(2)
+
+    dummy1.promises.add_promise(InRange(IntervalRange[0, 1]))
+    dummy2.promises.add_promise(InRange(IntervalRange[0, 1]))
+
+    cond1 = ((dummy1 + dummy2) << 2).simplify2()
+    cond2 = (dummy1 << 1) & (dummy2 << 1)
+    assert cond1 == cond2
+
+def test_sub_ranged_equality():
+    dummy1, dummy2 = DummyMap(1), DummyMap(2)
+
+    dummy1.promises.add_promise(InRange(IntervalRange[0, 1]))
+    dummy2.promises.add_promise(InRange(IntervalRange[0, 1]))
+
+    cond1 = ((dummy1 - dummy2) << 1).simplify2()
+    cond2 = (dummy1 << 1) & (dummy2 << 0)
+    assert cond1 == cond2

@@ -156,7 +156,7 @@ class OutputPromises:
         self._invalid_promises.add(promise)
 
     def remove_promises(self, promises: List[OutputValidator]):
-        self._promises = [promise for promise in self._promises if promise not in promises]
+        self._promises = self._promises.difference(set(promises))
 
     def output_promises(self, of_type: Type[OutputValidatorType] = OutputValidator) -> Iterator[OutputValidatorType]:
         for promise in self._promises:
