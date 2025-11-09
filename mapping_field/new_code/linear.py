@@ -2,11 +2,12 @@ import math
 
 from typing import Dict, Optional
 
-from mapping_field.log_utils.tree_loggers import TreeLogger
-from mapping_field.new_code.arithmetics import BinaryCombination, _as_combination
+from mapping_field.log_utils.tree_loggers import TreeLogger, green
+from mapping_field.new_code.arithmetics import Add, BinaryCombination, Sub, _as_combination
 from mapping_field.new_code.conditions import FalseCondition, TrueCondition
 from mapping_field.new_code.mapping_field import (
-    ExtElement, FuncDict, MapElement, MapElementConstant, Var, VarDict, params_to_maps,
+    ExtElement, FuncDict, MapElement, MapElementConstant, Var, VarDict, get_var_values,
+    params_to_maps,
 )
 from mapping_field.new_code.ranged_condition import RangeCondition
 from mapping_field.serializable import DefaultSerializable
@@ -171,6 +172,33 @@ RangeCondition.register_class_simplifier(Linear._transform_range)
 Linear.register_class_simplifier(Linear._evaluate_simplifier)
 Linear.register_class_simplifier(Linear._transform_linear)
 BinaryCombination.register_class_simplifier(Linear._binary_combination_linearization)
+
+def _extract_scalar_signed_addition(var_dict: VarDict, sign: int = 1) -> Optional[MapElement]:
+
+    add_vars = get_var_values((Add if sign == 1 else Sub).vars, var_dict)
+    if add_vars is None:
+        return None
+
+    linear_var1 = Linear.of(add_vars[0])
+    linear_var2 = sign*Linear.of(add_vars[1])
+    linear_var2 = Linear.of(linear_var2)
+    if (linear_var1.a != 0 and linear_var1.b != 0) or (linear_var2.a != 0 and linear_var2.b != 0):
+        b = linear_var1.b + linear_var2.b
+        # linear_var1 = Linear(linear_var1.a, linear_var1.elem, 0)
+        # linear_var2 = Linear(linear_var2.a, linear_var2.elem, 0)
+        logger.log(f'Extracted the scalar {green(b)}')
+        return ((linear_var1.a * linear_var1.elem) + (linear_var2.a * linear_var2.elem)) + b
+
+    return None
+
+def extract_scalar_addition(var_dict: VarDict) -> Optional[MapElement]:
+    return _extract_scalar_signed_addition(var_dict=var_dict, sign=1)
+
+def extract_scalar_subtraction(var_dict: VarDict) -> Optional[MapElement]:
+    return _extract_scalar_signed_addition(var_dict=var_dict, sign=-1)
+
+Add.register_simplifier(extract_scalar_addition)
+Sub.register_simplifier(extract_scalar_subtraction)
 
 
 

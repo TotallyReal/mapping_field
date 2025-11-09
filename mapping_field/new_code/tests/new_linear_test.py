@@ -122,6 +122,12 @@ def test_general_assignment():
     condition2 = (dummy.where() == -5).simplify2()
     assert condition1 == condition2
 
+def test_scalar_extraction():
+    dummy1, dummy2 = DummyMap(1), DummyMap(2)
+
+    function = (dummy1 + 1) + (dummy2 - 2)
+    assert str(function) == '((DummyMap(1)+DummyMap(2))+-1)'
+
 
 #
 #
