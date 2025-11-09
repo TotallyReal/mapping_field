@@ -140,15 +140,15 @@ class BinaryExpansion(MapElement, DefaultSerializable):
         #     return BinaryExpansion([BoolVar(f'{map_elem.name}_bool')]), map_elem.min_value
 
         return None
-#
-#     @staticmethod
-#     def generate(var_name: str, num_digits: int):
-#         num_digits = max(num_digits, 1)
-#         for i in range(num_digits):
-#             assert Var.try_get(f'{var_name}_{i}') is None
-#
-#         return BinaryExpansion([BoolVar(f'{var_name}_{i}') for i in range(num_digits)])
-#
+
+    @staticmethod
+    def generate(var_name: str, num_digits: int):
+        num_digits = max(num_digits, 1)
+        for i in range(num_digits):
+            assert Var.try_get(f'{var_name}_{i}') is None
+
+        return BinaryExpansion([BoolVar(f'{var_name}_{i}') for i in range(num_digits)])
+
     def __init__(self, coefficients: List[Union[int, BoolVar]]):
         """
         Represents an integer number in a binary expansion:
