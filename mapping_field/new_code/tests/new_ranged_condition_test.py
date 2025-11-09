@@ -2,7 +2,7 @@ from mapping_field.new_code.arithmetics import Add
 from mapping_field.new_code.conditions import FalseCondition, TrueCondition, UnionCondition
 from mapping_field.new_code.mapping_field import MapElementConstant, Var
 from mapping_field.new_code.promises import IsIntegral
-from mapping_field.new_code.ranged_condition import InRange, IntervalRange, RangeCondition
+from mapping_field.new_code.ranged_condition import BoolVar, InRange, IntervalRange, RangeCondition
 from mapping_field.new_code.tests.utils import DummyMap
 
 
@@ -147,6 +147,13 @@ def test_range_condition_union():
     # cond2 = SingleAssignmentCondition(dummy_var, 10)
     # cond12 = RangeCondition(dummy_var, (0,11))
     # assert cond1 | cond2 == cond12
+
+def test_combine_bool_vars():
+    x, y = BoolVar('x'), BoolVar('y')
+    cond1 = (x << 0) & (y << 0)
+    cond1 = cond1 | (y << 1)
+    result = (x << 0) | (y << 1)
+    assert cond1 == result
 
 def test_simplify_all_or_nothing_range():
     dummy_map = DummyMap(0)

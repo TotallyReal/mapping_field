@@ -3,12 +3,14 @@ import operator
 from typing import Dict, List, Optional, Tuple
 
 from mapping_field.field import ExtElement
-from mapping_field.new_code.conditions import FalseCondition, TrueCondition
+from mapping_field.new_code.arithmetics import Mult
+from mapping_field.new_code.conditions import FalseCondition, TrueCondition, UnionCondition
 from mapping_field.new_code.mapping_field import (
-    FuncDict, MapElement, MapElementConstant, MapElementProcessor, Var, VarDict, convert_to_map,
-    params_to_maps,
+    FuncDict, MapElement, MapElementConstant, MapElementProcessor, OutputValidator, Var, VarDict,
+    convert_to_map, params_to_maps,
 )
-from mapping_field.new_code.promises import IsCondition
+from mapping_field.new_code.promises import IsCondition, IsIntegral
+from mapping_field.new_code.ranged_condition import RangeCondition
 
 
 class ConditionalFunction(MapElement):
@@ -108,23 +110,7 @@ class ConditionalFunction(MapElement):
         return ConditionalFunction.always(other)._op(self, operator.truediv)
 
     # </editor-fold>
-#
-#     # <editor-fold desc="Comparisons">
-#
-#     def __le__(self, n: int) -> Condition:
-#         return ConditionUnion([condition & (func <= n) for condition, func in self.regions]).simplify()
-#
-#     def __lt__(self, n: int) -> Condition:
-#         return ConditionUnion([condition & (func <  n) for condition, func in self.regions]).simplify()
-#
-#     def __ge__(self, n: int) -> Condition:
-#         return ConditionUnion([condition & (func >= n) for condition, func in self.regions]).simplify()
-#
-#     def __gt__(self, n: int) -> Condition:
-#         return ConditionUnion([condition & (func >  n) for condition, func in self.regions]).simplify()
-#
-#     # </editor-fold>
-#
+
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
         if len(var_dict) == 0 and len(func_dict) == 0:
             return self
@@ -207,6 +193,34 @@ class ConditionalFunction(MapElement):
             return regions[0][1]
 
         return ConditionalFunction([tuple(region) for region in regions]) if is_simpler else None
+
+def promise_validate_conditional_function(validator: OutputValidator, elem: MapElement) -> bool:
+    if not isinstance(elem, ConditionalFunction):
+        return False
+    for condition, function in elem.regions:
+        if not function.has_promise(validator):
+            return False
+    return True
+# TODO: Make it work for any validator in the future
+IsIntegral.register_validator(lambda elem: promise_validate_conditional_function(IsIntegral, elem))
+# TODO: Don't think of ConditionalFunction as a condition for now
+# IsCondition.register_validator(lambda elem: promise_validate_conditional_function(IsCondition, elem))
+
+def mult_condition_by_element(var_dict: VarDict) -> Optional[MapElement]:
+    a, b = [var_dict.get(v,v) for v in var_dict]
+    a_is_cond = a.has_promise(IsCondition)
+    b_is_cond = b.has_promise(IsCondition)
+    if a_is_cond == b_is_cond:
+        return None
+
+    if b_is_cond:
+        a, b = b, a
+    if isinstance(a, (Var, MapElementConstant)):
+        return None
+    return ConditionalFunction([(a, b), (~a, MapElementConstant.zero)])
+
+Mult.register_simplifier(mult_condition_by_element)
+
 #
 # _T = TypeVar('_T', bound=Union[Condition, MapElement])
 #
@@ -260,11 +274,15 @@ class ConditionalFunction(MapElement):
 # # TODO: another refactoring nightmare
 # original_assignment_simplify = GeneralAssignment.simplify
 #
-# def new_assignment_simplify(self: GeneralAssignment) -> Condition:
-#     if not isinstance(self.elem, ConditionalFunction):
-#         return original_assignment_simplify(self)
-#     return ConditionUnion([condition & (func.where() == self.value) for condition, func in self.elem.regions]).simplify()
-# GeneralAssignment.simplify = new_assignment_simplify
+def new_assignment_simplify(ranged_cond:MapElement, var_dict:VarDict) -> Optional[MapElement]:
+    assert isinstance(ranged_cond, RangeCondition)
+    cond_function = ranged_cond.function
+    if not isinstance(cond_function, ConditionalFunction):
+        return None
+
+    f_range = ranged_cond.range
+    return UnionCondition([condition & RangeCondition(func, f_range) for condition, func in cond_function.regions])
+RangeCondition.register_class_simplifier(new_assignment_simplify)
 #
 def ReLU(map_elem: MapElement):
     zero = MapElementConstant.zero

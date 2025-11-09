@@ -11,7 +11,6 @@ def validate_constant_condition(elem: MapElement) -> bool:
 
 IsCondition.register_validator(validate_constant_condition)
 
-
 IsIntegral = OutputValidator("Integral")
 
 def validate_constant_integral(elem: MapElement) -> bool:

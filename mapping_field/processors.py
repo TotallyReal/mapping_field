@@ -1,5 +1,3 @@
-from colorama import init, Fore, Style
-from typing import TypeVar, Generic, Callable, Optional, List, Tuple, Type, Dict
 from colorama import init, Fore, Style, Back
 from typing import TypeVar, Generic, Callable, Optional, List, Type, Dict
 

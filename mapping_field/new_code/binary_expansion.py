@@ -1,19 +1,21 @@
-from typing import List, Optional, Tuple, Union, Dict
+from typing import Dict, List, Optional, Tuple, Union
 
 from mapping_field.log_utils.tree_loggers import TreeLogger, red
 from mapping_field.new_code.arithmetics import Add, BinaryCombination, Sub, as_neg
-from mapping_field.new_code.conditions import FalseCondition, TrueCondition
+from mapping_field.new_code.conditions import (
+    FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
+)
 from mapping_field.new_code.linear import Linear
 from mapping_field.new_code.mapping_field import (
-    ExtElement, FuncDict, MapElement, MapElementConstant, VarDict, get_var_values, Var,
+    ExtElement, FuncDict, MapElement, MapElementConstant, Var, VarDict, get_var_values,
 )
-from mapping_field.new_code.promises import BoolVar, IsIntegral
-from mapping_field.new_code.ranged_condition import InRange, IntervalRange, RangeCondition
+from mapping_field.new_code.promises import IsCondition, IsIntegral
+from mapping_field.new_code.ranged_condition import BoolVar, InRange, IntervalRange, RangeCondition
 from mapping_field.serializable import DefaultSerializable
 
 # from mapping_field.new_code.linear import LinearTransformer, Linear
 
-logger = TreeLogger(__name__)
+simplify_logger = TreeLogger(__name__)
 
 
 #
@@ -155,7 +157,7 @@ class BinaryExpansion(MapElement, DefaultSerializable):
 
         """
         # For now, each bool variable can appear at most once
-        self.coefficients = []
+        self.coefficients: List[Union[int, BoolVar]] = []
         for c in coefficients:
             if isinstance(c, MapElementConstant):
                 c = c.evaluate()
@@ -248,7 +250,7 @@ class BinaryExpansion(MapElement, DefaultSerializable):
         if not (isinstance(elem1, BinaryExpansion) and isinstance(elem2, BinaryExpansion)):
             return None
 
-        logger.log(f'Trying to linear combine to Binary Expansion {red(k1)} * {red(elem1)} + {red(k2)} * {red(elem2)}')
+        simplify_logger.log(f'Trying to linear combine to Binary Expansion {red(k1)} * {red(elem1)} + {red(k2)} * {red(elem2)}')
 
         coef1 = elem1.coefficients
         non_zero1 = [i for i, v in enumerate(coef1) if v!=0]
@@ -469,6 +471,9 @@ class BinaryExpansion(MapElement, DefaultSerializable):
 #
     @staticmethod
     def transform_range(range_cond: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+        """
+        Simplify ranges over a binary expansion.
+        """
         assert isinstance(range_cond, RangeCondition)
         bin_exp = range_cond.function
         if not isinstance(bin_exp, BinaryExpansion):
@@ -487,6 +492,8 @@ class BinaryExpansion(MapElement, DefaultSerializable):
         a -= bin_exp._constant
         b -= bin_exp._constant
         coefs = [(0 if cc == 1 else cc) for cc in bin_exp.coefficients]
+        if bin_exp._constant > 0:
+            simplify_logger.log(f'Removed constant {bin_exp._constant}. Now simplifying: {red(f"{a}<={coefs}<={b}")}')
 
         # # remove zeros at the beginning
         # for i, c in enumerate(coefs):
@@ -512,7 +519,7 @@ class BinaryExpansion(MapElement, DefaultSerializable):
                 b -= two_power
                 continue
 
-            if b <= two_power:
+            if b < two_power:
                 condition &= (c << 0)
                 continue
 
@@ -520,45 +527,188 @@ class BinaryExpansion(MapElement, DefaultSerializable):
         else:
             i = -1
 
-        if a <= 0 and bin_exp._bool_max_value[i+1] < b: # TODO: +1 ?
+        if a <= 0 and bin_exp._bool_max_value[i+1] <= b: # TODO: +1 ?
             return condition
         else:
             if condition is TrueCondition and (a, b) == (f_range.low, f_range.high):
                 return None
-            return condition & RangeCondition(BinaryExpansion(coefs[:i+1]), IntervalRange(a, b, True, True))
+            return condition & RangeCondition(BinaryExpansion(coefs[:i+1]), IntervalRange[a,b])
 
-    # def as_range(self, condition: Condition) -> Optional[Range]:
-    #     var_dict = SingleAssignmentCondition.as_assignment_dict(condition)
-    #     if var_dict is None:
-    #         return None
-    #
-    #     if not all([isinstance(value_, int) for value_ in var_dict.values()]):
-    #         return None
-    #
-    #     var_dict = var_dict.copy()
-    #     a = 0
-    #     b = 0
-    #     two_power = 2 ** len(self.coefficients)
-    #     for c in reversed(self.coefficients):
-    #         two_power //= 2
-    #         if isinstance(c, int):
-    #             a += c * two_power
-    #             b += c * two_power
-    #             continue
-    #
-    #         if c in var_dict:
-    #             value = var_dict[c]
-    #             del var_dict[c]
-    #             a += value * two_power
-    #             b += value * two_power
-    #             continue
-    #
-    #         if len(var_dict) > 0:
-    #             # TODO: split to assignment + range?
-    #             return None
-    #         b += two_power
-    #
-    #     return (a,b+1)
+    def _min_max_assignment_in_range(self, low: int, high: int) -> Tuple[Dict[BoolVar, int], Dict[BoolVar, int]]:
+        # TODO: this has similar logic to transform_range method. Avoid it!
+        low -= self._constant
+        high -= self._constant
+        assert 0 <= high and low <= self._bool_max_value[-1]
+
+        low_dict: Dict[BoolVar, int] = dict()
+        high_dict: Dict[BoolVar, int] = dict()
+
+        two_power = 2 ** len(self.coefficients)
+        for i in range(len(self.coefficients) - 1, -1, -1):
+            c = self.coefficients[i]
+            two_power //= 2
+            if isinstance(c, int):
+                continue
+
+            # BoolVar
+            if self._bool_max_value[i] < low:
+                low_dict[c] = 1
+                low -= two_power
+            else:
+                low_dict[c] = 0
+
+            if two_power <= high:
+                high_dict[c] = 1
+                high -= two_power
+            else:
+                high_dict[c] = 0
+
+
+        return low_dict, high_dict
+
+    def _as_binary_range_data(self, condition: MapElement) -> Optional[Dict[Var, Tuple[Dict[Var, int], Dict[Var, int]]]]:
+
+        # TODO: hate this together with me...
+        value = self.evaluate()
+        assert value is None  # if this binary expansion is constant, there is nothing really to do
+
+        assert condition.has_promise(IsCondition)
+        condition = condition.simplify2()
+
+        if condition is TrueCondition:
+            return next(self.promises.output_promises(of_type=InRange)).range
+        if condition is FalseCondition:
+            return IntervalRange.empty()
+        if len(condition.vars) == 0:
+            # Usually if the function doesn't depend on anything, it is a constant, and for conditions it should be
+            # either True\False conditions. But some dummy conditions in test don't have variables as well, so
+            # don't try to process them.
+            return None
+
+        if not (set(condition.vars) <= set(self.vars)):
+            return None
+        vars_order = {v: i for i, v in enumerate(self.vars)}
+        # condition_vars_indices = [vars_order.get(v, -1) for v in condition.vars]
+        # if -1 in condition_vars_indices:
+        #     return None
+        # condition_vars_indices = sorted(list(set(condition_vars_indices)))
+        # if condition_vars_indices != list(range(condition_vars_indices[0], len(vars_order))):
+        #     return None
+
+        # if isinstance(condition, UnionCondition):
+        #     interval = IntervalRange.empty()
+        #     for cond in condition.conditions:
+        #         cond_range = self.as_range(cond)
+        #         if cond_range is None:
+        #             return None
+        #         interval |= cond_range
+        #     return interval
+
+        if isinstance(condition, RangeCondition):
+            condition = IntersectionCondition([condition])
+
+        if not isinstance(condition, IntersectionCondition):
+            return None
+
+        # Only accept RangeConditions(BinaryExpansion) here (which include assignments), on disjoint sets of vars.
+        # Also, to make my life much more simple, assumer that the vars are consecutive.
+        used_vars: Dict[Var, Tuple[Dict[Var, int], Dict[Var, int]]] = {v: (dict(), dict()) for v in self.vars}
+        conditions = condition.conditions
+        for sub_cond in conditions:
+            if not isinstance(sub_cond, RangeCondition):
+                return None
+            if not all(len(used_vars[v][0]) == 0 for v in sub_cond.vars):
+                return None
+            elem = BinaryExpansion.of(sub_cond.function)
+            if elem is None:
+                return None
+
+            elem_vars_indices = [vars_order[v] for v in sub_cond.vars]
+            sorted_elem_vars_indices = sorted(elem_vars_indices)
+            if elem_vars_indices != list(range(sorted_elem_vars_indices[0], sorted_elem_vars_indices[-1] + 1)):
+                return None
+
+            other_range = next(elem.promises.output_promises(of_type=InRange)).range.intersection(sub_cond.range)
+            if other_range is None:
+                return None
+            other_range = other_range.as_integral()
+            if other_range is None:
+                return None
+            cur_low_dict, cur_high_dict = elem._min_max_assignment_in_range(other_range.low, other_range.high)
+            # bin_exp = BinaryExpansion(sub_cond.vars)
+            # if not (bin_exp(cur_low_dict).evaluate() <= bin_exp(point).evaluate() <= bin_exp(
+            #         cur_high_dict).evaluate()):
+            #     return None
+
+            for v in reversed(elem.vars):
+                if cur_low_dict[v] == cur_high_dict[v]:
+                    used_vars[v] = ({v: cur_low_dict[v]}, {v: cur_low_dict[v]})
+                    del cur_low_dict[v]
+                    del cur_high_dict[v]
+                else:
+                    break
+
+            full = True
+            for v in elem.vars:
+                if v not in cur_low_dict:
+                    break
+                if full and cur_low_dict[v] == 0 and cur_high_dict[v] == 1:
+                    used_vars[v] = ({v: 0}, {v: 1})
+                    del cur_low_dict[v]
+                    del cur_high_dict[v]
+                else:
+                    full = False
+                    used_vars[v] = (cur_low_dict, cur_high_dict)
+
+        for v, value in used_vars.items():
+            if len(value[0]) == 0:
+                used_vars[v] = ({v: 0}, {v: 1})
+
+        return used_vars
+
+
+    def as_binary_range_containing(self, condition: MapElement, low: int, high: int) -> Optional[Tuple[int, int]]:
+        """
+        Tries to view the condition as a ranged condition on this BinaryExpansion (not necessarily interval range).
+        If possible look for the interval containing the point, and return its upper or lower bound depending on
+        the 'upper_bound' argument.
+        If could not do any of the steps above, return None.
+        """
+        used_vars = self._as_binary_range_data(condition)
+        if used_vars is None:
+            return None
+
+        low_point, high_point = self._min_max_assignment_in_range(low-1, high+1)
+        var_order = {v:i for i, v in enumerate(self.vars)}
+
+        check_low = True
+        check_high = True
+        # TODO: possibly repeat some validations here. Unfortunately, the dict validations are unhashable to be put in a set.
+        for cur_low_dict, cur_high_dict in used_vars.values():
+            var_keys = sorted(cur_low_dict.keys(), key = lambda v: var_order[v])
+            bin_exp = BinaryExpansion(var_keys)
+            lower_bound = bin_exp(cur_low_dict).evaluate()
+            upper_bound = bin_exp(cur_high_dict).evaluate()
+            if check_low and  not (lower_bound <= bin_exp(low_point).evaluate() <= upper_bound):
+                check_low = False
+            if check_high and  not (lower_bound <= bin_exp(high_point).evaluate() <= upper_bound):
+                check_high = False
+            if not (check_low or check_high):
+                return None
+
+        for v in self.vars:
+            cur_low_dict, cur_high_dict = used_vars[v]
+            if len(cur_low_dict) == 1 and cur_low_dict[v] < cur_high_dict[v]:
+                high_point[v] = 1
+                low_point[v] = 0
+                continue
+            high_point.update(cur_high_dict)
+            low_point.update(cur_low_dict)
+            break
+
+        return self(low_point).evaluate() if check_low else low, self(high_point).evaluate() if check_high else high
+
+
 #
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
         elem, constant = self.split_constant()
@@ -570,6 +720,29 @@ class BinaryExpansion(MapElement, DefaultSerializable):
         return Linear(1, elem, constant.evaluate())
 
 RangeCondition.register_class_simplifier(BinaryExpansion.transform_range)
+
+def _union_with_range_over_binary_expansion(elem: MapElement, var_dict: VarDict) -> Optional['MapElement']:
+    assert isinstance(elem, UnionCondition)
+    if len(elem.conditions) != 2:
+        return None
+
+    cond1, cond2 = elem.conditions
+    if isinstance(cond1, RangeCondition) and isinstance(cond1.function, BinaryExpansion):
+        simplify_logger.log(f'1st condition is ranged binary expansion: {red(cond1)}')
+        c_range = cond1.range.as_integral()
+        interval = cond1.function.as_binary_range_containing(cond2, c_range.low, c_range.high)
+        if interval is not None:
+            return RangeCondition(cond1.function, IntervalRange[*interval])
+    if isinstance(cond2, RangeCondition) and isinstance(cond2.function, BinaryExpansion):
+        simplify_logger.log(f'2nd condition is ranged binary expansion: {red(cond2)}')
+        c_range = cond2.range.as_integral()
+        interval = cond2.function.as_binary_range_containing(cond1, c_range.low, c_range.high)
+        if interval is not None:
+            return RangeCondition(cond2.function, IntervalRange[*interval])
+
+    return None
+
+UnionCondition.register_class_simplifier(_union_with_range_over_binary_expansion)
 
 # TODO: there are now two simplifiers to combination to expansion
 #       After the big refactorzation, delete one of them.
@@ -597,7 +770,7 @@ def binary_signed_addition_simplifier(var_dict: VarDict, sign: int) -> Optional[
     add_vars = get_var_values((Add if sign == 1 else Sub).vars, var_dict)
     if add_vars is None:
         return None
-    logger.log(f'Trying to combine (Binary Expansion) {red(add_vars[0])} {"+" if sign>0 else "-"} {red(add_vars[1])}')
+    simplify_logger.log(f'Trying to combine (Binary Expansion) {red(add_vars[0])} {"+" if sign > 0 else "-"} {red(add_vars[1])}')
 
     linear_var1 = Linear.of(add_vars[0])
     linear_var2 = sign*Linear.of(add_vars[1])

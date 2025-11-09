@@ -1,25 +1,54 @@
-# TODO: do I need the following (old) test, or is it just enough to add a ranged promise to BinaryExpansion?
-# def test_extend_range_to_full():
-#     vv = [BoolVar(f'x_{i}') for i in range(4)]
-#     x = BinaryExpansion(vv)
-#
-#     cond1 = (x < 16)
-#     assert cond1 == TrueCondition
-#
-#     def from_mid(k: int):
-#         cond1 = (x < k)
-#         cond2 = (k <= x)
-#         cond3 = RangeCondition(x, (k,16))
-#         assert cond1 | cond2 == TrueCondition
-#         assert cond2 | cond1 == TrueCondition
-#         assert cond1 | cond3 == TrueCondition
-#         assert cond3 | cond1 == TrueCondition
-#
-#     from_mid(15)
-#     from_mid(9)
-#     from_mid(8)
-#     from_mid(1)
-#     from_mid(0)
+from mapping_field.new_code.binary_expansion import BinaryExpansion
+from mapping_field.new_code.conditions import TrueCondition
+from mapping_field.new_code.ranged_condition import BoolVar
+
+
+def test_simplify_range():
+    vv = [BoolVar(f'x_{i}') for i in range(4)] # a number in [0,15]
+    x = BinaryExpansion(vv)
+    x3 = BinaryExpansion(vv[:3])
+
+    cond1 = (x <= 7).simplify2()
+    cond2 = (vv[3] << 0).simplify2()
+    assert cond1 == cond2
+
+    cond1 = (x <= 6).simplify2()
+    cond2 = ((vv[3] << 0) & (x3 <= 6)).simplify2()
+    assert cond1 == cond2
+
+    cond1 = (x >= 8).simplify2()
+    cond2 = (vv[3] << 1).simplify2()
+    assert cond1 == cond2
+
+    cond1 = (x >= 9).simplify2()
+    cond2 = ((vv[3] << 1) & (1 <= x3 )).simplify2()
+    assert cond1 == cond2
+
+    # TODO: The following doesn't work. Think if I should and then how to implement it.
+    # cond1 = (x <= 8).simplify2()
+    # cond2 = ((vv[3] << 0) | (x << 8)).simplify2()
+    # assert cond1 == cond2
+
+    # cond1 = (x >= 7).simplify2()
+    # cond2 = ((vv[3] << 1) | (x << 7)).simplify2()
+    # assert cond1 == cond2
+
+
+def test_extend_range_to_full():
+    # Ranged conditions on binary expansion get simplified to their boolean variables.
+    # Make sure that they can recombined back together
+    vv = [BoolVar(f'x_{i}') for i in range(3)]
+    x = BinaryExpansion(vv)
+
+    cond1 = (x <  8).simplify2()
+    cond2 = (x >= 0).simplify2()
+    assert cond1 is TrueCondition
+    assert cond2 is TrueCondition
+
+    for k in range(0,8):
+        cond1 = (x < k).simplify2()
+        cond2 = (k <= x).simplify2()
+        assert cond1 | cond2 is TrueCondition, f'Could not combine Bin<{k} | {k}<=Bin'
 
 #
 # def test_extend_range_partially():

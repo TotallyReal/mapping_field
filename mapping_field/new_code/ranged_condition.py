@@ -453,3 +453,4 @@ class BoolVar(Var):
         super().__init__(name)
         self.promises.add_promise(IsIntegral)
         self.promises.add_promise(InRange(IntervalRange[0, 1]))
+        self.promises.add_promise(IsCondition)

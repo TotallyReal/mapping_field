@@ -141,6 +141,8 @@ class OutputPromises:
     def __init__(self,
                  promises: Optional[Set[OutputValidator]] = None,
                  invalid_promises: Optional[Set[OutputValidator]] = None):
+        # TODO: Since these are set, iterating over their elements below is done in a random order.
+        #       Should I change it to a list?
         self._promises: Set[OutputValidator] = promises.copy() if promises is not None else set()
         self._invalid_promises: Set[OutputValidator] = invalid_promises.copy() if promises is not None else set()
 
@@ -156,7 +158,7 @@ class OutputPromises:
     def remove_promises(self, promises: List[OutputValidator]):
         self._promises = [promise for promise in self._promises if promise not in promises]
 
-    def output_promises(self, of_type: Type[OutputValidator] = OutputValidator) -> Iterator[OutputValidator]:
+    def output_promises(self, of_type: Type[OutputValidatorType] = OutputValidator) -> Iterator[OutputValidatorType]:
         for promise in self._promises:
             if isinstance(promise, of_type):
                 yield promise
@@ -252,7 +254,7 @@ class MapElement:
         --------------- Override ---------------
         Represents the function, given the string representations of its variables
         """
-        if len(vars_to_str) == 0:
+        if len(self.vars) == 0:
             return self.name
         vars_str = ','.join([vars_to_str[v] for v in self.vars])
         return f'{self.name}({vars_str})'

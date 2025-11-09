@@ -1,13 +1,12 @@
 import math
 
-from abc import abstractmethod
-from typing import List, Optional, Tuple, Dict
+from typing import Dict, Optional
 
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.new_code.arithmetics import BinaryCombination, _as_combination
 from mapping_field.new_code.conditions import FalseCondition, TrueCondition
 from mapping_field.new_code.mapping_field import (
-    ExtElement, FuncDict, MapElement, MapElementConstant, VarDict, params_to_maps, Var,
+    ExtElement, FuncDict, MapElement, MapElementConstant, Var, VarDict, params_to_maps,
 )
 from mapping_field.new_code.ranged_condition import RangeCondition
 from mapping_field.serializable import DefaultSerializable

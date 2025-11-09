@@ -1,9 +1,9 @@
-from typing import Callable, List, Optional, Tuple, Dict
+from typing import Callable, Dict, List, Optional, Tuple
 
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.new_code.mapping_field import (
-    CompositionFunction, ExtElement, MapElement, MapElementConstant, MapElementFromFunction,
-    VarDict, convert_to_map, Var,
+    CompositionFunction, ExtElement, MapElement, MapElementConstant, MapElementFromFunction, Var,
+    VarDict, convert_to_map,
 )
 from mapping_field.serializable import DefaultSerializable
 

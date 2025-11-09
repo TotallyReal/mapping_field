@@ -8,7 +8,7 @@ from mapping_field.new_code.conditions import (
     FalseCondition, IntersectionCondition, NotCondition, TrueCondition, UnionCondition,
     _ListCondition,
 )
-from mapping_field.new_code.promises import BoolVar
+from mapping_field.new_code.ranged_condition import BoolVar
 from mapping_field.new_code.tests.utils import DummyCondition
 
 #       ╭─────────────────────────────────────────────────╮

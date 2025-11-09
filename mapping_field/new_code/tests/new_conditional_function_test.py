@@ -5,10 +5,11 @@ import pytest
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.new_code.binary_expansion import BinaryExpansion
 from mapping_field.new_code.conditional_function import ConditionalFunction, ReLU
+from mapping_field.new_code.conditions import FalseCondition, TrueCondition
 from mapping_field.new_code.linear import Linear
 from mapping_field.new_code.mapping_field import MapElementConstant, Var
-from mapping_field.new_code.promises import BoolVar
-from mapping_field.new_code.ranged_condition import RangeCondition, IntervalRange
+from mapping_field.new_code.promises import IsIntegral
+from mapping_field.new_code.ranged_condition import BoolVar, RangeCondition
 from mapping_field.new_code.tests.utils import DummyCondition, DummyMap
 
 logger = logging.getLogger(__name__)
@@ -230,6 +231,7 @@ def test_linear_ranged_condition_subtraction():
 
     v1 = ReLU(xx-7)
     v2 = ReLU(xx-8)
+    # Full Processing ( 0 < Lin[Bin[x_0, x_1, x_2, x_3] - 8] < inf , {} ) , [RangeCondition]
     v = v1 - v2
     v = v.simplify2()
 
@@ -244,53 +246,80 @@ def test_linear_ranged_condition_subtraction():
     assert u == result
 
 
-# def test_general_assignment():
-#     x = Linear.of(Var('x'))
-#
-#     func = ConditionalFunction([
-#         (x<0, -x),
-#         (x>=0, x + 7)
-#     ])
-#
-#     condition1 = (func.where() == 10)
-#     condition2 = (x.where() == -10) | (x.where() == 3)
-#     assert condition1 == condition2
-#
-#
-# def test_comparisons():
-#     x = Linear.of(Var('x'))
-#
-#     func = ConditionalFunction([
-#         (x<0, -x),
-#         (x>=0, x + 7)
-#     ])
-#
-#     condition1 = (func <= 10)
-#     condition2 = RangeCondition(x, (-10,4))
-#     assert condition1 == condition2
-#
-#     condition1 = (func > 10)
-#     condition2 = (x<-10) | (4<=x)
-#     assert condition1 == condition2
-#
-#     condition1 = (func >= 10)
-#     condition2 = (x<-9) | (3<=x)
-#     assert condition1 == condition2
-#
-#     condition1 = (func < 10)
-#     condition2 = RangeCondition(x, (-9,3))
-#     assert condition1 == condition2
-#
-#
-# def test_mul_generation():
-#     x = Linear.of(Var('x'))
-#
-#     func1 = (3<=x) * x
-#
-#     func2 = ConditionalFunction([
-#         (3<=x, x),
-#         (x<3, 0)
-#     ])
-#
-#     assert func1 == func2
-#
+def test_ranges_over_conditional_function():
+    x = Linear.of(Var('x'))
+
+    # absolute value of x:
+    func = ConditionalFunction([
+        (x<0, -x),
+        (x>=0, x)
+    ])
+
+    condition1 = (func < -10).simplify2()
+    assert condition1 is FalseCondition
+
+    condition1 = (func > -10).simplify2()
+    assert condition1 is TrueCondition
+
+    condition1 = (func < 10).simplify2()
+    condition2 = (-10 < x) & (x < 10)
+    assert condition1 == condition2
+
+    condition1 = (func > 10).simplify2()
+    condition2 = (x < -10) | (10 < x)
+    assert condition1 == condition2
+
+    condition1 = (func << 10).simplify2()
+    condition2 = (x << -10) | (x << 10)
+    assert condition1 == condition2
+
+def test_output_promise():
+    dummy_cond = [DummyCondition(values={i}) for i in range(2)]
+    dummy_func = [DummyMap(i) for i in range(2)]
+
+    cond_func = ConditionalFunction([
+        (dummy_cond[i], dummy_func[i]) for i in range(2)
+    ])
+    assert not cond_func.has_promise(IsIntegral)
+
+    # TODO: Promises right now can update the function. Think to make it frozen and instead create a new function,
+    #       since it might already "know" that it doesn't have an output promise, and composition with it might fail
+    #       as well, and changing it after creation might be invisible to the process later.
+
+    # One region with the output promise is not enough
+    dummy_cond = [DummyCondition(values={i}) for i in range(2)]
+    dummy_func = [DummyMap(i) for i in range(2)]
+
+    dummy_func[0].promises.add_promise(IsIntegral)
+
+    cond_func = ConditionalFunction([
+        (dummy_cond[i], dummy_func[i]) for i in range(2)
+    ])
+    assert not cond_func.has_promise(IsIntegral)
+
+    # All region have the output promise
+    dummy_cond = [DummyCondition(values={i}) for i in range(2)]
+    dummy_func = [DummyMap(i) for i in range(2)]
+
+    dummy_func[0].promises.add_promise(IsIntegral)
+    dummy_func[1].promises.add_promise(IsIntegral)
+
+    cond_func = ConditionalFunction([
+        (dummy_cond[i], dummy_func[i]) for i in range(2)
+    ])
+    assert cond_func.has_promise(IsIntegral)
+
+
+
+def test_mul_generation():
+    x = Linear.of(Var('x'))
+
+    func1 = (3<=x) * x
+
+    func2 = ConditionalFunction([
+        (3<=x, x),
+        (x<3, 0)
+    ])
+
+    assert func1 == func2
+

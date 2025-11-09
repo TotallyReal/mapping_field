@@ -1,12 +1,12 @@
 import operator
 
-from typing import List, Optional, Tuple, Type, cast, Dict
+from typing import Dict, List, Optional, Tuple, Type, cast
 
 from mapping_field.field import ExtElement
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red, yellow
 from mapping_field.new_code.arithmetics import _ArithmeticMapFromFunction
 from mapping_field.new_code.mapping_field import (
-    CompositionFunction, MapElement, MapElementProcessor, VarDict, always_validate_promises, Var,
+    CompositionFunction, MapElement, MapElementProcessor, Var, VarDict, always_validate_promises,
 )
 from mapping_field.new_code.promises import IsCondition
 from mapping_field.serializable import DefaultSerializable
