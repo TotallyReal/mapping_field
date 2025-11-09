@@ -303,6 +303,12 @@ class RangeCondition(Condition, MapElementProcessor):
             return func({self.function: value}, simplify=simplify)
         return func
 
+    def as_assignment(self) -> Optional[Tuple[Var, int]]:
+        value = self.range.is_point
+        if value is not None and value == int(value) and isinstance(self.function, Var):
+            return self.function, int(value)
+        return None
+
     # <editor-fold desc=" ======= Binary arithmetics ======= ">
 
     def invert(self) -> Optional[MapElement]:

@@ -10,7 +10,7 @@ from mapping_field.new_code.mapping_field import (
     convert_to_map, params_to_maps,
 )
 from mapping_field.new_code.promises import IsCondition, IsIntegral
-from mapping_field.new_code.ranged_condition import RangeCondition
+from mapping_field.new_code.ranged_condition import BoolVar, RangeCondition
 
 
 class ConditionalFunction(MapElement):
@@ -220,6 +220,44 @@ class ConditionalFunction(MapElement):
         return UnionCondition([condition & RangeCondition(func, f_range) for condition, func in cond_function.regions])
 
     @staticmethod
+    def _bool_var_simplifier(map_elem: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+        assert isinstance(map_elem, ConditionalFunction)
+
+        if len(map_elem.regions) != 2:
+            return None
+
+        cond1, func1 = map_elem.regions[0]
+        cond2, func2 = map_elem.regions[1]
+        value1 = func1.evaluate()
+        value2 = func2.evaluate()
+        if value1 is None or value2 is None:
+            return None
+
+        if not (isinstance(cond1, RangeCondition) and isinstance(cond2, RangeCondition)):
+            return None
+        assign1 = cond1.as_assignment()
+        assign2 = cond2.as_assignment()
+        if assign1 is None or assign2 is None:
+            return None
+
+        v1 = assign1[0]
+        v2 = assign2[0]
+        if not (isinstance(v1, BoolVar) and v1 is v2):
+            return None
+
+        assigned_value1 = assign1[1]
+        assigned_value2 = assign2[1]
+
+        if (assigned_value1, assigned_value2) == (0, 1):
+            return (value1 + (value2 - value1) * v1).simplify2()
+
+        if (assigned_value1, assigned_value2) == (1, 0):
+            return (value2 + (value1 - value2) * v1).simplify2()
+
+        raise Exception(
+            f'The assigned values should be 0 and 1, but instead got {assigned_value1} and {assigned_value2}')
+
+    @staticmethod
     def promise_validate_conditional_function(validator: OutputValidator, elem: MapElement) -> bool:
         if not isinstance(elem, ConditionalFunction):
             return False
@@ -232,6 +270,7 @@ class ConditionalFunction(MapElement):
 
 Mult.register_simplifier(ConditionalFunction.mult_condition_by_element)
 RangeCondition.register_class_simplifier(ConditionalFunction.new_assignment_simplify)
+ConditionalFunction.register_class_simplifier(ConditionalFunction._bool_var_simplifier)
 
 # TODO: Make it work for any validator in the future
 IsIntegral.register_validator(lambda elem: ConditionalFunction.promise_validate_conditional_function(IsIntegral, elem))
@@ -239,44 +278,8 @@ IsIntegral.register_validator(lambda elem: ConditionalFunction.promise_validate_
 # IsCondition.register_validator(lambda elem: promise_validate_conditional_function(IsCondition, elem))
 
 
-#
-# _T = TypeVar('_T', bound=Union[Condition, MapElement])
-#
-#
-#
-# def bool_var_simplifier(map_elem: MapElement, var_dict: VarDict) -> Optional[MapElement]:
-#     assert isinstance(map_elem, ConditionalFunction)
-#
-#     if len(map_elem.regions) != 2:
-#         return None
-#
-#     cond1, func1 = map_elem.regions[0]
-#     cond2, func2 = map_elem.regions[1]
-#     value1 = func1.evaluate()
-#     value2 = func2.evaluate()
-#     if value1 is None or value2 is None:
-#         return None
-#
-#     if not (isinstance(cond1, SingleAssignmentCondition) and isinstance(cond2, SingleAssignmentCondition)):
-#         return None
-#
-#     v1 = cond1.var
-#     v2 = cond2.var
-#     if not (isinstance(v1, BoolVar) and v1 is v2):
-#         return None
-#
-#     assigned_value1 = cond1.value
-#     assigned_value2 = cond2.value
-#
-#     if (assigned_value1, assigned_value2) == (0, 1):
-#         return (value1 + (value2 - value1) * v1).simplify2()
-#
-#     if (assigned_value1, assigned_value2) == (1, 0):
-#         return (value2 + (value1 - value2) * v1).simplify2()
-#
-#     raise Exception(f'The assigned values should be 0 and 1, but instead got {assigned_value1} and {assigned_value2}')
-#
-# ConditionalFunction.register_class_simplifier(bool_var_simplifier)
+
+
 #
 
 def ReLU(map_elem: MapElement):
