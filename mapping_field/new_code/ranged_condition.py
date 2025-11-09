@@ -272,17 +272,19 @@ class InRange(OutputValidator[IntervalRange]):
             f_range = None
         return f_range, promises
 
-    def _validate_constant_in_range(self, elem: MapElement) -> bool:
+    def _validate_constant_in_range(self, elem: MapElement) -> Optional[bool]:
         value = elem.evaluate()
-        return False if value is None else self.range.contains(value)
+        if value is None:
+            return None
+        return self.range.contains(value)
 
-    def _validate_using_other_ranges(self, elem: MapElement) -> bool:
+    def _validate_using_other_ranges(self, elem: MapElement) -> Optional[bool]:
         # TODO : add test
         if self.range.is_all:
             return True
         f_range, _ = InRange.consolidate_ranges(elem.promises)
         if f_range is None:
-            return False
+            return None
         return self.range.contains(f_range)
 
     @staticmethod
@@ -318,12 +320,14 @@ def _arithmetic_op_integral_simplifier(elem: MapElement, var_dict: VarDict) -> O
         return None
 
     elem1, elem2 = elem.entries
-    if elem1.has_promise(IsIntegral) and elem2.has_promise(IsIntegral):
-        pass
+    if elem1.has_promise(IsIntegral) and elem2.has_promise(IsIntegral) and elem.promises.has_promise(IsIntegral) is None:
+        elem.promises.add_promise(IsIntegral)
+        return elem
     return None
 
 CompositionFunction.register_class_simplifier(lambda elem, var_dict: InRange._arithmetic_op_range_simplifier(elem, var_dict))
 CompositionFunction.register_class_simplifier(lambda elem, var_dict: InRange._arithmetic_op_range_simplifier(elem, var_dict))
+CompositionFunction.register_class_simplifier(_arithmetic_op_integral_simplifier)
 
 # <editor-fold desc=" --------------- RangeCondition ---------------">
 

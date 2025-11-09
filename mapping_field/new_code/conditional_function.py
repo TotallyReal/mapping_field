@@ -200,7 +200,9 @@ class ConditionalFunction(MapElement):
         a, b = [var_dict.get(v,v) for v in var_dict]
         a_is_cond = a.has_promise(IsCondition)
         b_is_cond = b.has_promise(IsCondition)
-        if a_is_cond == b_is_cond:
+        if b_is_cond:
+            a, b = b , a
+        if not a_is_cond or b_is_cond:
             return None
 
         if b_is_cond:
@@ -258,12 +260,16 @@ class ConditionalFunction(MapElement):
             f'The assigned values should be 0 and 1, but instead got {assigned_value1} and {assigned_value2}')
 
     @staticmethod
-    def promise_validate_conditional_function(validator: OutputValidator, elem: MapElement) -> bool:
+    def promise_validate_conditional_function(validator: OutputValidator, elem: MapElement) -> Optional[bool]:
+        # TODO: This is not precise, because a function's promise can depend on where it is defined,
+        #       but let's keep it simple for now...
         if not isinstance(elem, ConditionalFunction):
+            return None
+        validations = [function.has_promise(validator) for _, function in elem.regions]
+        if any([validation is False for validation in validations]):
             return False
-        for condition, function in elem.regions:
-            if not function.has_promise(validator):
-                return False
+        if any([validation is None for validation in validations]):
+            return None
         return True
 
     # </editor-fold>

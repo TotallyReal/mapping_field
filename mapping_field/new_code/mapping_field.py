@@ -103,9 +103,13 @@ class OutputValidator(MultiValidator['MapElement', Context], Generic[Context]):
         super().__init__(name = name, context = context)
         self.register_validator(self._check_promises_on_element)
 
-    def _check_promises_on_element(self, elem: 'MapElement') -> bool:
+    def _check_promises_on_element(self, elem: 'MapElement') -> Optional[bool]:
         # TODO: Find a better way
-        return self in elem.promises._promises
+        if self in elem.promises._promises:
+            return True
+        if self in elem.promises._invalid_promises:
+            return False
+        return None
 
 
 OutputValidatorType = TypeVar('OutputValidatorType', bound=OutputValidator)
@@ -229,7 +233,7 @@ class MapElement:
 
         self.vars = variables
 
-    def has_promise(self, promise: OutputValidator) -> bool:
+    def has_promise(self, promise: OutputValidator) -> Optional[bool]:
         value = self.promises.has_promise(promise)
         if value is not None:
             return value
@@ -237,7 +241,7 @@ class MapElement:
         value = promise(self)
         if value:
             self.promises.add_promise(promise)
-        else:
+        if value is False:  # can be None!
             self.promises.add_invalid_promise(promise)
         return value
 

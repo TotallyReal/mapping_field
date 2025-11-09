@@ -1,3 +1,5 @@
+from typing import Optional
+
 from mapping_field.new_code.mapping_field import (
     MapElement, OutputValidator, Var, always_validate_promises,
 )
@@ -5,17 +7,21 @@ from mapping_field.serializable import DefaultSerializable
 
 IsCondition = OutputValidator("Condition")
 
-def validate_constant_condition(elem: MapElement) -> bool:
+def validate_constant_condition(elem: MapElement) -> Optional[bool]:
     value = elem.evaluate()
+    if value is None:
+        return None
     return value in (0,1)
 
 IsCondition.register_validator(validate_constant_condition)
 
 IsIntegral = OutputValidator("Integral")
 
-def validate_constant_integral(elem: MapElement) -> bool:
+def validate_constant_integral(elem: MapElement) -> Optional[bool]:
     value = elem.evaluate()
-    return (value is not None) and (int(value) == value)
+    if value is None:
+        return None
+    return int(value) == value
 
 IsIntegral.register_validator(validate_constant_integral)
 
