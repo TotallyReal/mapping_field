@@ -15,9 +15,7 @@ from mapping_field.new_code.tests.utils import DummyCondition, DummyMap
 logger = logging.getLogger(__name__)
 
 
-@pytest.fixture(autouse=True)
-def reset_logs():
-    simplify_tree.reset()
+
 
 def test_simple_construction():
     dummy = DummyMap(0)

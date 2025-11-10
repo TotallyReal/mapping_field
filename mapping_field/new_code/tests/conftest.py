@@ -14,6 +14,10 @@ def reset_static_variables():
     Var._instances = {}
     NamedFunc._instances = {}
 
+@pytest.fixture(autouse=True)
+def reset_logs():
+    simplify_tree.reset()
+
 FULL_FORMAT = '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
 SIMPLE_FORMAT = '%(message)s'
 
@@ -71,7 +75,7 @@ def save_logs_to_file(item):
     test_name = item.name
     log_file = log_dir / f"{test_file}__{test_name}.log_context"
 
-    simplify_tree.context.save_element(log_file)
+    simplify_tree.root_context.save_element(log_file)
 
 _DEBUG_STATE = 0
 

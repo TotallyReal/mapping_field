@@ -69,7 +69,9 @@ class LogTree:
         self.max_log_count = -1
         self.tab_styles = []
         self.context = TreeContext()
+        self.root_context = self.context
         self.context.add_information(name)
+        self.name = name
 
     def open_context(self) -> TreeContext:
         parent = self.context
@@ -86,6 +88,15 @@ class LogTree:
 
     def reset(self):
         self.depth = 0
+        self.paused = False
+        self.log_count = 0
+        self.tab_styles = []
+        self.context = TreeContext()
+        self.root_context = self.context
+        self.context.add_information(self.name)
+
+    def set_active(self, active: bool = True):
+        self.paused = not active
 
 simplify_tree = LogTree('Simplify Tree')
 
