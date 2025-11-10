@@ -117,6 +117,8 @@ class LogViewer(App):
         else:
             lines.append(tabs + ' > ' + str(information[self.context_path[path_position]]))
         lines += [tabs + str(single) for single in information[self.context_path[path_position]+1:]]
+        if path_position == len(self.context_path)-1:
+            lines = [''] + lines + ['']
         return lines
 
 # -------- MAIN --------

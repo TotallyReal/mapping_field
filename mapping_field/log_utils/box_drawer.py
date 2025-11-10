@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Optional
 
+# TODO: also check rich.panel.Panel
+
 @dataclass(frozen=True)
 class Box:
     hor: str

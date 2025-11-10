@@ -1,3 +1,6 @@
+import sys
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Union, List, Optional
 
 from colorama import init, Fore, Back, Style
@@ -86,6 +89,24 @@ class LogTree:
 
 simplify_tree = LogTree('Simplify Tree')
 
+@dataclass
+class LogOrigin:
+    module: str
+    filename: str
+    lineno: int
+    func_name: str
+
+    @staticmethod
+    def from_caller(stacklevel: int = 2) -> "LogOrigin":
+        """Create a LogOrigin object from the caller's frame."""
+        frame = sys._getframe(stacklevel)
+        module = frame.f_globals.get("__name__", "<unknown>")
+        filename = Path(frame.f_code.co_filename).name
+        lineno = frame.f_lineno
+        func_name = frame.f_code.co_name
+        return LogOrigin(module, filename, lineno, func_name)
+
+
 class TreeLogger:
 
     @classmethod
@@ -103,6 +124,7 @@ class TreeLogger:
     def log(self, message, action=TreeAction.NEUTRAL, fore: str = '', back: str = ''):
         if self.tree.paused:
             return
+        # log_origin = LogOrigin.from_caller()
         self.tree.log_count += 1
         if self.tree.log_count >= self.tree.max_log_count > 0:
             raise Exception('Too many logs')
