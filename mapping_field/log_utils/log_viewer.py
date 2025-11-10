@@ -6,13 +6,11 @@ from typing import List
 from colorama import Fore, Style
 from textual.app import App, ComposeResult
 from textual.widgets import Static
-from textual.reactive import reactive
 from textual import events
-import sys
 
 from mapping_field.log_utils.tree_loggers import TreeContext
 from mapping_field.serializable import Serializable
-from terminal_launcher import ensure_real_terminal
+from mapping_field.log_utils.terminal_launcher import ensure_real_terminal
 from rich.text import Text
 from rich.console import Console
 from rich.ansi import AnsiDecoder
@@ -49,8 +47,6 @@ def show_lines(log_lines: List[str], line_number: int) -> List[str]:
 
 # -------- APP --------
 class LogViewer(App):
-    line_index = reactive(0)
-
 
     def compose(self) -> ComposeResult:
         yield Static("", id="view")
@@ -59,17 +55,20 @@ class LogViewer(App):
         self.load_latest_log()
         self.update_view()
 
-    def load_latest_log(self):
-        latest_file = get_latest_log_file()
-        if latest_file is None:
-            self.log_lines = ["No log files found."]
-        else:
-            self.tree_context = Serializable.load_element(latest_file)
-            self.current_context = self.tree_context
-            self.context_path = [0]
-            self.log_lines = read_log_file(latest_file)
-            self.line_index = 0
-            self.latest_file = latest_file
+    def update_view(self):
+
+        # build the colored lines (Text)
+        lines_rich = ("\n".join(self.collect_lines(0, self.tree_context, tab_count=0)))
+
+        # build a header Text (bold file name + line count)
+        filename = getattr(self, "latest_file", "No log")
+        header = Text(f"{filename} | Line [{self.line_index + 1}/{len(self.log_lines)}]\n", style="bold")
+
+        # append the ANSI->Rich converted body
+        header.append(lines_rich)
+
+        # update the widget with a single Text object (preserves styles)
+        self.query_one("#view", Static).update(header)
 
     def on_key(self, event: events.Key):
         if event.key == "up":
@@ -93,20 +92,17 @@ class LogViewer(App):
         self.context_path[-1] = max(0, min(len(self.current_context.information)-1, self.context_path[-1]))
         self.update_view()
 
-    def update_view(self):
-
-        # build the colored lines (Text)
-        lines_rich = ("\n".join(self.collect_lines(0, self.tree_context, tab_count=0)))
-
-        # build a header Text (bold file name + line count)
-        filename = getattr(self, "latest_file", "No log")
-        header = Text(f"{filename} | Line [{self.line_index + 1}/{len(self.log_lines)}]\n", style="bold")
-
-        # append the ANSI->Rich converted body
-        header.append(lines_rich)
-
-        # update the widget with a single Text object (preserves styles)
-        self.query_one("#view", Static).update(header)
+    def load_latest_log(self):
+        latest_file = get_latest_log_file()
+        if latest_file is None:
+            self.log_lines = ["No log files found."]
+        else:
+            self.tree_context = Serializable.load_element(latest_file)
+            self.current_context = self.tree_context
+            self.context_path = [0]
+            self.log_lines = read_log_file(latest_file)
+            self.line_index = 0
+            self.latest_file = latest_file
 
     def collect_lines(self, path_position:int, context:TreeContext, tab_count: int):
         information = context.information
