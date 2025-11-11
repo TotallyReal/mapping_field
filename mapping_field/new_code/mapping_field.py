@@ -177,7 +177,7 @@ class OutputPromises:
     # </editor-fold>
 
 
-KeywordValue = TypeVar('KWValue')
+KeywordValue = TypeVar('KeywordValue')
 def extract_keyword(kwargs, key:str, value_type: Type[KeywordValue]) -> KeywordValue:
     if key not in kwargs:
         return None
@@ -266,7 +266,7 @@ class MapElement:
 
     # </editor-fold>
 
-    # <editor-fold desc=" ------------------------ Call and Simplify function ------------------------">
+    # <editor-fold desc=" ------------------------ Call function ------------------------">
 
     def _extract_var_dicts(self, args, kwargs) -> Tuple[VarDict, FuncDict]:
         if len(args) != 0 and len(kwargs) != 0:
@@ -366,6 +366,8 @@ class MapElement:
     def is_zero(self) -> bool:
         return self.evaluate() == 0
 
+    # </editor-fold>
+
     # <editor-fold desc=" ------------------------ Simplify 2 ------------------------">
 
     def simplify2(self) -> 'MapElement':
@@ -432,11 +434,6 @@ class MapElement:
 
     def register_simplifier(self, simplifier: ElemSimplifier):
         MapElement._simplifier.register_elem_processor(self, simplifier)
-
-    # </editor-fold>
-
-    def _entry_list(self, var_dict: VarDict):
-        return [var_dict.get(v, v) for v in self.vars]
 
     # </editor-fold>
 
@@ -674,6 +671,9 @@ class MapElement:
     # </editor-fold>
 
 
+# <editor-fold desc=" ---------------------- Standard and Function Variables ---------------------- ">
+
+
 class Var(MapElement, DefaultSerializable):
     """
     A single variable. Can be thought of as the projection map on a variable, namely (x_1,...,x_i,...,x_n) -> x_i.
@@ -854,6 +854,8 @@ class Func:
         # TODO: why composition
         self.assigned = NamedFunc(self.name, actual_vars)
         return self.assigned
+
+# </editor-fold>
 
 
 # TODO:
