@@ -919,11 +919,12 @@ class CompositionFunction(MapElement, DefaultSerializable):
     # Override when needed
     def _simplify_with_var_values2(self, var_dict: Optional[VarDict] = None) -> Optional['MapElement']:
         simplify_logger.log('Simplifying just the function')
-        function: MapElement = self.function.simplify2()
+        function: MapElement = self.function._simplify2()
         simplify_logger.log('Simplifying just the entries')
         simplified_entries = [entry._simplify2(var_dict) for entry in self.entries]
 
-        is_simpler = (function is not self.function) | any([entry is not None for entry in simplified_entries])
+        is_simpler = (function is not None) | any([entry is not None for entry in simplified_entries])
+        function = function or self.function
         simplified_entries = [simp_entry or entry for simp_entry, entry in zip(simplified_entries, self.entries)]
 
         simplified_entries_dict  = {v : entry
@@ -1013,7 +1014,7 @@ class MapElementFromFunction(MapElement):
             return None
 
         if all(isinstance(entry, MapElementConstant) for entry in entries):
-            result = self.function(*[entry.elem for entry in entries])
+            result = self.function(*[entry.evaluate() for entry in entries])
             return MapElementConstant(result)
 
         return None
