@@ -62,6 +62,9 @@ class LogViewer(App):
 
         # build a header Text (bold file name + line count)
         filename = getattr(self, "latest_file", "No log")
+        from mapping_field.global_config import file_path_to_module
+        if filename != 'No log':
+            filename = file_path_to_module(filename)
         header = Text(f"{filename} | Line [{self.line_index + 1}/{len(self.log_lines)}]\n", style="bold")
 
         # append the ANSI->Rich converted body
