@@ -617,7 +617,7 @@ def two_bool_vars_simplifier(elem: MapElement, var_dict: VarDict) -> Optional[Ma
             if values[0][0] == values[1][1]:
                 # TODO: add this when I know how to compare elements like (x+y = 1, x-y=0)
                 return None
-            v = x if (values[0][0] == values[1][0]) else y
+            v = y if (values[0][0] == values[1][0]) else x
             value = (0 if values[0][0] is TrueCondition else 1)
             result = (v << value)
             result._simplified_version = result
