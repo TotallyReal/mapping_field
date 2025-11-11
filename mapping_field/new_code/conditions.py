@@ -40,6 +40,7 @@ class BinaryCondition(Condition, DefaultSerializable):
         super().__init__(variables=[])
         self.value = value
         self.promises.add_promise(IsCondition)
+        self._simplified = True
 
     def to_string(self, vars_to_str: Dict[Var, str]):
         return repr(self.value)
@@ -359,6 +360,7 @@ class _ListCondition(Condition, DefaultSerializable):
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
         if hasattr(self, '_binary_flag'):
+            simplify_logger.log('Has binary flag - avoid simplifying here.')
             return None
         if self._simplified:
             return None
@@ -377,6 +379,9 @@ class _ListCondition(Condition, DefaultSerializable):
                 is_whole_simpler = True
             condition = simplified_condition or condition
 
+            if condition is cls.zero_condition:
+                return cls.zero_condition
+
             if condition is cls.one_condition:
                 is_whole_simpler = True
                 continue
@@ -387,39 +392,30 @@ class _ListCondition(Condition, DefaultSerializable):
                 conditions.extend(condition.conditions)
                 continue
 
-            while (True):
-                # Check if this new condition intersects in a special way with an existing condition.
-                # Each time this loop repeats itself, the conditions array's size must decrease by 1, so it cannot
-                # continue forever.
-                if condition is cls.zero_condition:
-                    return cls.zero_condition
+            # Check if this new condition intersects in a special way with an existing condition.
+            # Each time this loop repeats itself, the conditions array's size must decrease by 1, so it cannot
+            # continue forever.
+            for existing_condition in final_conditions:
+                simplify_logger.log(
+                    f'Trying to combine {red(condition)} with existing {red(existing_condition)}',
+                )
+                # prod_cond = AndCondition(existing_condition, condition, simplify=False)._simplify2()
+                # prod_cond = cls._op_between(existing_condition, condition)
+                binary_op = cls([existing_condition, condition])
+                binary_op._binary_flag = True
+                prod_cond = binary_op._simplify2()
 
-                for existing_condition in final_conditions:
+                if prod_cond is not None:
                     simplify_logger.log(
-                        f'Trying to combine {red(condition)} with existing {red(existing_condition)}',
+                        f'Combined: {red(condition)} {cls.join_delim} {red(existing_condition)}  =>  {green(prod_cond)}',
                     )
-                    # prod_cond = AndCondition(existing_condition, condition, simplify=False)._simplify2()
-                    # prod_cond = cls._op_between(existing_condition, condition)
-                    binary_op = cls([existing_condition, condition])
-                    binary_op._binary_flag = True
-                    prod_cond = binary_op._simplify2()
-
-                    # if prod_cond is None:
-                    #     prod_cond = cls._op_between(condition, existing_condition)
-
-                    if prod_cond is not None:
-                        simplify_logger.log(
-                            f'Combined: {red(condition)} {cls.join_delim} {red(existing_condition)}  =>  {green(prod_cond)}',
-                        )
-                        is_whole_simpler = True
-                        final_conditions = [cond for cond in final_conditions if (cond is not existing_condition)]
-                        condition = prod_cond
-                        break
-
-                else:
-                    # new condition cannot be intersected in a special way
-                    final_conditions.append(condition)
+                    is_whole_simpler = True
+                    final_conditions = [cond for cond in final_conditions if (cond is not existing_condition)]
+                    conditions.append(prod_cond)
                     break
+            else:
+                # new condition cannot be intersected in a special way
+                final_conditions.append(condition)
 
         if len(final_conditions) == 0:
             return self.__class__.one_condition
