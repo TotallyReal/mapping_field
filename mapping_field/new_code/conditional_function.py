@@ -10,7 +10,7 @@ from mapping_field.new_code.mapping_field import (
     convert_to_map, params_to_maps,
 )
 from mapping_field.new_code.promises import IsCondition, IsIntegral
-from mapping_field.new_code.ranged_condition import BoolVar, RangeCondition
+from mapping_field.new_code.ranged_condition import BoolVar, InRange, RangeCondition
 
 
 class ConditionalFunction(MapElement):
@@ -122,7 +122,7 @@ class ConditionalFunction(MapElement):
 
     # <editor-fold desc=" ------------------------ Simplifiers and Validators ------------------------ ">
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> 'MapElement':
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
         # TODO: combine this simplification with the _ListCondition simplification for a general simplification of
         #       a commutative associative binary function.
 
@@ -154,18 +154,18 @@ class ConditionalFunction(MapElement):
         is_simpler = False
         for condition, func in self.regions:
 
-            # TODO: use var_dict to simplify the conditions
-            simplified_condition = condition._simplify2()
-            if simplified_condition is not None:
+            # TODO: I think they want me to create a RegionFunction for each pair. Then this first section
+            #       is just a simplification of this pair. Then we can put the ConditionalFunction under
+            #       a similar structure to ListCondition (and later on just addition and multiplication)
+            simplified_condition = condition._simplify2(var_dict)
+            simplified_func = func._simplify2(var_dict)
+            if (simplified_condition or simplified_func) is not None:
                 is_simpler = True
             condition = simplified_condition or condition
+            func = simplified_func or func
 
             if condition == FalseCondition:
                 continue
-            simplified_func = func._simplify2(var_dict)
-            if simplified_func is not None:
-                is_simpler = True
-            func = simplified_func or func
 
             if isinstance(condition, MapElementProcessor):
                 # TODO: Use a process_function process like in map elements instead
@@ -284,11 +284,10 @@ IsIntegral.register_validator(lambda elem: ConditionalFunction.promise_validate_
 # IsCondition.register_validator(lambda elem: promise_validate_conditional_function(IsCondition, elem))
 
 
-
-
-#
-
-def ReLU(map_elem: MapElement):
+def ReLU(map_elem: MapElement) -> MapElement:
+    f_range = InRange.get_range_of(map_elem)
+    if f_range is not None and f_range.low >= 0:
+        return map_elem
     zero = MapElementConstant.zero
     if isinstance(map_elem, ConditionalFunction):
         regions = []
