@@ -44,7 +44,18 @@ class TreeContext(DefaultSerializable):
         for context in self.information:
             if isinstance(context, TreeContext):
                 context.parent = self
+        self.information_count = 0
+        self.update_information_count()
         self.title = title
+
+    def update_information_count(self):
+        self.information_count = 0
+        for context in self.information:
+            if isinstance(context, TreeContext):
+                self.information_count += context.information_count
+                context.parent = self
+            else:
+                self.information_count += 1
 
     def add_information(self, information: Information):
         self.information.append(information)
@@ -80,11 +91,18 @@ class LogTree:
         self.depth += 1
         return self.context
 
-    def close_context(self) -> TreeContext:
+    def close_context(self, delete: bool = False) -> TreeContext:
+        assert self.context.parent is not None
         self.context = self.context.parent
-        assert self.context is not None
+        if delete:
+            self.context.information.pop(-1)
+        self.context.update_information_count()
         self.depth -= 1
         return self.context
+
+    def add_information(self, information: Information):
+        self.context.add_information(information)
+        self.log_count += 1
 
     def reset(self):
         self.depth = 0
@@ -128,24 +146,24 @@ class TreeLogger:
         self.logger = logging.getLogger(name)
         self.logger.setLevel(logging.INFO)
 
-    def log(self, message, action=TreeAction.NEUTRAL, fore: str = '', back: str = ''):
+    def log(self, message, action=TreeAction.NEUTRAL, fore: str = '', back: str = '', delete_context: bool = False):
         if self.tree.paused:
             return
         # log_origin = LogOrigin.from_caller()
-        self.tree.log_count += 1
         if self.tree.log_count >= self.tree.max_log_count > 0:
             raise Exception('Too many logs')
         tab_symbols = ['|'] * self.tree.depth
         if action == TreeAction.GO_DOWN:
-            self.tree.open_context().add_information(message)
+            self.tree.open_context()
+            self.tree.add_information(message)
             self.tree.tab_styles.append(f'{fore}{back}')
             tab_symbols.append('┌>')
         elif action == TreeAction.GO_UP:
             tab_symbols[-1] = '└>'
-            self.tree.context.add_information(message)
-            self.tree.close_context()
+            self.tree.add_information(message)
+            self.tree.close_context(delete = delete_context)
         else:
-            self.tree.context.add_information(message)
+            self.tree.add_information(message)
         tab_symbols = [f'{s}{c}{Style.RESET_ALL} ' for c, s in zip(tab_symbols, self.tree.tab_styles)]
         initial = ''.join(tab_symbols)
         self.logger.info(f'{initial}{message}')

@@ -1,6 +1,6 @@
 import operator
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 from mapping_field.field import ExtElement
 from mapping_field.log_utils.tree_loggers import TreeLogger, red, yellow
@@ -12,6 +12,7 @@ from mapping_field.new_code.mapping_field import (
 )
 from mapping_field.new_code.promises import IsCondition, IsIntegral
 from mapping_field.new_code.ranged_condition import BoolVar, InRange, RangeCondition
+from mapping_field.processors import ProcessFailureReason
 
 simplify_logger = TreeLogger(__name__)
 
@@ -225,11 +226,11 @@ class ConditionalFunction(MapElement):
         return UnionCondition([condition & RangeCondition(func, f_range) for condition, func in cond_function.regions])
 
     @staticmethod
-    def _bool_var_simplifier(map_elem: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    def _bool_var_simplifier(map_elem: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(map_elem, ConditionalFunction)
 
         if len(map_elem.regions) != 2:
-            return None
+            return ProcessFailureReason('Only works for two regions', trivial=True)
 
         cond1, func1 = map_elem.regions[0]
         cond2, func2 = map_elem.regions[1]

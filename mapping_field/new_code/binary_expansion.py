@@ -11,6 +11,7 @@ from mapping_field.new_code.mapping_field import (
 )
 from mapping_field.new_code.promises import IsCondition, IsIntegral
 from mapping_field.new_code.ranged_condition import BoolVar, InRange, IntervalRange, RangeCondition
+from mapping_field.processors import ProcessFailureReason
 from mapping_field.serializable import DefaultSerializable
 
 # from mapping_field.new_code.linear import LinearTransformer, Linear
@@ -739,7 +740,7 @@ class BinaryExpansion(MapElement, DefaultSerializable):
     #       After the big refactorzation, delete one of them.
 
     @staticmethod
-    def _binary_combination_to_expansion_simplifier(bin_comb:MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    def _binary_combination_to_expansion_simplifier(bin_comb:MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
         """
         Try to simplify a binary linear combination into a binary expansion
         """
@@ -747,11 +748,11 @@ class BinaryExpansion(MapElement, DefaultSerializable):
 
         elem1 = BinaryExpansion.of(bin_comb.elem1)
         if elem1 is None:
-            return None
+            return ProcessFailureReason('1st element cannot become a binary expansion')
 
         elem2 = BinaryExpansion.of(bin_comb.elem2)
         if elem2 is None:
-            return None
+            return ProcessFailureReason('2nd element cannot become a binary expansion')
 
         result = BinaryExpansion.linear_combination(bin_comb.c1, elem1, bin_comb.c2, elem2)
         if result is not None:

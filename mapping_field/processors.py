@@ -1,5 +1,7 @@
+import dataclasses
+
 from colorama import init, Fore, Style, Back
-from typing import TypeVar, Generic, Callable, Optional, List, Type, Dict
+from typing import TypeVar, Generic, Callable, Optional, List, Type, Dict, Union
 
 from mapping_field.log_utils.tree_loggers import TreeLogger, TreeAction, green, red, yellow, magenta, cyan
 
@@ -15,9 +17,14 @@ If a new Elem is generated, returns it, otherwise if nothing changes, returns No
 Hence to always get the final result, one can use:
     Processor(elem, param) or elem
 """
-Processor = Callable[[Elem, Param], Optional[Elem]]
+@dataclasses.dataclass
+class ProcessFailureReason:
+    reason: str = ''
+    trivial: bool = True
 
-ParamProcessor = Callable[[Param], Optional[Elem]]
+Processor = Callable[[Elem, Param], Optional[Union[Elem, ProcessFailureReason]]]
+
+ParamProcessor = Callable[[Param], Optional[Union[Elem, ProcessFailureReason]]]
 
 class ProcessorCollection(Generic[Elem, Param]):
     """
@@ -66,8 +73,13 @@ class ProcessorCollection(Generic[Elem, Param]):
             result = processor(elem, param)
 
             if result is None:
+                result = ProcessFailureReason('', False)
+            if isinstance(result, ProcessFailureReason):
+                if result.reason != '':
+                    pass
+                    # print(f'Simplification failed because of {result.reason}')
                 logger.set_context_title(f'{title_start} = {magenta("- - -")}')
-                logger.log(message=f'{magenta("- - -")}', action=TreeAction.GO_UP)
+                logger.log(message=f'{magenta("- - -")}', action=TreeAction.GO_UP, delete_context=result.trivial)
                 continue
             logger.set_context_title(f'{title_start} => {green(result)}')
             logger.log(message=f'Produced {green(result)}', action=TreeAction.GO_UP)
@@ -104,7 +116,7 @@ class ProcessorCollection(Generic[Elem, Param]):
         return None
 
 def named_forgetful_function(func: ParamProcessor) -> Processor:
-    def wrapper(elem: Elem, param: Param) -> Optional[Elem]:
+    def wrapper(elem: Elem, param: Param) -> Optional[Union[Elem, ProcessFailureReason]]:
         return func(param)
 
     wrapper.__name__ = func.__name__

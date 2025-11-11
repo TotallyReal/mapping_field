@@ -14,6 +14,7 @@ from mapping_field.new_code.mapping_field import (
     OutputPromises, OutputValidator, Var, VarDict, always_validate_promises,
 )
 from mapping_field.new_code.promises import IsCondition, IsIntegral
+from mapping_field.processors import ProcessFailureReason
 
 simplify_logger = TreeLogger(__name__)
 
@@ -293,14 +294,14 @@ class InRange(OutputValidator[IntervalRange]):
         return self.range.contains(f_range)
 
     @staticmethod
-    def _arithmetic_op_range_simplifier(elem: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    def _arithmetic_op_range_simplifier(elem: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(elem, CompositionFunction)
         if elem.function is Add:
             op = operator.add
         elif elem.function is Sub:
             op = operator.sub
         else:
-            return None
+            return ProcessFailureReason('Function is not Add or Sub', trivial=True)
         elem1, elem2 = elem.entries
         f_range1 = InRange.get_range_of(elem1)
         f_range2 = InRange.get_range_of(elem2)
@@ -320,10 +321,10 @@ class InRange(OutputValidator[IntervalRange]):
             elem.promises = promises
         return elem
 
-def _arithmetic_op_integral_simplifier(elem: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+def _arithmetic_op_integral_simplifier(elem: MapElement, var_dict: VarDict) ->  Optional[Union[MapElement, ProcessFailureReason]]:
     assert isinstance(elem, CompositionFunction)
     if elem.function not in (Add, Sub, Mult):
-        return None
+        return ProcessFailureReason('Function is not Add\\Sub\\Mult', trivial=True)
 
     elem1, elem2 = elem.entries
     if elem1.has_promise(IsIntegral) and elem2.has_promise(IsIntegral) and elem.promises.has_promise(IsIntegral) is None:
@@ -422,18 +423,18 @@ class RangeCondition(Condition, MapElementProcessor):
         return TrueCondition if element.range.contains(value) else FalseCondition
 
     @staticmethod
-    def _ranged_promise_simplifier(range_cond: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    def _ranged_promise_simplifier(range_cond: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(range_cond, RangeCondition)
 
         function = range_cond.function
         f_range, promises = InRange.consolidate_ranges(function.promises)
+        if f_range is None:
+            return ProcessFailureReason('Function has no range', trivial=True)
         if promises is not None:
             # TODO: I don't want to change the function object itself. Consider either adding a 'copy' method
             #       to the MapElement, or instead move the promises themselves else where.
             function.promises = promises
 
-        if f_range is None:
-            return None
 
         if range_cond.range.contains(f_range):
             return TrueCondition
@@ -448,23 +449,22 @@ class RangeCondition(Condition, MapElementProcessor):
         return None
 
     @staticmethod
-    def _integral_simplifier(range_cond: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    def _integral_simplifier(range_cond: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(range_cond, RangeCondition)
         if range_cond.function.has_promise(IsIntegral):
             f_range = range_cond.range.as_integral()
             if f_range != range_cond.range:
                 return RangeCondition(range_cond.function, f_range)
 
-        return None
+        return ProcessFailureReason('Function is not Integral', trivial=True)
 
     @staticmethod
-    def _linear_combination_simplifier(element: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    def _linear_combination_simplifier(element: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(element, RangeCondition)
         c1, elem1, c2, elem2 = _as_combination(element.function)
 
         if c1 == 1 and c2 == 0:
-            # Trivial combination
-            return None
+            return ProcessFailureReason('Trivial combination', trivial=True)
 
         if (c2 != 0) and (elem2 is not MapElementConstant.one):
             # Too complicated combination
@@ -561,12 +561,13 @@ class BoolVar(Var):
         self.promises.add_promise(InRange(IntervalRange[0, 1]))
         self.promises.add_promise(IsCondition)
 
-def two_bool_vars_simplifier(elem: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+def two_bool_vars_simplifier(elem: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
     # TODO: make sure that I don't call has_promise for an element that I am trying to simplify, since it might
     #       call simplify inside it, and then we ar off to the infinite loop races.
     #if not elem.has_promise(IsCondition):
+    if not elem.promises.has_promise(IsCondition):
+        return ProcessFailureReason('Not a Condition', trivial=True)
     if (
-            (not elem.promises.has_promise(IsCondition)) or
             len(var_dict) > 0 or len(elem.vars) > 2 or
             (not all(isinstance(v, BoolVar) for v in elem.vars))
     ):

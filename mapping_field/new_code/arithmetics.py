@@ -1,10 +1,11 @@
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.new_code.mapping_field import (
     CompositionFunction, ExtElement, MapElement, MapElementConstant, MapElementFromFunction, Var,
     VarDict, convert_to_map,
 )
+from mapping_field.processors import ProcessFailureReason
 from mapping_field.serializable import DefaultSerializable
 
 simplify_logger = TreeLogger(__name__)
@@ -381,10 +382,10 @@ class BinaryCombination(MapElement):
         return None
 
 # TODO: add tests
-def _binary_combination_simplifier(comp_function: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+def _binary_combination_simplifier(comp_function: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
     assert isinstance(comp_function, CompositionFunction)
     if not comp_function.function in (Add, Sub):
-        return None
+        return ProcessFailureReason('Function is not Add or Sub', trivial=True)
     c1, elem1, c2, elem2 = _as_combination(comp_function)
     if c2 == 0:
         return None

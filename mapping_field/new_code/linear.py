@@ -1,6 +1,6 @@
 import math
 
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 
 from mapping_field.log_utils.tree_loggers import TreeLogger, green
 from mapping_field.new_code.arithmetics import Add, BinaryCombination, Sub, _as_combination
@@ -10,6 +10,7 @@ from mapping_field.new_code.mapping_field import (
     params_to_maps,
 )
 from mapping_field.new_code.ranged_condition import RangeCondition
+from mapping_field.processors import ProcessFailureReason
 from mapping_field.serializable import DefaultSerializable
 
 logger = TreeLogger(__name__)
@@ -130,13 +131,13 @@ class Linear(MapElement, DefaultSerializable):
         elem = self.elem._simplify_with_var_values2(var_dict)
         return None if elem is None else Linear(self.a, elem, self.b)
 
-    def _transform_linear(element: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    def _transform_linear(element: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(element, Linear)
         if isinstance(element.elem, Linear):
             a, b = element.a, element.b
             a_, b_ = element.elem.a, element.elem.b
             return Linear(int(a * a_), element.elem.elem, int(a * b_ + b))
-        return None
+        return ProcessFailureReason('Inner element is not Linear', trivial=True)
 
     def _evaluate_simplifier(self, var_dict: VarDict) -> Optional[MapElement]:
         value = self.evaluate()

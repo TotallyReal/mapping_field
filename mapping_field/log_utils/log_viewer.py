@@ -65,7 +65,7 @@ class LogViewer(App):
         from mapping_field.global_config import file_path_to_module
         if filename != 'No log':
             filename = file_path_to_module(filename)
-        header = Text(f"{filename} | [depth = {len(self.context_path)}]\n", style="bold")
+        header = Text(f"{filename} | [depth = {len(self.context_path)}, log_count={self.tree_context.information_count}]\n", style="bold")
 
         # append the ANSI->Rich converted body
         header.append(lines_rich)
