@@ -115,7 +115,6 @@ class ConditionalFunction(MapElement):
         if len(var_dict) == 0 and len(func_dict) == 0:
             return self
 
-        # TODO: call with dict in the condition also
         regions = [(region[0]._call_with_dict(var_dict, func_dict), region[1]._call_with_dict(var_dict, func_dict))
                    for region in self.regions]
         return ConditionalFunction(regions)

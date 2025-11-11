@@ -163,7 +163,6 @@ class BinaryExpansion(MapElement, DefaultSerializable):
                 c = c.evaluate()
             if isinstance(c, int):
                 assert c == 0 or c == 1, f'can only use 0 or 1 as integer coefficients, instead for {c}'
-                # TODO: maybe remove the 1 as coefficient?
                 self.coefficients.append(c)
                 continue
             assert isinstance(c, BoolVar), (f'Coefficients for Binary expansion can only be BoolVar, 0 or 1.'
@@ -195,7 +194,6 @@ class BinaryExpansion(MapElement, DefaultSerializable):
         str_coefficients = [c.to_string(vars_to_str) if isinstance(c, MapElement) else str(c) for c in self.coefficients]
         if indices[-1] == 0:
             return str_coefficients[0]
-        # TODO: use the vars_str_list
         vars_str = ', '.join([str(v) for v in str_coefficients[:1+indices[-1]]])
         return f'Bin[{vars_str}]'
 
@@ -524,21 +522,6 @@ class BinaryExpansion(MapElement, DefaultSerializable):
         if not (set(condition.vars) <= set(self.vars)):
             return None
         vars_order = {v: i for i, v in enumerate(self.vars)}
-        # condition_vars_indices = [vars_order.get(v, -1) for v in condition.vars]
-        # if -1 in condition_vars_indices:
-        #     return None
-        # condition_vars_indices = sorted(list(set(condition_vars_indices)))
-        # if condition_vars_indices != list(range(condition_vars_indices[0], len(vars_order))):
-        #     return None
-
-        # if isinstance(condition, UnionCondition):
-        #     interval = IntervalRange.empty()
-        #     for cond in condition.conditions:
-        #         cond_range = self.as_range(cond)
-        #         if cond_range is None:
-        #             return None
-        #         interval |= cond_range
-        #     return interval
 
         if isinstance(condition, RangeCondition):
             condition = IntersectionCondition([condition])
@@ -718,7 +701,7 @@ class BinaryExpansion(MapElement, DefaultSerializable):
         if len(conditions) > 1:
             condition = IntersectionCondition(conditions)
 
-        if a <= 0 and bin_exp._bool_max_value[i+1] <= b: # TODO: +1 ?
+        if a <= 0 and bin_exp._bool_max_value[i+1] <= b:
             return condition
         else:
             if condition is TrueCondition and (a, b) == (f_range.low, f_range.high):

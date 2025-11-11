@@ -61,7 +61,6 @@ class _ArithmeticMapFromFunction(MapElementFromFunction, DefaultSerializable):
 
 class _Negative(_ArithmeticMapFromFunction):
 
-    # TODO: consider transform constant(-1) into -constant(1)
     def __init__(self):
         super().__init__('Neg', lambda a: -a)
 
