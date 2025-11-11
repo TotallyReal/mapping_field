@@ -2,11 +2,11 @@ from typing import Optional
 
 import pytest
 
-from mapping_field.new_code.mapping_field import (
+from mapping_field.mapping_field import (
     CompositionFunction, Func, MapElement, MapElementConstant, MapElementFromFunction, NamedFunc,
     Var, VarDict,
 )
-from mapping_field.new_code.tests.utils import DummyMap
+from mapping_field.tests.utils import DummyMap
 
 # ----------------- var tests -----------------
 

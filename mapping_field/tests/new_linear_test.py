@@ -1,8 +1,8 @@
-from mapping_field.new_code.conditions import FalseCondition, TrueCondition
-from mapping_field.new_code.linear import Linear
-from mapping_field.new_code.mapping_field import MapElement, convert_to_map
-from mapping_field.new_code.ranged_condition import IntervalRange, RangeCondition
-from mapping_field.new_code.tests.utils import DummyMap
+from mapping_field.conditions import FalseCondition, TrueCondition
+from mapping_field.linear import Linear
+from mapping_field.mapping_field import MapElement, convert_to_map
+from mapping_field.ranged_condition import IntervalRange, RangeCondition
+from mapping_field.tests.utils import DummyMap
 
 
 def test_linear_generation():

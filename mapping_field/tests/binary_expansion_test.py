@@ -1,9 +1,7 @@
 from typing import List, Union
 
-import pytest
-
-from mapping_field.new_code.binary_expansion import BinaryExpansion
-from mapping_field.new_code.ranged_condition import BoolVar
+from mapping_field.binary_expansion import BinaryExpansion
+from mapping_field.ranged_condition import BoolVar
 
 
 def test_simple_construction():

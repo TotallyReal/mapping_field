@@ -9,7 +9,7 @@ from typing import (
 
 from mapping_field.field import ExtElement, FieldElement
 from mapping_field.log_utils.tree_loggers import TreeAction, TreeLogger, cyan, green, magenta, red
-from mapping_field.new_code.validators import Context, MultiValidator
+from mapping_field.validators import Context, MultiValidator
 from mapping_field.processors import (
     ParamProcessor, ProcessFailureReason, Processor, ProcessorCollection,
 )

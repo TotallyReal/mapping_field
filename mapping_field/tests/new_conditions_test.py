@@ -4,12 +4,12 @@ from typing import List, Type
 
 import pytest
 
-from mapping_field.new_code.conditions import (
+from mapping_field.conditions import (
     FalseCondition, IntersectionCondition, NotCondition, TrueCondition, UnionCondition,
     _ListCondition,
 )
-from mapping_field.new_code.ranged_condition import BoolVar
-from mapping_field.new_code.tests.utils import DummyCondition
+from mapping_field.ranged_condition import BoolVar
+from mapping_field.tests.utils import DummyCondition
 
 #       ╭─────────────────────────────────────────────────╮
 #       │           Binary And \ Or \ Invert              │

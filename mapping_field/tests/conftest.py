@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from mapping_field.log_utils.tree_loggers import simplify_tree
-from mapping_field.new_code.mapping_field import NamedFunc, Var
+from mapping_field.mapping_field import NamedFunc, Var
 
 
 @pytest.fixture(autouse=True)

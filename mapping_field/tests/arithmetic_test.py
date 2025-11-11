@@ -2,9 +2,9 @@ from typing import Optional, Tuple
 
 import pytest
 
-from mapping_field.new_code.arithmetics import _as_combination
-from mapping_field.new_code.mapping_field import Func, MapElement, Var, VarDict
-from mapping_field.new_code.tests.utils import DummyMap
+from mapping_field.arithmetics import _as_combination
+from mapping_field.mapping_field import Func, MapElement, Var, VarDict
+from mapping_field.tests.utils import DummyMap
 
 
 class ImprovedDummyMap(MapElement):

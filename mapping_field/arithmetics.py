@@ -1,7 +1,7 @@
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from mapping_field.log_utils.tree_loggers import TreeLogger
-from mapping_field.new_code.mapping_field import (
+from mapping_field.mapping_field import (
     CompositionFunction, ExtElement, MapElement, MapElementConstant, MapElementFromFunction, Var,
     VarDict, convert_to_map,
 )

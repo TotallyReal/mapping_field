@@ -1,16 +1,13 @@
 import logging
 
-import pytest
-
-from mapping_field.log_utils.tree_loggers import TreeLogger, simplify_tree
-from mapping_field.new_code.binary_expansion import BinaryExpansion
-from mapping_field.new_code.conditional_function import ConditionalFunction, ReLU
-from mapping_field.new_code.conditions import FalseCondition, TrueCondition
-from mapping_field.new_code.linear import Linear
-from mapping_field.new_code.mapping_field import MapElementConstant, Var
-from mapping_field.new_code.promises import IsIntegral
-from mapping_field.new_code.ranged_condition import BoolVar, RangeCondition
-from mapping_field.new_code.tests.utils import DummyCondition, DummyMap
+from mapping_field.binary_expansion import BinaryExpansion
+from mapping_field.conditional_function import ConditionalFunction, ReLU
+from mapping_field.conditions import FalseCondition, TrueCondition
+from mapping_field.linear import Linear
+from mapping_field.mapping_field import MapElementConstant, Var
+from mapping_field.promises import IsIntegral
+from mapping_field.ranged_condition import BoolVar, RangeCondition
+from mapping_field.tests.utils import DummyCondition, DummyMap
 
 logger = logging.getLogger(__name__)
 

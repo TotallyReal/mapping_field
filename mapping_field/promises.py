@@ -1,6 +1,6 @@
 from typing import Optional
 
-from mapping_field.new_code.mapping_field import (
+from mapping_field.mapping_field import (
     MapElement, OutputValidator, Var, always_validate_promises,
 )
 from mapping_field.serializable import DefaultSerializable

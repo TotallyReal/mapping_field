@@ -1,8 +1,8 @@
 from typing import Dict, Optional, Set, Union
 
-from mapping_field.new_code.conditions import FalseCondition
-from mapping_field.new_code.mapping_field import MapElement, Var
-from mapping_field.new_code.promises import IsCondition
+from mapping_field.conditions import FalseCondition
+from mapping_field.mapping_field import MapElement, Var
+from mapping_field.promises import IsCondition
 
 
 class DummyMap(MapElement):
