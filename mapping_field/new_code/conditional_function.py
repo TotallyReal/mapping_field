@@ -3,7 +3,7 @@ import operator
 from typing import Dict, List, Optional, Tuple, Union
 
 from mapping_field.field import ExtElement
-from mapping_field.log_utils.tree_loggers import TreeLogger, red, yellow
+from mapping_field.log_utils.tree_loggers import TreeLogger, green, red, yellow
 from mapping_field.new_code.arithmetics import Mult
 from mapping_field.new_code.conditions import FalseCondition, TrueCondition, UnionCondition
 from mapping_field.new_code.mapping_field import (
@@ -15,6 +15,52 @@ from mapping_field.new_code.ranged_condition import BoolVar, InRange, RangeCondi
 from mapping_field.processors import ProcessFailureReason
 
 simplify_logger = TreeLogger(__name__)
+
+class SingleRegion(MapElement):
+
+    def __init__(self, condition: MapElement, function: MapElement):
+        assert condition.has_promise(IsCondition)
+        # TODO: Transfer promises from the function to this SingleRegion?
+        super().__init__(list(set(condition.vars + function.vars)))
+        self.condition = condition
+        self.function = function
+
+    def to_string(self, vars_to_str: Dict[Var, str]):
+        # TODO: fix this printing function
+        return f' {repr(self.condition)} -> {repr(self.function)} '
+
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
+        return SingleRegion(self.condition._call_with_dict(var_dict, func_dict),
+                            self.function._call_with_dict(var_dict, func_dict))
+
+    def __iter__(self):
+        yield self.condition
+        yield self.function
+
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
+        is_simpler = False
+        simplified_condition = self.condition._simplify2(var_dict)
+        simplified_func = self.function._simplify2(var_dict)
+        if (simplified_condition or simplified_func) is not None:
+            is_simpler = True
+        condition = simplified_condition or self.condition
+        function = simplified_func or self.function
+
+        if isinstance(condition, MapElementProcessor):
+            # TODO: Use a process_function process like in map elements instead
+            simplified_func = condition.process_function(function)
+            is_simpler |= (simplified_func is not function)
+            function = simplified_func
+
+            simplified_func = function._simplify2(var_dict)
+            is_simpler |= (simplified_func is not None)
+            function = simplified_func or function
+
+        if is_simpler:
+            return SingleRegion(condition, function)
+        return None
+
+
 
 class ConditionalFunction(MapElement):
     """
@@ -29,17 +75,22 @@ class ConditionalFunction(MapElement):
     def always(map: MapElement):
         return ConditionalFunction([(TrueCondition, map)])
 
-    def __init__(self, regions: List[Tuple[MapElement, MapElement]]):
+    def __init__(self, regions: List[Union[Tuple[MapElement, MapElement], SingleRegion]]):
         for condition, _ in regions:
             assert condition.has_promise(IsCondition)
-        self.regions = [(condition, convert_to_map(func)) for condition, func in regions]
-        variables = sum([region[0].vars + region[1].vars for region in self.regions], [])
+        self.regions = []
+        for region in regions:
+            if isinstance(region, SingleRegion):
+                self.regions.append(region)
+            else:
+                self.regions.append(SingleRegion(region[0], convert_to_map(region[1])))
+        variables = sum([region.vars for region in self.regions], [])
 
         super().__init__(list(set(variables)))
 
     def to_string(self, vars_to_str: Dict[Var, str]):
         # TODO: fix this printing function
-        inner_str = ' ; '.join([f' {repr(condition)} -> {repr(map)} ' for (condition, map) in self.regions])
+        inner_str = ' ; '.join([region.to_string(vars_to_str) for region in self.regions])
         return f'[{inner_str}]'
 #
 #     def pretty_str(self):
@@ -49,7 +100,7 @@ class ConditionalFunction(MapElement):
 #         ])
 
     def evaluate(self) -> Optional[ExtElement]:
-        values = [func.evaluate() for _, func in self.regions]
+        values = [region.function.evaluate() for region in self.regions]
         if len(values) == 0:
             raise Exception('Conditional Map should not be empty')
         if values[0] is None:
@@ -120,8 +171,7 @@ class ConditionalFunction(MapElement):
         if len(var_dict) == 0 and len(func_dict) == 0:
             return self
 
-        regions = [(region[0]._call_with_dict(var_dict, func_dict), region[1]._call_with_dict(var_dict, func_dict))
-                   for region in self.regions]
+        regions = [region._call_with_dict(var_dict, func_dict) for region in self.regions]
         return ConditionalFunction(regions)
 
     # <editor-fold desc=" ------------------------ Simplifiers and Validators ------------------------ ">
@@ -142,12 +192,14 @@ class ConditionalFunction(MapElement):
 
             if isinstance(condition1, MapElementProcessor):
                 # TODO: use __call__(condition1) instead?
+                simplify_logger.log(f'Computing {red(elem2)} at {red(condition1)}')
                 processed_elem2 = condition1.process_function(elem2)
                 if processed_elem2 == elem1:
                     return elem2
 
             if isinstance(condition2, MapElementProcessor):
                 # TODO: use __call__(condition1) instead?
+                simplify_logger.log(f'Computing {red(elem1)} at {red(condition2)}')
                 processed_elem1 = condition2.process_function(elem1)
                 if processed_elem1 == elem2:
                     return elem1
@@ -156,49 +208,35 @@ class ConditionalFunction(MapElement):
 
         regions = []
         is_simpler = False
-        for condition, func in self.regions:
+        for region in self.regions:
 
-            # TODO: I think they want me to create a RegionFunction for each pair. Then this first section
-            #       is just a simplification of this pair. Then we can put the ConditionalFunction under
-            #       a similar structure to ListCondition (and later on just addition and multiplication)
-            simplified_condition = condition._simplify2(var_dict)
-            simplified_func = func._simplify2(var_dict)
-            if (simplified_condition or simplified_func) is not None:
+            simplified_region = region._simplify2(var_dict)
+            if simplified_region is not None:
                 is_simpler = True
-            condition = simplified_condition or condition
-            func = simplified_func or func
-
-            if condition == FalseCondition:
+            region = simplified_region or region
+            if region.condition is FalseCondition:
                 continue
 
-            if isinstance(condition, MapElementProcessor):
-                # TODO: Use a process_function process like in map elements instead
-                simplified_func = condition.process_function(func)
-                is_simpler |= (simplified_func is not func)
-                func = simplified_func
-
-                simplified_func = func._simplify2(var_dict)
-                is_simpler |= (simplified_func is not None)
-                func = simplified_func or func
-
-            for i, (prev_cond, prev_func) in enumerate(regions):
-                comb_elem = combinable(prev_cond, prev_func, condition, func)
+            for i, prev_region in enumerate(regions):
+                simplify_logger.log(f'Trying to combine {red(region)} and {red(prev_region)}.')
+                comb_elem = combinable(prev_region.condition, prev_region.function, region.condition, region.function)
                 if comb_elem is not None:
+                    simplify_logger.log(f'They are combinable under the function {green(comb_elem)}')
                     is_simpler = True
-                    condition_union = prev_cond | condition
+                    condition_union = prev_region.condition | region.condition
                     condition_union = condition_union.simplify2()
-                    regions[i] = [condition_union, comb_elem]
+                    regions[i] = SingleRegion(condition_union, comb_elem)
                     break
             else:
-                regions.append([condition, func])
+                regions.append(region)
 
         # TODO: The conditions in a conditional function should cover the whole space, so a single region
         #       must always have a TrueCondition. However, it is not always true that it is easy to check
         #       that the condition is true. Should I keep this check here or not?
         if len(regions) == 1: # and regions[0][0] is TrueCondition:
-            return regions[0][1]
+            return regions[0].function
 
-        return ConditionalFunction([tuple(region) for region in regions]) if is_simpler else None
+        return ConditionalFunction(regions) if is_simpler else None
 
     def mult_condition_by_element(var_dict: VarDict) -> Optional[MapElement]:
         a, b = [var_dict.get(v,v) for v in var_dict]
