@@ -3,10 +3,11 @@ import operator
 
 from typing import Dict, Optional, Tuple, Union
 
-from mapping_field.log_utils.tree_loggers import TreeLogger, green
+from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
 from mapping_field.new_code.arithmetics import Add, Mult, Sub, _as_combination
 from mapping_field.new_code.conditions import (
-    Condition, FalseCondition, IntersectionCondition, TrueCondition,
+    BinaryCondition, Condition, FalseCondition, IntersectionCondition, TrueCondition,
+    UnionCondition,
 )
 from mapping_field.new_code.mapping_field import (
     CompositionFunction, FuncDict, MapElement, MapElementConstant, MapElementProcessor,
@@ -331,8 +332,7 @@ def _arithmetic_op_integral_simplifier(elem: MapElement, var_dict: VarDict) -> O
         return elem
     return None
 
-CompositionFunction.register_class_simplifier(lambda elem, var_dict: InRange._arithmetic_op_range_simplifier(elem, var_dict))
-CompositionFunction.register_class_simplifier(lambda elem, var_dict: InRange._arithmetic_op_range_simplifier(elem, var_dict))
+CompositionFunction.register_class_simplifier(InRange._arithmetic_op_range_simplifier)
 CompositionFunction.register_class_simplifier(_arithmetic_op_integral_simplifier)
 
 # <editor-fold desc=" --------------- RangeCondition ---------------">
@@ -560,3 +560,79 @@ class BoolVar(Var):
         self.promises.add_promise(IsIntegral)
         self.promises.add_promise(InRange(IntervalRange[0, 1]))
         self.promises.add_promise(IsCondition)
+
+def two_bool_vars_simplifier(elem: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    # TODO: make sure that I don't call has_promise for an element that I am trying to simplify, since it might
+    #       call simplify inside it, and then we ar off to the infinite loop races.
+    #if not elem.has_promise(IsCondition):
+    if not elem.promises.has_promise(IsCondition):
+        return None
+    if len(var_dict) > 0:
+        return None
+
+    if len(elem.vars) > 2 or not all(isinstance(v, BoolVar) for v in elem.vars):
+        return None
+
+    if len(elem.vars) == 1:
+        v = elem.vars[0]
+        simplify_logger.log(f'Looking for simpler condition on {red(v)}')
+        if elem in (v, (v<<0) , (v<<1)):
+            return None
+        # TODO: The following two calls are problematics. They can generate composition function with 'elem'
+        #       as the top function, so when we call simplify on it, it tries to simplify the top function
+        #       by itself, which can loop back here.
+        value0 = elem({v:0}).simplify2()
+        value1 = elem({v:1}).simplify2()
+        if not (isinstance(value0, BinaryCondition) and isinstance(value1, BinaryCondition)):
+            simplify_logger.log(red(f'The values {value0}, {value1} should be binary.'))
+            return None
+        if value0 is value1 is TrueCondition:
+            return TrueCondition
+        if value0 is value1 is FalseCondition:
+            return FalseCondition
+        return (v << 0) if value0 is TrueCondition else (v << 1)
+
+    if len(elem.vars) == 2:
+        x, y = elem.vars
+        simplify_logger.log(f'Looking for simpler condition on {red(x)}, {red(y)}')
+        assignments =[(0,0), (0,1), (1,0), (1,1)]
+        values = [[elem({x:x0, y:y0}).simplify2() for y0 in (0,1)] for x0 in (0,1)]
+        if not all(isinstance(value, BinaryCondition) for value in values[0]+values[1]):
+            values_str = ', '.join(str(value) for value in values[0] + values[1])
+            simplify_logger.log(red(f'The values {values_str} should be binary.'))
+            return None
+
+        count_true = sum(value is TrueCondition for value in values[0] + values[1])
+        if count_true == 0:
+            return FalseCondition
+        if count_true == 1:
+            for x0, y0 in assignments:
+                if values[x0][y0] is TrueCondition:
+                    result = IntersectionCondition([x << x0 , y << y0], simplified=True)
+                    # Don't call (x << x0) & (y << y0) since it automatically calls to simplify, which can
+                    # cause an infinite loop
+                    # TODO: should I split to structure simplified and promise simplified?
+                    return result if elem != result else None
+        if count_true == 2:
+            if values[0][0] == values[1][1]:
+                # TODO: add this when I know how to compare elements like (x+y = 1, x-y=0)
+                return None
+            v = x if (values[0][0] == values[1][0]) else y
+            value = (0 if values[0][0] is TrueCondition else 1)
+            result = (v << value)
+            result._simplified = True
+            return result
+        if count_true == 3:
+            for x0, y0 in assignments:
+                if values[x0][y0] is FalseCondition:
+                    result = UnionCondition([x << 1-x0 , y << 1-y0], simplified=True)
+                    return result if elem != result else None
+        if count_true == 4:
+            return TrueCondition
+
+        # Should never get here...
+        raise Exception('Learn how to count to 4...')
+
+    return None
+
+MapElement._simplifier.register_processor(two_bool_vars_simplifier)

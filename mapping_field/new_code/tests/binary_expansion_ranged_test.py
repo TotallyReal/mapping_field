@@ -3,6 +3,11 @@ from mapping_field.new_code.conditions import TrueCondition
 from mapping_field.new_code.ranged_condition import BoolVar
 
 
+def test_avoid_loop_in__two_bool_vars_simplifier():
+    x = BoolVar('x')
+    cond = TrueCondition & (x<<0)
+
+
 def test_simplify_range():
     vv = [BoolVar(f'x_{i}') for i in range(4)] # a number in [0,15]
     x = BinaryExpansion(vv)
