@@ -1,12 +1,12 @@
-import sys
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Union, List, Optional
-
-from colorama import init, Fore, Back, Style
-from enum import Enum, auto
-
 import logging
+import sys
+
+from dataclasses import dataclass
+from enum import Enum, auto
+from pathlib import Path
+from typing import List, Optional, Union
+
+from colorama import Back, Fore, Style, init
 
 from mapping_field.serializable import DefaultSerializable
 

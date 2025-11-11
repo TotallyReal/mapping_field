@@ -1,6 +1,7 @@
 import os
-import sys
 import subprocess
+import sys
+
 from pathlib import Path
 
 from mapping_field.global_config import PROJECT_ROOT, PYTHON_EXEC, file_path_to_module

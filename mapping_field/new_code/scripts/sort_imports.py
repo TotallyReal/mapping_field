@@ -1,12 +1,11 @@
-from pathlib import Path
-
 import isort
 
-# Set the root of your project
-project_root = Path(__file__).parent.parent
+from mapping_field.global_config import PROJECT_ROOT
+
+src_root = PROJECT_ROOT / 'mapping_field' / 'new_code'
 
 # Recursively sort all Python files
-for py_file in project_root.rglob("*.py"):
+for py_file in src_root.rglob("*.py"):
     isort.file(
         str(py_file),
         multi_line_output=5,

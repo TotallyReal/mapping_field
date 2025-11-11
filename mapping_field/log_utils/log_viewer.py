@@ -1,15 +1,14 @@
 from pathlib import Path
 
+from rich.text import Text
+from textual import events
 from textual.app import App, ComposeResult
 from textual.widgets import Static
-from textual import events
 
+from mapping_field.global_config import PROJECT_ROOT, file_path_to_module
+from mapping_field.log_utils.terminal_launcher import ensure_real_terminal
 from mapping_field.log_utils.tree_loggers import TreeContext
 from mapping_field.serializable import Serializable
-from mapping_field.log_utils.terminal_launcher import ensure_real_terminal
-from mapping_field.global_config import PROJECT_ROOT
-from rich.text import Text
-from mapping_field.global_config import file_path_to_module
 
 # Launch real terminal if needed
 ensure_real_terminal()
