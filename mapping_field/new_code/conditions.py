@@ -37,10 +37,9 @@ class BinaryCondition(Condition, DefaultSerializable):
         return super(BinaryCondition, cls).__new__(cls)
 
     def __init__(self, value: bool):
-        super().__init__(variables=[])
+        super().__init__(variables=[], simplified=True)
         self.value = value
         self.promises.add_promise(IsCondition)
-        self._simplified = True
 
     def to_string(self, vars_to_str: Dict[Var, str]):
         return repr(self.value)
@@ -141,12 +140,12 @@ class _ListCondition(Condition, DefaultSerializable):
 
     def __init__(self, conditions: List[MapElement], simplified: bool = False):
         super().__init__(
-            list(set(sum([condition.vars for condition in conditions],[])))
+            list(set(sum([condition.vars for condition in conditions],[]))),
+            simplified=simplified
         )
         self.promises.add_promise(IsCondition)
         for condition in conditions:
             assert condition.has_promise(IsCondition)
-        self._simplified = simplified
         self.conditions: List[MapElement] = []
 
         conditions = conditions.copy()
@@ -281,7 +280,7 @@ class _ListCondition(Condition, DefaultSerializable):
         if len(remaining_conditions) == 1:
             remaining_cond = remaining_conditions[0]
         else:   # len(...) > 1 . Cannot be 0.
-            remaining_cond = cls(remaining_conditions, simplified=list_cond1._simplified)
+            remaining_cond = cls(remaining_conditions, simplified=list_cond1.is_simplified())
 
         # Remark: In case (remaining_cond = list_cond1), the following call should not loop back here,
         #         because this function should only be called when the two side are lists. Unless of course
@@ -362,7 +361,7 @@ class _ListCondition(Condition, DefaultSerializable):
         if hasattr(self, '_binary_flag'):
             simplify_logger.log('Has binary flag - avoid simplifying here.')
             return None
-        if self._simplified:
+        if self._simplified_version is self:
             return None
 
         cls = self.__class__

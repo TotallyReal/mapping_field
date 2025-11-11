@@ -46,9 +46,8 @@ class _ArithmeticMapFromFunction(MapElementFromFunction, DefaultSerializable):
     def __init__(self, name: str, function: Callable[[List[ExtElement]], ExtElement]):
         if hasattr(self, '_initialized'):
             return
-        super().__init__(name, function)
+        super().__init__(name, function, simplified = True)
         self._initialized = True
-        self._simplified = True
 
     @classmethod
     def try_get_entries(cls, elem: MapElement) -> Optional[Tuple[MapElement, MapElement]]:

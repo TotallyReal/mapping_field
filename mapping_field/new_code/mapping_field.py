@@ -208,7 +208,8 @@ class MapElement:
             processor.__name__ = f'{cls.__name__}_simplify_with_var_values'
             MapElement._simplifier.register_class_processor(cls, processor)
 
-    def __init__(self, variables: List['Var'], name: Optional[str] = None, promises: Optional[OutputPromises] = None):
+    def __init__(self, variables: List['Var'], name: Optional[str] = None, promises: Optional[OutputPromises] = None,
+                 simplified: bool = False):
         """
         The 'variables' are the ordered list used when calling the function, as in f(a_1,...,a_n).
         """
@@ -218,8 +219,7 @@ class MapElement:
             raise Exception(f'Function must have distinct variables: {variables}')
         self.vars = variables
         self.num_vars = len(variables)
-        self._simplified = False
-        # TODO: add self._simplified_version
+        self._simplified_version = self if simplified else None
         self.promises = OutputPromises() if promises is None else promises
 
     def set_var_order(self, variables: List['Var']):
@@ -380,8 +380,8 @@ class MapElement:
         started_process_here = False
 
         if len(var_dict) == 0:
-            if self._simplified:
-                return None
+            if self._simplified_version is not None:
+                return self._simplified_version if self._simplified_version is not self else None
             if getattr(self, '_in_simplification_process', False):
                 simplify_logger.log(f'{red("!!!")} looped back to simplify {red(self)}')
                 return None
@@ -393,14 +393,19 @@ class MapElement:
             self._in_simplification_process = False
 
         if simplified_version is not None:
-            simplified_version._simplified = True
+            simplified_version._simplified_version = simplified_version
+            if len(var_dict) == 0:
+                self._simplified_version = simplified_version
             return simplified_version
 
         if len(var_dict) == 0:
-            self._simplified = True
+            self._simplified_version = self
             return None
 
         return None
+
+    def is_simplified(self) -> bool:
+        return self._simplified_version is self
 
     # Override when needed
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
@@ -720,9 +725,8 @@ class Var(MapElement, DefaultSerializable):
         """
         if hasattr(self, 'initialized'):
             return
-        super().__init__([self], name)
+        super().__init__([self], name, simplified=True)
         self.initialized = True
-        self._simplified = True
 
     def to_string(self, vars_to_str: Dict['Var', str]):
         entries = [vars_to_str.get(v, v) for v in self.vars]
@@ -799,9 +803,8 @@ class NamedFunc(MapElement, DefaultSerializable):
     def __init__(self, func_name: str, variables: List[Var]):
         if hasattr(self, 'initialized'):
             return
-        super().__init__(variables, func_name)
+        super().__init__(variables, func_name, simplified=True)
         self.initialized = True
-        self._simplified = True
 
     @classmethod
     def serialization_name_conversion(cls) -> Dict:
@@ -962,9 +965,8 @@ class MapElementConstant(MapElement, DefaultSerializable):
         return super().__new__(cls)
 
     def __init__(self, elem: ExtElement):
-        super().__init__([], str(elem))
+        super().__init__([], str(elem), simplified=True)
         self.elem = elem
-        self._simplified = True
 
     def __eq__(self, other):
         if isinstance(other, int) or isinstance(other, FieldElement):
@@ -985,7 +987,7 @@ MapElementConstant.one = MapElementConstant(1)
 
 class MapElementFromFunction(MapElement):
 
-    def __init__(self, name: str, function: Callable[[List[ExtElement]], ExtElement]):
+    def __init__(self, name: str, function: Callable[[List[ExtElement]], ExtElement], simplified: bool = False):
         """
         A map defined by a callable python function.
         The number of parameters to this function is the number of standard variables for this MapElement,
@@ -995,7 +997,7 @@ class MapElementFromFunction(MapElement):
         self.num_parameters = len(inspect.signature(function).parameters)
         variables = [Var(f'X_{name}_{i}') for i in range(self.num_parameters)]
         # TODO: Maybe use the names of the variables of the original function
-        super().__init__(variables, name)
+        super().__init__(variables, name, simplified=simplified)
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
         eval_entries = get_var_values(self.vars, var_dict)

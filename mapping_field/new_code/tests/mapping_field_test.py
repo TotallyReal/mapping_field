@@ -219,3 +219,26 @@ def test_unique_01():
     assert MapElementConstant(0) is MapElementConstant.zero
     assert MapElementConstant(1) is MapElementConstant.one
 
+def test_double_simplification():
+
+    class SimplifiedDummyMap(DummyMap):
+        def __init__(self):
+            super().__init__()
+            self.simplified_counter = 0
+
+        def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
+            self.simplified_counter += 1
+            return MapElementConstant(5)
+
+    dummy = SimplifiedDummyMap()
+
+    assert dummy.simplified_counter == 0
+
+    # First simplification:
+    assert dummy.simplify2() == 5
+    assert dummy.simplified_counter == 1
+
+    # Second simplification:
+    assert dummy != 5
+    assert dummy.simplify2() == 5
+    assert dummy.simplified_counter == 1 # did not go up to 2
