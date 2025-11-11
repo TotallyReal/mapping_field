@@ -323,11 +323,13 @@ class InRange(OutputValidator[IntervalRange]):
 
 def _arithmetic_op_integral_simplifier(elem: MapElement, var_dict: VarDict) ->  Optional[Union[MapElement, ProcessFailureReason]]:
     assert isinstance(elem, CompositionFunction)
+    if elem.promises.has_promise(IsIntegral) is not None:
+        return ProcessFailureReason('Already know if the function is integral', trivial=True)
     if elem.function not in (Add, Sub, Mult):
         return ProcessFailureReason('Function is not Add\\Sub\\Mult', trivial=True)
 
     elem1, elem2 = elem.entries
-    if elem1.has_promise(IsIntegral) and elem2.has_promise(IsIntegral) and elem.promises.has_promise(IsIntegral) is None:
+    if elem1.has_promise(IsIntegral) and elem2.has_promise(IsIntegral):
         elem.promises.add_promise(IsIntegral)
         simplify_logger.log(f'Adding {green("IsIntegral")} promise to {green(elem)}')
         return elem
@@ -567,11 +569,11 @@ def two_bool_vars_simplifier(elem: MapElement, var_dict: VarDict) -> Optional[Un
     #if not elem.has_promise(IsCondition):
     if not elem.promises.has_promise(IsCondition):
         return ProcessFailureReason('Not a Condition', trivial=True)
-    if (
-            len(var_dict) > 0 or len(elem.vars) > 2 or
-            (not all(isinstance(v, BoolVar) for v in elem.vars))
-    ):
-        return None
+    if len(var_dict) > 0:
+        return ProcessFailureReason('Only applicable with no var_dict', trivial=True)
+    if len(elem.vars) > 2 or (not all(isinstance(v, BoolVar) for v in elem.vars)):
+        return ProcessFailureReason('Only applicable with at most 2 bool vars', trivial=True)
+
 
     if len(elem.vars) == 1:
         v = elem.vars[0]

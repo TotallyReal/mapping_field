@@ -3,12 +3,16 @@ import functools
 import inspect
 
 from abc import abstractmethod
-from typing import Callable, Dict, Generic, Iterator, List, Optional, Set, Tuple, Type, TypeVar
+from typing import (
+    Callable, Dict, Generic, Iterator, List, Optional, Set, Tuple, Type, TypeVar, Union,
+)
 
 from mapping_field.field import ExtElement, FieldElement
 from mapping_field.log_utils.tree_loggers import TreeAction, TreeLogger, cyan, green, magenta, red
 from mapping_field.new_code.validators import Context, MultiValidator
-from mapping_field.processors import ParamProcessor, Processor, ProcessorCollection
+from mapping_field.processors import (
+    ParamProcessor, ProcessFailureReason, Processor, ProcessorCollection,
+)
 from mapping_field.serializable import DefaultSerializable
 
 simplify_logger = TreeLogger(__name__)
@@ -410,7 +414,7 @@ class MapElement:
         return self._simplified_version is self
 
     # Override when needed
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[Union['MapElement', ProcessFailureReason]]:
         """
         --------------- Override when needed ---------------
         Try to simplify the given function, given assignment of variables.
@@ -423,7 +427,7 @@ class MapElement:
         If x=2, and y doesn't change, then the function remains a multiplication function 3*y, namely we
         can't do any simplification other than setting the variables. In this case we return None.
         """
-        return None
+        return ProcessFailureReason('Trivial empty implementation', trivial=True)
 
     def _simplify_caller_function2(self, function:'MapElement', position: int, var_dict: VarDict) -> Optional['MapElement']:
         return None
@@ -747,9 +751,11 @@ class Var(MapElement, DefaultSerializable):
     def __hash__(self):
         return hash(('Var', self.name))
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
         value = var_dict.get(self, None)
-        return value if value is not self else None
+        if value is self or value is None:
+            return ProcessFailureReason(f'The variable {self} did not change', trivial=True)
+        return value
 
 
 class NamedFunc(MapElement, DefaultSerializable):

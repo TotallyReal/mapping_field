@@ -120,6 +120,8 @@ class Linear(MapElement, DefaultSerializable):
 
     @params_to_maps
     def __eq__(self, other: MapElement):
+        if other is MapElementConstant.zero:
+            return self.evaluate() == 0
         return (self-Linear.of(other)).evaluate() == 0
 
     # <editor-fold desc=" ------------------------ Simplifiers ------------------------ ">
@@ -128,7 +130,7 @@ class Linear(MapElement, DefaultSerializable):
         if self.a == 0:
             return MapElementConstant(self.b)
 
-        elem = self.elem._simplify_with_var_values2(var_dict)
+        elem = self.elem._simplify2(var_dict)
         return None if elem is None else Linear(self.a, elem, self.b)
 
     def _transform_linear(element: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
