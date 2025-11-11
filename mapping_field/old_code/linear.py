@@ -3,11 +3,11 @@ import math
 from typing import List, Tuple, Optional
 
 from mapping_field.log_utils.tree_loggers import TreeLogger
-from mapping_field.arithmetics import _as_combination, Add, Sub
+from mapping_field.old_code.arithmetics import _as_combination, Add, Sub
 from mapping_field.serializable import DefaultSerializable
-from mapping_field.mapping_field import MapElement, VarDict, FuncDict, MapElementConstant, ExtElement, get_var_values
-from mapping_field.conditions import Condition, TrueCondition, FalseCondition
-from mapping_field.ranged_condition import RangeCondition, RangeTransformer, GeneralAssignment
+from mapping_field.old_code.mapping_field import MapElement, VarDict, FuncDict, MapElementConstant, ExtElement, get_var_values
+from mapping_field.old_code.conditions import Condition, TrueCondition, FalseCondition
+from mapping_field.old_code.ranged_condition import RangeCondition, RangeTransformer, GeneralAssignment
 
 logger = TreeLogger(__name__)
 

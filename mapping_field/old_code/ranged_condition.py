@@ -1,8 +1,8 @@
 from abc import abstractmethod
 from typing import Tuple, Optional, List, Callable
 
-from mapping_field.mapping_field import CompositionFunction, VarDict, MapElement, Var
-from mapping_field.conditions import Condition, FalseCondition, ConditionIntersection, \
+from mapping_field.old_code.mapping_field import CompositionFunction, VarDict, MapElement, Var
+from mapping_field.old_code.conditions import Condition, FalseCondition, ConditionIntersection, \
     MapElementProcessor, TrueCondition, NotCondition
 from mapping_field.serializable import DefaultSerializable
 

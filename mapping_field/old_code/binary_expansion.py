@@ -2,14 +2,14 @@ from typing import List, Union, Optional, Tuple
 import math
 
 from mapping_field.log_utils.tree_loggers import TreeLogger, red
-from mapping_field.mapping_field import get_var_values
+from mapping_field.old_code.mapping_field import get_var_values
 from mapping_field.serializable import DefaultSerializable
-from mapping_field.arithmetics import as_neg, Add, Sub
-from mapping_field.mapping_field import Var, MapElement, MapElementConstant, ExtElement, VarDict, FuncDict
-from mapping_field.conditions import Condition, FalseCondition, TrueCondition
-from mapping_field.ranged_condition import SingleAssignmentCondition, RangeCondition, RangeTransformer, Range, \
+from mapping_field.old_code.arithmetics import as_neg, Add, Sub
+from mapping_field.old_code.mapping_field import Var, MapElement, MapElementConstant, ExtElement, VarDict, FuncDict
+from mapping_field.old_code.conditions import Condition, FalseCondition, TrueCondition
+from mapping_field.old_code.ranged_condition import SingleAssignmentCondition, RangeCondition, RangeTransformer, Range, \
     ConditionToRangeTransformer
-from mapping_field.linear import LinearTransformer, Linear
+from mapping_field.old_code.linear import LinearTransformer, Linear
 
 logger = TreeLogger(__name__)
 

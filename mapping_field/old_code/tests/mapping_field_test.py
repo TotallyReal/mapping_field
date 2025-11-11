@@ -1,8 +1,8 @@
-from typing import List, Optional, Dict
+from typing import Optional, Dict
 
 import pytest
 
-from mapping_field.mapping_field import Var, NamedFunc, Func, CompositionFunction, MapElementFromFunction, MapElement, \
+from mapping_field.old_code.mapping_field import Var, NamedFunc, Func, CompositionFunction, MapElementFromFunction, MapElement, \
     VarDict, MapElementConstant
 
 

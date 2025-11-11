@@ -1,9 +1,9 @@
-from typing import List, Tuple, Optional
+from typing import Tuple, Optional
 
 import pytest
 
-from mapping_field.arithmetics import _as_combination
-from mapping_field.mapping_field import Var, NamedFunc, Func, MapElement, VarDict
+from mapping_field.old_code.arithmetics import _as_combination
+from mapping_field.old_code.mapping_field import Var, NamedFunc, Func, MapElement, VarDict
 
 
 @pytest.fixture(autouse=True)

@@ -1,5 +1,5 @@
-from mapping_field.mapping_field import (MapElement, MapElementFromFunction, MapElementConstant, CompositionFunction,
-                           convert_to_map, VarDict, ExtElement)
+from mapping_field.old_code.mapping_field import (MapElement, MapElementFromFunction, MapElementConstant, CompositionFunction,
+                                                  convert_to_map, VarDict, ExtElement)
 from mapping_field.serializable import DefaultSerializable
 from typing import List, Tuple, Optional, Callable
 

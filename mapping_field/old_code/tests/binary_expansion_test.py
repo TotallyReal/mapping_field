@@ -1,8 +1,8 @@
 import pytest
 
-from mapping_field.mapping_field import MapElementConstant, Var, NamedFunc
-from mapping_field.binary_expansion import BinaryExpansion, BoolVar
-from mapping_field.ranged_condition import RangeCondition, SingleAssignmentCondition
+from mapping_field.old_code.mapping_field import MapElementConstant, Var, NamedFunc
+from mapping_field.old_code.binary_expansion import BinaryExpansion, BoolVar
+from mapping_field.old_code.ranged_condition import RangeCondition, SingleAssignmentCondition
 
 
 @pytest.fixture(autouse=True)

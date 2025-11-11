@@ -3,12 +3,12 @@ import logging
 from typing import List, Tuple, Union, Set
 
 from mapping_field.log_utils.tree_loggers import simplify_tree
-from mapping_field.binary_expansion import BoolVar, BinaryExpansion
-from mapping_field.conditions import Condition, FalseCondition
-from mapping_field.conditional_function import ConditionalFunction, ReLU
-from mapping_field.linear import Linear
-from mapping_field.mapping_field import MapElementConstant, MapElement, Var, NamedFunc
-from mapping_field.ranged_condition import RangeCondition, SingleAssignmentCondition
+from mapping_field.old_code.binary_expansion import BoolVar, BinaryExpansion
+from mapping_field.old_code.conditions import Condition, FalseCondition
+from mapping_field.old_code.conditional_function import ConditionalFunction, ReLU
+from mapping_field.old_code.linear import Linear
+from mapping_field.old_code.mapping_field import MapElementConstant, MapElement, Var, NamedFunc
+from mapping_field.old_code.ranged_condition import RangeCondition, SingleAssignmentCondition
 
 logger = logging.getLogger(__name__)
 

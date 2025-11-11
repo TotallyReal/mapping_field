@@ -1,7 +1,7 @@
-from typing import List, Tuple, Union, Set
+from typing import Tuple, Union, Set
 
-from mapping_field.conditions import Condition, TrueCondition, FalseCondition, ConditionIntersection
-from mapping_field.mapping_field import MapElement
+from mapping_field.old_code.conditions import Condition, TrueCondition, FalseCondition, ConditionIntersection
+from mapping_field.old_code.mapping_field import MapElement
 
 class DummyCondition(Condition):
     def __init__(self, values: Union[int, Set[int]]=0, type: int=0):

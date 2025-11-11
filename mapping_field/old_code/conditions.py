@@ -3,7 +3,7 @@ from typing import List, Tuple, Optional
 import operator
 import functools
 
-from mapping_field.mapping_field import MapElement, Var
+from mapping_field.old_code.mapping_field import MapElement, Var
 from mapping_field.serializable import DefaultSerializable
 
 

@@ -1,12 +1,13 @@
 import operator
 from typing import List, Tuple, Optional, TypeVar, Union
 
-from mapping_field.binary_expansion import BoolVar
-from mapping_field.mapping_field import (MapElement, ExtElement, MapElementConstant, VarDict, FuncDict,
-                                         params_to_maps, convert_to_map)
-from mapping_field.conditions import TrueCondition, Condition, FalseCondition, MapElementProcessor, _ListCondition, \
+from mapping_field.field import ExtElement
+from mapping_field.old_code.binary_expansion import BoolVar
+from mapping_field.old_code.mapping_field import (MapElement, MapElementConstant, VarDict, FuncDict,
+                                                  params_to_maps, convert_to_map)
+from mapping_field.old_code.conditions import TrueCondition, Condition, FalseCondition, MapElementProcessor, _ListCondition, \
     ConditionUnion
-from mapping_field.ranged_condition import SingleAssignmentCondition, GeneralAssignment
+from mapping_field.old_code.ranged_condition import SingleAssignmentCondition, GeneralAssignment
 from mapping_field.serializable import DefaultSerializable
 
 
