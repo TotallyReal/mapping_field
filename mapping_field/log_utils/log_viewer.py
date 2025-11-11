@@ -14,7 +14,7 @@ from mapping_field.serializable import Serializable
 ensure_real_terminal()
 
 # -------- CONFIGURATION --------
-LOG_DIR = PROJECT_ROOT / 'mapping_field/new_code/tests/logs'
+LOG_DIR = PROJECT_ROOT / 'mapping_field/tests/logs'
 LOG_FILE_EXTENSION = 'log_context'
 
 # -------- UTILITY FUNCTIONS --------
