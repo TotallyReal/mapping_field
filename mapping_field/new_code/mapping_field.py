@@ -219,6 +219,7 @@ class MapElement:
         self.vars = variables
         self.num_vars = len(variables)
         self._simplified = False
+        # TODO: add self._simplified_version
         self.promises = OutputPromises() if promises is None else promises
 
     def set_var_order(self, variables: List['Var']):
@@ -349,6 +350,8 @@ class MapElement:
         if len(self.vars) == 0:
             return self
         entries = get_var_values(self.vars, var_dict)
+        if entries is None:
+            return self
         return CompositionFunction(self, entries)
 
     def evaluate(self) -> Optional[ExtElement]:
@@ -374,10 +377,20 @@ class MapElement:
         if var_dict is None:
             var_dict = {}
 
-        if self._simplified and len(var_dict) == 0:
-            return None
+        started_process_here = False
+
+        if len(var_dict) == 0:
+            if self._simplified:
+                return None
+            if getattr(self, '_in_simplification_process', False):
+                simplify_logger.log(f'{red("!!!")} looped back to simplify {red(self)}')
+                return None
+            started_process_here = True
+            self._in_simplification_process = True
 
         simplified_version = MapElement._simplifier.full_process(self, var_dict)
+        if started_process_here:
+            self._in_simplification_process = False
 
         if simplified_version is not None:
             simplified_version._simplified = True
