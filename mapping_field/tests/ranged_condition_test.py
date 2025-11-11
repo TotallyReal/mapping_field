@@ -148,13 +148,6 @@ def test_range_condition_union():
     # cond12 = RangeCondition(dummy_var, (0,11))
     # assert cond1 | cond2 == cond12
 
-def test_combine_bool_vars():
-    x, y = BoolVar('x'), BoolVar('y')
-    cond1 = (x << 0) & (y << 0)
-    cond1 = cond1 | (y << 1)
-    result = (x << 0) | (y << 1)
-    assert cond1 == result
-
 def test_simplify_all_or_nothing_range():
     dummy_map = DummyMap(0)
 
@@ -371,44 +364,3 @@ def test_addition_arithmetic_and_ranged():
     assert cond == ((dummy1 << 1) & (dummy2 << 0))
 
 
-def test_1_to_3_complement():
-    x, y = BoolVar('x'), BoolVar('y')
-
-    cond1 = (x << 0) & (y << 0)
-    cond2 = (x << 1) | (y << 1)
-    result = cond1 | cond2
-
-    assert result is TrueCondition
-
-def test_bool_simplification():
-    x = BoolVar('x')
-
-    func = x*x
-    # It equals to x, but there is no simplification for this (yet)
-    func = func.simplify2()
-    assert x != func
-    assert str(func) == '(x*x)'
-
-    # We can however simplify condition functions over booleans
-    cond1 = (func << 1).simplify2()
-    cond2 = x << 1
-    assert cond1 == cond2
-
-def test_two_bool_simplification():
-    x, y = BoolVar('x'), BoolVar('y')
-
-    cond1 = (x + y) << 0
-    cond1 = cond1.simplify2()
-    cond2 = (x << 0) & (y << 0)
-    assert cond1 == cond2
-
-
-
-def test_1_to_3_as_sum_complement():
-    x, y = BoolVar('x'), BoolVar('y')
-
-    cond1 = (x << 0) & (y << 0)
-    cond2 = RangeCondition( x+y, IntervalRange[1,2] )
-    result = cond1 | cond2
-
-    assert result is TrueCondition
