@@ -1,11 +1,82 @@
+from typing import Optional
+
+from mapping_field.log_utils.tree_loggers import TreeLogger, blue
 from mapping_field.new_code.binary_expansion import BinaryExpansion
-from mapping_field.new_code.conditions import TrueCondition
+from mapping_field.new_code.conditions import BinaryCondition, FalseCondition, TrueCondition
+from mapping_field.new_code.mapping_field import MapElement, VarDict
+from mapping_field.new_code.promises import IsCondition
 from mapping_field.new_code.ranged_condition import BoolVar
 
+simplify_logger = TreeLogger(__name__)
+
+
+def test_assignment():
+    x = BoolVar('x')
+
+    cond = (x<<0)
+
+    assert cond is not TrueCondition
+    assert cond is not FalseCondition
+
+    cond0 = cond(0)
+    cond1 = cond(1)
+
+    assert cond0 is TrueCondition
+    assert cond1 is FalseCondition
+
+def test_union_assignment():
+    x, y = BoolVar('x'), BoolVar('y')
+    simplify_logger.tree.set_active(False)
+    cond = (x << 0) & (y << 0)
+    simplify_logger.tree.set_active(True)
+    cond = cond({x:0, y:0})
+    cond = cond.simplify2()
+    assert cond is TrueCondition
 
 def test_avoid_loop_in__two_bool_vars_simplifier():
     x = BoolVar('x')
     cond = TrueCondition & (x<<0)
+
+
+def test_two_var_simplifier():
+
+    x, y = BoolVar('x'), BoolVar('y')
+    functions = [
+        TrueCondition,
+        FalseCondition
+    ]
+    for v in [x,y]:
+        for value in (0,1):
+            functions.append(v<<value)
+    for value_x,value_y in ( (0,0), (0,1), (1,0), (1,2) ):
+        functions.append( (x << value_x) & (y << value_y) )
+        functions.append( (x << value_x) | (y << value_y) )
+
+    class TwoVar(MapElement):
+        def __init__(self, function):
+            super().__init__(variables=[x,y])
+            self.promises.add_promise(IsCondition)
+            self.function = function
+
+        def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
+            output_value = self.function(var_dict).simplify2()
+            if isinstance(output_value, BinaryCondition):
+                return output_value
+            return None
+
+    for function in functions:
+        simplify_logger.tree.reset()
+        simplify_logger.log(f'Running test on {blue(function)}')
+        two_var = TwoVar(function)
+        assert function == two_var.simplify2(), f'Failed with the function {function}'
+
+def test_two_var_simplifier2():
+
+    x, y = BoolVar('x'), BoolVar('y')
+
+    cond = (x << 0) & ( (x<<0) | (y<<0) )
+    cond = cond.simplify2()
+    assert cond  == (x<<0)
 
 
 def test_simplify_range():
@@ -51,6 +122,8 @@ def test_extend_range_to_full():
     assert cond2 is TrueCondition
 
     for k in range(0,8):
+        simplify_logger.tree.reset()
+        simplify_logger.log(f'Running test on {blue(k)}')
         cond1 = (x < k).simplify2()
         cond2 = (k <= x).simplify2()
         assert cond1 | cond2 is TrueCondition, f'Could not combine Bin<{k} | {k}<=Bin'

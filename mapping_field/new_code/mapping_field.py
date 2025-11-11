@@ -748,7 +748,8 @@ class Var(MapElement, DefaultSerializable):
         return hash(('Var', self.name))
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
-        return var_dict.get(self, None)
+        value = var_dict.get(self, None)
+        return value if value is not self else None
 
 
 class NamedFunc(MapElement, DefaultSerializable):

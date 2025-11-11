@@ -66,7 +66,7 @@ class LogTree:
         self.max_depth = 60
         self.paused = False
         self.log_count = 0
-        self.max_log_count = -1
+        self.max_log_count = 10000
         self.tab_styles = []
         self.context = TreeContext()
         self.root_context = self.context

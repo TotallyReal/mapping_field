@@ -358,11 +358,12 @@ class _ListCondition(Condition, DefaultSerializable):
             return rev_cls([new_cls_condition, sp_condition])
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
-        if hasattr(self, '_binary_flag'):
-            simplify_logger.log('Has binary flag - avoid simplifying here.')
-            return None
-        if self._simplified_version is self:
-            return None
+        if len(var_dict) == 0:
+            if hasattr(self, '_binary_flag'):
+                simplify_logger.log('Has binary flag - avoid simplifying here.')
+                return None
+            if self._simplified_version is self:
+                return None
 
         cls = self.__class__
 

@@ -223,6 +223,7 @@ def test_simplification():
 
 
 def test_linear_ranged_condition_subtraction():
+    simplify_tree.max_log_count = -1
     vv = [BoolVar(f'x_{i}') for i in range(4)]
     x = BinaryExpansion(vv)
     xx = Linear.of(x)

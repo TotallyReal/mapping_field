@@ -565,12 +565,11 @@ def two_bool_vars_simplifier(elem: MapElement, var_dict: VarDict) -> Optional[Ma
     # TODO: make sure that I don't call has_promise for an element that I am trying to simplify, since it might
     #       call simplify inside it, and then we ar off to the infinite loop races.
     #if not elem.has_promise(IsCondition):
-    if not elem.promises.has_promise(IsCondition):
-        return None
-    if len(var_dict) > 0:
-        return None
-
-    if len(elem.vars) > 2 or not all(isinstance(v, BoolVar) for v in elem.vars):
+    if (
+            (not elem.promises.has_promise(IsCondition)) or
+            len(var_dict) > 0 or len(elem.vars) > 2 or
+            (not all(isinstance(v, BoolVar) for v in elem.vars))
+    ):
         return None
 
     if len(elem.vars) == 1:
