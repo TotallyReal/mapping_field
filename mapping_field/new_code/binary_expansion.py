@@ -688,7 +688,7 @@ class BinaryExpansion(MapElement, DefaultSerializable):
         #     a = (a // 2) + (a % 2)
         #     b = (b // 2) + (b % 2)
 
-        condition = TrueCondition
+        conditions = []
 
         two_power = 2**len(coefs)
         for i in range(len(coefs)-1,-1,-1):
@@ -699,25 +699,32 @@ class BinaryExpansion(MapElement, DefaultSerializable):
 
             # BoolVar
             if bin_exp._bool_max_value[i] < a:
-                condition &= ( c << 1 )
+                conditions.append(c << 1)
                 a -= two_power
                 b -= two_power
                 continue
 
             if b < two_power:
-                condition &= (c << 0)
+                conditions.append(c << 0)
                 continue
 
             break
         else:
             i = -1
 
+        condition = TrueCondition
+        if len(conditions) == 1:
+            condition = conditions[0]
+        if len(conditions) > 1:
+            condition = IntersectionCondition(conditions)
+
         if a <= 0 and bin_exp._bool_max_value[i+1] <= b: # TODO: +1 ?
             return condition
         else:
             if condition is TrueCondition and (a, b) == (f_range.low, f_range.high):
                 return None
-            return condition & RangeCondition(BinaryExpansion(coefs[:i+1]), IntervalRange[a,b])
+            # TODO: Maybe don't simplify automatically in binary operations like &, |, etc?
+            return IntersectionCondition([condition, RangeCondition(BinaryExpansion(coefs[:i+1]), IntervalRange[a,b])])
 
     @staticmethod
     def _union_with_range_over_binary_expansion(union_elem: MapElement, var_dict: VarDict) -> Optional['MapElement']:
