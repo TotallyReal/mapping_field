@@ -2,17 +2,17 @@ import operator
 
 from typing import Dict, List, Optional, Tuple, Union
 
-from mapping_field.field import ExtElement
-from mapping_field.log_utils.tree_loggers import TreeLogger, green, red, yellow
 from mapping_field.arithmetics import Mult
 from mapping_field.conditions import FalseCondition, TrueCondition, UnionCondition
+from mapping_field.field import ExtElement
+from mapping_field.log_utils.tree_loggers import TreeLogger, green, red, yellow
 from mapping_field.mapping_field import (
     FuncDict, MapElement, MapElementConstant, MapElementProcessor, OutputValidator, Var, VarDict,
     convert_to_map, params_to_maps,
 )
+from mapping_field.processors import ProcessFailureReason
 from mapping_field.promises import IsCondition, IsIntegral
 from mapping_field.ranged_condition import BoolVar, InRange, RangeCondition
-from mapping_field.processors import ProcessFailureReason
 
 simplify_logger = TreeLogger(__name__)
 

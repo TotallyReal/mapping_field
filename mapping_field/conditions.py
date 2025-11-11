@@ -2,9 +2,9 @@ import operator
 
 from typing import Dict, List, Optional, Tuple, Type, cast
 
+from mapping_field.arithmetics import _ArithmeticMapFromFunction
 from mapping_field.field import ExtElement
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red, yellow
-from mapping_field.arithmetics import _ArithmeticMapFromFunction
 from mapping_field.mapping_field import (
     CompositionFunction, MapElement, MapElementProcessor, Var, VarDict, always_validate_promises,
 )

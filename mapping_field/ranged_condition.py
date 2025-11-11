@@ -3,18 +3,18 @@ import operator
 
 from typing import Dict, Optional, Tuple, Union
 
-from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
 from mapping_field.arithmetics import Add, Mult, Sub, _as_combination
 from mapping_field.conditions import (
     BinaryCondition, Condition, FalseCondition, IntersectionCondition, TrueCondition,
     UnionCondition,
 )
+from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
 from mapping_field.mapping_field import (
     CompositionFunction, FuncDict, MapElement, MapElementConstant, MapElementProcessor,
     OutputPromises, OutputValidator, Var, VarDict, always_validate_promises,
 )
-from mapping_field.promises import IsCondition, IsIntegral
 from mapping_field.processors import ProcessFailureReason
+from mapping_field.promises import IsCondition, IsIntegral
 
 simplify_logger = TreeLogger(__name__)
 

@@ -1,16 +1,17 @@
 from typing import Dict, List, Optional, Tuple, Union
 
-from mapping_field.log_utils.tree_loggers import TreeLogger, red
 from mapping_field.arithmetics import BinaryCombination, as_neg
 from mapping_field.conditions import (
     FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
 )
 from mapping_field.linear import Linear
+from mapping_field.log_utils.tree_loggers import TreeLogger, red
 from mapping_field.mapping_field import (
-    ExtElement, FuncDict, MapElement, MapElementConstant, Var, VarDict, )
+    ExtElement, FuncDict, MapElement, MapElementConstant, Var, VarDict,
+)
+from mapping_field.processors import ProcessFailureReason
 from mapping_field.promises import IsCondition, IsIntegral
 from mapping_field.ranged_condition import BoolVar, InRange, IntervalRange, RangeCondition
-from mapping_field.processors import ProcessFailureReason
 from mapping_field.serializable import DefaultSerializable
 
 # from mapping_field.new_code.linear import LinearTransformer, Linear
