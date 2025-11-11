@@ -938,12 +938,15 @@ class CompositionFunction(MapElement, DefaultSerializable):
         simplify_logger.log('Simplifying via positional entries')
         for position, v in enumerate(function.vars):
             pos_entry = simplified_entries_dict[v]
-            simplify_logger.log(f'Pos {red(v)} -> {red(pos_entry)} with class {cyan(pos_entry.__class__.__name__)}', TreeAction.GO_DOWN)
+            log_title = f'Pos: [{cyan(pos_entry.__class__.__name__)}] {red(v)} <== {red(pos_entry)}'
+            simplify_logger.log(log_title, TreeAction.GO_DOWN)
             result = pos_entry._simplify_caller_function2(function, position, simplified_entries_dict)
 
             if result is not None:
+                simplify_logger.set_context_title(f'{log_title} => {green(result)}')
                 simplify_logger.log(f'Pos {green(result)}', TreeAction.GO_UP)
                 return result
+            simplify_logger.set_context_title(f'{log_title} = {magenta("& & &")}')
             simplify_logger.log(f'Pos {magenta("& & &")}', TreeAction.GO_UP)
 
         if is_simpler:

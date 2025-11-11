@@ -3,6 +3,7 @@ import operator
 from typing import Dict, List, Optional, Tuple
 
 from mapping_field.field import ExtElement
+from mapping_field.log_utils.tree_loggers import TreeLogger, red, yellow
 from mapping_field.new_code.arithmetics import Mult
 from mapping_field.new_code.conditions import FalseCondition, TrueCondition, UnionCondition
 from mapping_field.new_code.mapping_field import (
@@ -12,6 +13,7 @@ from mapping_field.new_code.mapping_field import (
 from mapping_field.new_code.promises import IsCondition, IsIntegral
 from mapping_field.new_code.ranged_condition import BoolVar, InRange, RangeCondition
 
+simplify_logger = TreeLogger(__name__)
 
 class ConditionalFunction(MapElement):
     """
@@ -78,8 +80,10 @@ class ConditionalFunction(MapElement):
         regions: List[Tuple[MapElement, MapElement]] = []
         for (cond1, elem1) in self.regions:
             for (cond2, elem2) in other.regions:
+                simplify_logger.log(f'check if the regions {red(cond1)}, {red(cond2)} intersect.')
                 cond_prod = (cond1 & cond2).simplify2()
                 if cond_prod is not FalseCondition:
+                    simplify_logger.log(f'Regions intersect - apply "{yellow(op_func.__name__)}" on the functions {red(elem1)}, {red(elem2)}.')
                     regions.append((cond_prod, op_func(elem1, elem2)))
         return ConditionalFunction(regions).simplify2()
 

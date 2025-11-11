@@ -120,10 +120,6 @@ class LogOrigin:
 
 class TreeLogger:
 
-    @classmethod
-    def set_log_state(cls, paused: bool = False) -> None:
-        cls._paused = paused
-
     def reset(self):
         self.tree.depth = 0
 
