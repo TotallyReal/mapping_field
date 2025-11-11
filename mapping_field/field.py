@@ -1,7 +1,8 @@
 import math
 
+from typing import List, Union
+
 from mapping_field.math_utils import gcd
-from typing import Union, List
 
 ExtElement = Union['FieldElement', int]
 

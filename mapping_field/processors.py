@@ -1,9 +1,12 @@
 import dataclasses
 
-from colorama import init, Fore, Style, Back
-from typing import TypeVar, Generic, Callable, Optional, List, Type, Dict, Union
+from typing import Callable, Dict, Generic, List, Optional, Type, TypeVar, Union
 
-from mapping_field.log_utils.tree_loggers import TreeLogger, TreeAction, green, red, yellow, magenta, cyan
+from colorama import Back, Fore, Style, init
+
+from mapping_field.log_utils.tree_loggers import (
+    TreeAction, TreeLogger, cyan, green, magenta, red, yellow,
+)
 
 init(autoreset=True)
 logger = TreeLogger(__name__)

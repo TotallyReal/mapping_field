@@ -1,9 +1,11 @@
-import yaml
-from pathlib import Path
+import inspect
 
 from abc import ABC, abstractmethod
-import inspect
-from typing import Dict, Type, List
+from pathlib import Path
+from typing import Dict, List, Type
+
+import yaml
+
 
 def tuple_representer(dumper, data):
     """Tell YAML how to represent a Python tuple."""

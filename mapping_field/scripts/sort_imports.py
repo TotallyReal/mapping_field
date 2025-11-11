@@ -2,10 +2,12 @@ import isort
 
 from mapping_field.global_config import PROJECT_ROOT
 
-src_root = PROJECT_ROOT / 'mapping_field' / 'new_code'
+src_root = PROJECT_ROOT / 'mapping_field'
+ignore_dir = src_root / "old_code"
 
-# Recursively sort all Python files
 for py_file in src_root.rglob("*.py"):
+    if py_file.is_relative_to(ignore_dir):
+        continue
     isort.file(
         str(py_file),
         multi_line_output=5,
