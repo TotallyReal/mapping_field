@@ -591,7 +591,7 @@ class BinaryExpansion(MapElement, DefaultSerializable):
         Tries to view the condition as a ranged condition on this BinaryExpansion (not necessarily interval range).
         If possible look for the interval containing the point, and return its upper or lower bound depending on
         the 'upper_bound' argument.
-        If could not do any of the steps above, return None.
+        If it could not do any of the steps above, return None.
         """
         used_vars = self._as_binary_range_data(condition)
         if used_vars is None:

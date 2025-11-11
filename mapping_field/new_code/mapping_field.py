@@ -250,7 +250,7 @@ class MapElement:
             self.promises.add_invalid_promise(promise)
         return value
 
-    # <editor-fold desc=" ------------------------ String represnetation ------------------------">
+    # <editor-fold desc=" ------------------------ String representation ------------------------">
 
     def __repr__(self):
         return str(self)
@@ -446,7 +446,7 @@ class MapElement:
     """
     For ease of reading, all the arithmetic code is in arithmetics.py file. In particular the static functions:
         addition, subtraction, multiplication, division and negation
-    are all overriden there, and _simplify_caller_function2 is updated there. 
+    are all overridden there, and _simplify_caller_function2 is updated there. 
     They are defined here to help the compiler.
     
     Each arithmetic function has 3 versions:
@@ -454,7 +454,7 @@ class MapElement:
         - dunder methods: (e.g. __add__) To help the coding process, and convert objects into MapElements.
         - "standard" methods: (e.g. add) Compute the function for special type of variables. These are called via
           the _simplify_caller_function2.
-    In both the static and standard methods have MapElements as parameters, while the dunder methods can recieve
+    In both the static and standard methods have MapElements as parameters, while the dunder methods can receive
     other types as well.    
     
     The static method generate the generic function with general simplifications (e.g. x+0 -> x).
@@ -462,7 +462,7 @@ class MapElement:
     Override the standard methods if the arithmetic function has special behaviour for your class. For example,
     if you class represents cos^2(x) you can check if the second summand is sin^2(x) to conclude that the sum is 1.
     In case there is no special simplification, return None (or better, return the super() version of that function).
-    These methods can be also "overriden" direction in _simplify_caller_function2, e.g.:
+    These methods can be also "overridden" direction in _simplify_caller_function2, e.g.:
     
         if function is MapElement.addition:
           return ...
@@ -540,7 +540,7 @@ class MapElement:
     @staticmethod
     def multiplication(elem1: 'MapElement' ,elem2: 'MapElement') -> 'MapElement':
         """
-        A default implementation, overriden in arithmetics.py
+        A default implementation, overridden in arithmetics.py
         """
         return NotImplemented
 
@@ -575,7 +575,7 @@ class MapElement:
     @staticmethod
     def division(elem1: 'MapElement' ,elem2: 'MapElement') -> 'MapElement':
         """
-        A default implementation, overriden in arithmetics.py
+        A default implementation, overridden in arithmetics.py
         """
         return NotImplemented
 

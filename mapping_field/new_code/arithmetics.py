@@ -136,7 +136,7 @@ class _Sub(_ArithmeticMapFromFunction):
             return Neg(entries[1]).simplify2()
         if entries[1].evaluate() == 0:
             return entries[0]
-        if (entries[0] is entries[1]):
+        if entries[0] is entries[1]:
             # TODO:
             #   I do not use entries[0] == entries[1], because some places might use the definition for x == y
             #   as  x - y == 0. Consider adding 'equality' function that forbids this definition

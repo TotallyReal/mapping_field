@@ -145,7 +145,7 @@ class IntervalRange:
 
     def union(self, other: 'IntervalRange') -> Optional['IntervalRange']:
         """
-        Returns the union interval if can be written as an interval, otherwise return None.
+        Returns the union interval if it can be written as an interval, otherwise return None.
         """
 
         range1 = self
