@@ -955,9 +955,12 @@ class CompositionFunction(MapElement, DefaultSerializable):
         function = function or self.function
         simplified_entries = [simp_entry or entry for simp_entry, entry in zip(simplified_entries, self.entries)]
 
-        simplified_entries_dict  = {v : entry
-                                    for v, entry in zip(function.vars, simplified_entries)}
-        simplify_logger.log('Simplifying function with entries')
+        # IMPORTANT! Use the self.function.vars and not the function.vars, as it might change (both as a set,
+        # and the order)
+        if self.function.vars != function.vars:
+            simplify_logger.log(f'{red("WARNING")}: vars have changed from {self.function.vars} to {function.vars}')
+        simplified_entries_dict = {v: entry for v, entry in zip(self.function.vars, simplified_entries)}
+        simplify_logger.log("Simplifying function with entries")
         result = function._simplify2(simplified_entries_dict)
         if result is not None:
             return result
