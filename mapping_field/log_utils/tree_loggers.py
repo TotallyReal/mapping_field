@@ -12,34 +12,41 @@ from mapping_field.serializable import DefaultSerializable
 
 
 def red(x) -> str:
-    return f'{Fore.RED}{x}{Style.RESET_ALL}'
+    return f"{Fore.RED}{x}{Style.RESET_ALL}"
+
 
 def green(x) -> str:
-    return f'{Fore.GREEN}{x}{Style.RESET_ALL}'
+    return f"{Fore.GREEN}{x}{Style.RESET_ALL}"
+
 
 def blue(x) -> str:
-    return f'{Fore.BLUE}{x}{Style.RESET_ALL}'
+    return f"{Fore.BLUE}{x}{Style.RESET_ALL}"
+
 
 def yellow(x) -> str:
-    return f'{Fore.YELLOW}{x}{Style.RESET_ALL}'
+    return f"{Fore.YELLOW}{x}{Style.RESET_ALL}"
+
 
 def magenta(x) -> str:
-    return f'{Fore.MAGENTA}{x}{Style.RESET_ALL}'
+    return f"{Fore.MAGENTA}{x}{Style.RESET_ALL}"
+
 
 def cyan(x) -> str:
-    return f'{Fore.CYAN}{x}{Style.RESET_ALL}'
+    return f"{Fore.CYAN}{x}{Style.RESET_ALL}"
+
 
 class TreeAction(Enum):
     NEUTRAL = auto()
     GO_DOWN = auto()
     GO_UP = auto()
 
-Information = Union['TreeContext', str]
+
+Information = Union["TreeContext", str]
 
 
 class TreeContext(DefaultSerializable):
-    def __init__(self, information: Optional[List[Information]] = None, title: str = ''):
-        self.parent : Optional['TreeContext'] = None
+    def __init__(self, information: Optional[List[Information]] = None, title: str = ""):
+        self.parent: Optional["TreeContext"] = None
         self.information = [] if information is None else information
         for context in self.information:
             if isinstance(context, TreeContext):
@@ -63,12 +70,13 @@ class TreeContext(DefaultSerializable):
             information.parent = self
 
     def __repr__(self):
-        if len(self.title)>0:
+        if len(self.title) > 0:
             return self.title
-        return 'empty' if len(self.information) == 0 else str(self.information[0])
+        return "empty" if len(self.information) == 0 else str(self.information[0])
 
     def set_title(self, title: str):
         self.title = title
+
 
 class LogTree:
 
@@ -117,7 +125,9 @@ class LogTree:
     def set_active(self, active: bool = True):
         self.paused = not active
 
-simplify_tree = LogTree('Simplify Tree')
+
+simplify_tree = LogTree("Simplify Tree")
+
 
 @dataclass
 class LogOrigin:
@@ -152,25 +162,25 @@ class TreeLogger:
             return
         # log_origin = LogOrigin.from_caller()
         if self.tree.log_count >= self.tree.max_log_count > 0:
-            raise Exception('Too many logs')
-        tab_symbols = ['|'] * self.tree.depth
+            raise Exception("Too many logs")
+        tab_symbols = ["|"] * self.tree.depth
         if action == TreeAction.GO_DOWN:
             self.tree.open_context()
             self.tree.add_information(message)
-            self.tree.tab_styles.append(f'{fore}{back}')
-            tab_symbols.append('┌>')
+            self.tree.tab_styles.append(f"{fore}{back}")
+            tab_symbols.append("┌>")
         elif action == TreeAction.GO_UP:
-            tab_symbols[-1] = '└>'
+            tab_symbols[-1] = "└>"
             self.tree.add_information(message)
-            self.tree.close_context(delete = delete_context)
+            self.tree.close_context(delete=delete_context)
         else:
             self.tree.add_information(message)
-        tab_symbols = [f'{s}{c}{Style.RESET_ALL} ' for c, s in zip(tab_symbols, self.tree.tab_styles)]
-        initial = ''.join(tab_symbols)
+        tab_symbols = [f"{s}{c}{Style.RESET_ALL} " for c, s in zip(tab_symbols, self.tree.tab_styles)]
+        initial = "".join(tab_symbols)
         if self.tree.print_logs:
-            self.logger.info(f'{initial}{message}')
+            self.logger.info(f"{initial}{message}")
         if self.tree.depth > self.tree.max_depth:
-            raise Exception('Too many recursive logs')
+            raise Exception("Too many recursive logs")
         if action == TreeAction.GO_UP:
             self.tree.tab_styles.pop(-1)
 

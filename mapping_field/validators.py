@@ -1,10 +1,11 @@
 from typing import Callable, Generic, List, Optional, Type, TypeVar
 
-T = TypeVar('T', bound=object)
-Context = TypeVar('Context', bound=object)
+T = TypeVar("T", bound=object)
+Context = TypeVar("Context", bound=object)
 
 Validator = Callable[[T], Optional[bool]]
 ContextValidator = Callable[[T, Context], Optional[bool]]
+
 
 class MultiValidator(Generic[T, Context]):
     """
@@ -43,6 +44,7 @@ class MultiValidator(Generic[T, Context]):
 
     def register_context_validator(self, validator: ContextValidator[T, Context]):
         self.context_validators.append(validator)
+
 
 class ValidatorByClassOrObject(Generic[T]):
 

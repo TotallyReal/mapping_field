@@ -8,8 +8,8 @@ from mapping_field.tests.utils import DummyMap
 
 
 class ImprovedDummyMap(MapElement):
-    def __init__(self, value: Tuple =(0,)):
-        super().__init__([], f'ImprovedDummyMap({value})')
+    def __init__(self, value: Tuple = (0,)):
+        super().__init__([], f"ImprovedDummyMap({value})")
         self.value = value
 
     def __eq__(self, other):
@@ -17,7 +17,9 @@ class ImprovedDummyMap(MapElement):
             return len(self.value) == 1 and self.value[0] == other.value
         return isinstance(other, ImprovedDummyMap) and set(self.value) == set(other.value)
 
-    def _simplify_caller_function2(self, function:MapElement, position: int, var_dict: VarDict) -> Optional['MapElement']:
+    def _simplify_caller_function2(
+        self, function: MapElement, position: int, var_dict: VarDict
+    ) -> Optional["MapElement"]:
         elem2 = var_dict[function.vars[1 - position]]
         if function in (MapElement.addition, MapElement.multiplication):
             if isinstance(elem2, DummyMap):
@@ -26,6 +28,7 @@ class ImprovedDummyMap(MapElement):
                 return ImprovedDummyMap(self.value + elem2.value)
         return None
 
+
 def test_arithmetic_premade_methods():
     class DummyMapNeg(DummyMap):
 
@@ -33,10 +36,11 @@ def test_arithmetic_premade_methods():
             return DummyMap(-self.value) if self.value != 0 else None
 
     dummy = DummyMapNeg(0)
-    assert str(-dummy) == '(-DummyMap(0))'
+    assert str(-dummy) == "(-DummyMap(0))"
 
     dummy = DummyMapNeg(1)
-    assert str(-dummy) == 'DummyMap(-1)'
+    assert str(-dummy) == "DummyMap(-1)"
+
 
 def test_addition_commutative_choice():
     elem1 = DummyMap(0)
@@ -46,6 +50,7 @@ def test_addition_commutative_choice():
     addition2 = elem2 + elem1
     assert addition1 == addition2
 
+
 def test_multiplication_commutative_choice():
     elem1 = DummyMap(0)
     elem2 = ImprovedDummyMap((1,))
@@ -54,12 +59,14 @@ def test_multiplication_commutative_choice():
     multiplication2 = elem2 * elem1
     assert multiplication1 == multiplication2
 
+
 # ----------------- test simple arithmetics -----------------
 
-def test_simple_arithmetics():
-    x, y, z = Var('x'), Var('y'), Var('z')
 
-    f = (x+y)*z + 5 - (2*x*x)
+def test_simple_arithmetics():
+    x, y, z = Var("x"), Var("y"), Var("z")
+
+    f = (x + y) * z + 5 - (2 * x * x)
     f.set_var_order([x, y, z])
     assert f(0, 0, 0) == 5
     assert f(1, 0, 0) == 3
@@ -74,6 +81,7 @@ def test_simple_arithmetics():
 # TODO: create TestMapElement
 # TODO: not the best way to test with str(.), but it will do until I can compare functions
 
+
 def test_zero_addition():
     x = DummyMap(0)
     assert x + 0 == x
@@ -83,7 +91,7 @@ def test_zero_addition():
 def test_zero_subtraction():
     x = DummyMap(0)
     assert x - 0 == x
-    assert str(0 - x) == '(-DummyMap(0))'
+    assert str(0 - x) == "(-DummyMap(0))"
 
 
 def test_addition_inverse():
@@ -119,58 +127,65 @@ def test_one_division():
 
 # ----------------- General Addition Rules -----------------
 
+
 def test_neg_distributive():
 
     x, y, z = DummyMap(0), DummyMap(1), DummyMap(2)
     assert (-(-x)) == x
-    assert str(-(x-y)) == '(DummyMap(1)-DummyMap(0))'
+    assert str(-(x - y)) == "(DummyMap(1)-DummyMap(0))"
 
 
 def test_addition_rules():
     x, y = DummyMap(0), DummyMap(1)
-    assert str(x+y) == '(DummyMap(0)+DummyMap(1))'
-    assert str(x+(-y)) == '(DummyMap(0)-DummyMap(1))'
-    assert str((-x)+y) == '(DummyMap(1)-DummyMap(0))'
-    assert str((-x)+(-y)) == '(-(DummyMap(0)+DummyMap(1)))'
+    assert str(x + y) == "(DummyMap(0)+DummyMap(1))"
+    assert str(x + (-y)) == "(DummyMap(0)-DummyMap(1))"
+    assert str((-x) + y) == "(DummyMap(1)-DummyMap(0))"
+    assert str((-x) + (-y)) == "(-(DummyMap(0)+DummyMap(1)))"
 
 
 def test_subtraction_rules():
     x, y = DummyMap(0), DummyMap(1)
-    assert str(x-y) == '(DummyMap(0)-DummyMap(1))'
-    assert str(x-(-y)) == '(DummyMap(0)+DummyMap(1))'
-    assert str((-x)-y) == '(-(DummyMap(1)+DummyMap(0)))'  # TODO: 0,1 switched positions! Need a better way to compare.
-    assert str((-x)-(-y)) == '(DummyMap(1)-DummyMap(0))'
+    assert str(x - y) == "(DummyMap(0)-DummyMap(1))"
+    assert str(x - (-y)) == "(DummyMap(0)+DummyMap(1))"
+
+    # TODO: 0,1 switched positions! Need a better way to compare.
+    assert str((-x) - y) == "(-(DummyMap(1)+DummyMap(0)))"
+    assert str((-x) - (-y)) == "(DummyMap(1)-DummyMap(0))"
 
 
 # ----------------- General Multiplication Rules -----------------
 
+
 def test_multiplication_rules():
-    x, y, z = Var('x'), Var('y'), Var('z')
+    x, y, z = Var("x"), Var("y"), Var("z")
 
-    assert str(x * (-y)) == '(-(x*y))'
-    assert str((-x) * y) == '(-(x*y))'
-    assert str((-x) * (-y)) == '(x*y)'
+    assert str(x * (-y)) == "(-(x*y))"
+    assert str((-x) * y) == "(-(x*y))"
+    assert str((-x) * (-y)) == "(x*y)"
 
-    f = Func('f')(x, y)
-    g = Func('g')(z)
-    h = Func('h')(y, z)
+    f = Func("f")(x, y)
+    g = Func("g")(z)
+    h = Func("h")(y, z)
 
-    assert str(((-x)/y) / (g*(-h)/(x * (-f)))) == '(-( (x*(x*f(x,y)))/(y*(g(z)*h(y,z))) ))'
+    assert str(((-x) / y) / (g * (-h) / (x * (-f)))) == "(-( (x*(x*f(x,y)))/(y*(g(z)*h(y,z))) ))"
+
 
 # ----------------- assignment -----------------
 
+
 def test_simplification_after_assignment():
     simple_addition = ImprovedDummyMap((0,)) + ImprovedDummyMap((1,))
-    result = ImprovedDummyMap((0,1))
+    result = ImprovedDummyMap((0, 1))
     assert simple_addition == result
 
-    x = Var('x')
+    x = Var("x")
     y = ImprovedDummyMap((0,))
     assigned_addition = x + y
 
     assigned_addition = assigned_addition({x: ImprovedDummyMap((1,))})
     assigned_addition = assigned_addition.simplify2()
     assert assigned_addition == result
+
 
 # ----------------- combination -----------------
 

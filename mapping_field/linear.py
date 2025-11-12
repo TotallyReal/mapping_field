@@ -15,6 +15,7 @@ from mapping_field.serializable import DefaultSerializable
 
 logger = TreeLogger(__name__)
 
+
 class Linear(MapElement, DefaultSerializable):
 
     @staticmethod
@@ -41,15 +42,15 @@ class Linear(MapElement, DefaultSerializable):
         self.elem = elem
 
     def to_string(self, vars_to_str: Dict[Var, str]):
-        a_str = f'{str(self.a)}*' if self.a != 1 else ''
-        b_str = ''
+        a_str = f"{str(self.a)}*" if self.a != 1 else ""
+        b_str = ""
         if self.b > 0:
-            b_str = f' + {self.b}'
+            b_str = f" + {self.b}"
         if self.b < 0:
-            b_str = f' - {-self.b}'
-        return f'Lin[{a_str}{self.elem.to_string(vars_to_str)}{b_str}]'
+            b_str = f" - {-self.b}"
+        return f"Lin[{a_str}{self.elem.to_string(vars_to_str)}{b_str}]"
 
-    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> "MapElement":
         elem = self.elem._call_with_dict(var_dict, func_dict)
         if elem is self.elem:
             return self
@@ -77,7 +78,7 @@ class Linear(MapElement, DefaultSerializable):
         if isinstance(a1, int) and isinstance(a2, int):
             gcd = math.gcd(a1, a2)
 
-            bin_comb = BinaryCombination(a1//gcd, elem1, a2//gcd, elem2)
+            bin_comb = BinaryCombination(a1 // gcd, elem1, a2 // gcd, elem2)
             result = bin_comb._simplify2()
             if result is not None and not isinstance(result, BinaryCombination):
                 return Linear(gcd, result, b1 + b2)
@@ -122,7 +123,7 @@ class Linear(MapElement, DefaultSerializable):
     def __eq__(self, other: MapElement):
         if other is MapElementConstant.zero:
             return self.evaluate() == 0
-        return (self-Linear.of(other)).evaluate() == 0
+        return (self - Linear.of(other)).evaluate() == 0
 
     # <editor-fold desc=" ------------------------ Simplifiers ------------------------ ">
 
@@ -139,7 +140,7 @@ class Linear(MapElement, DefaultSerializable):
             a, b = element.a, element.b
             a_, b_ = element.elem.a, element.elem.b
             return Linear(int(a * a_), element.elem.elem, int(a * b_ + b))
-        return ProcessFailureReason('Inner element is not Linear', trivial=True)
+        return ProcessFailureReason("Inner element is not Linear", trivial=True)
 
     def _evaluate_simplifier(self, var_dict: VarDict) -> Optional[MapElement]:
         value = self.evaluate()
@@ -158,7 +159,7 @@ class Linear(MapElement, DefaultSerializable):
         if function.a == 0:
             return TrueCondition if element.range.contains(function.b) else FalseCondition
 
-        return RangeCondition(function.elem, (element.range-function.b)/function.a)
+        return RangeCondition(function.elem, (element.range - function.b) / function.a)
 
     @staticmethod
     def _binary_combination_linearization(element: MapElement, var_dict: VarDict) -> Optional[MapElement]:
@@ -171,10 +172,12 @@ class Linear(MapElement, DefaultSerializable):
 
     # </editor-fold>
 
+
 RangeCondition.register_class_simplifier(Linear._transform_range)
 Linear.register_class_simplifier(Linear._evaluate_simplifier)
 Linear.register_class_simplifier(Linear._transform_linear)
 BinaryCombination.register_class_simplifier(Linear._binary_combination_linearization)
+
 
 def _extract_scalar_signed_addition(var_dict: VarDict, sign: int = 1) -> Optional[MapElement]:
 
@@ -183,25 +186,25 @@ def _extract_scalar_signed_addition(var_dict: VarDict, sign: int = 1) -> Optiona
         return None
 
     linear_var1 = Linear.of(add_vars[0])
-    linear_var2 = sign*Linear.of(add_vars[1])
+    linear_var2 = sign * Linear.of(add_vars[1])
     linear_var2 = Linear.of(linear_var2)
     if (linear_var1.a != 0 and linear_var1.b != 0) or (linear_var2.a != 0 and linear_var2.b != 0):
         b = linear_var1.b + linear_var2.b
         # linear_var1 = Linear(linear_var1.a, linear_var1.elem, 0)
         # linear_var2 = Linear(linear_var2.a, linear_var2.elem, 0)
-        logger.log(f'Extracted the scalar {green(b)}')
+        logger.log(f"Extracted the scalar {green(b)}")
         return ((linear_var1.a * linear_var1.elem) + (linear_var2.a * linear_var2.elem)) + b
 
     return None
 
+
 def extract_scalar_addition(var_dict: VarDict) -> Optional[MapElement]:
     return _extract_scalar_signed_addition(var_dict=var_dict, sign=1)
+
 
 def extract_scalar_subtraction(var_dict: VarDict) -> Optional[MapElement]:
     return _extract_scalar_signed_addition(var_dict=var_dict, sign=-1)
 
+
 Add.register_simplifier(extract_scalar_addition)
 Sub.register_simplifier(extract_scalar_subtraction)
-
-
-

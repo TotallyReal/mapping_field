@@ -10,7 +10,7 @@ def test_linear_generation():
     dummy = DummyMap(0)
     linear_dummy = Linear.of(dummy)
 
-    func = 5*linear_dummy
+    func = 5 * linear_dummy
     result = Linear(5, dummy, 0)
     assert func == result
 
@@ -18,14 +18,15 @@ def test_linear_generation():
     result = Linear(1, dummy, 7)
     assert func == result
 
-    func = 5*linear_dummy + 7
+    func = 5 * linear_dummy + 7
     result = Linear(5, dummy, 7)
     assert func == result
 
-    func = 0*linear_dummy + 7
+    func = 0 * linear_dummy + 7
     func = func.simplify2()
     result = 7
     assert func == result
+
 
 def test_linear_unpacking():
     dummy = DummyMap(0)
@@ -33,6 +34,7 @@ def test_linear_unpacking():
     elem1 = Linear(3, Linear(4, dummy, 5), 6)
     elem2 = Linear(12, dummy, 21)
     assert elem1 == elem2
+
 
 def test_conversion_to_linear():
     dummy = DummyMap(0)
@@ -51,6 +53,7 @@ def test_conversion_to_linear():
     arith_dummy = 4 + dummy * 3
     assert Linear.of(arith_dummy) == lin_dummy
 
+
 def single_addition(func1: MapElement, func2: MapElement, addition: MapElement):
     result = func1 + func2
     func2 = convert_to_map(func2)
@@ -58,21 +61,23 @@ def single_addition(func1: MapElement, func2: MapElement, addition: MapElement):
     assert addition - func1 == func2.simplify2()
     assert addition - func2 == func1.simplify2()
 
+
 def test_linear_addition():
     dummy = DummyMap(0)
     lin_dummy = Linear.of(dummy)
 
     # Add constant
-    single_addition(5*lin_dummy + 3, 3, 5*lin_dummy + 6)
+    single_addition(5 * lin_dummy + 3, 3, 5 * lin_dummy + 6)
 
     # Add elem
-    single_addition(5*lin_dummy + 3, dummy, 6*lin_dummy + 3)
+    single_addition(5 * lin_dummy + 3, dummy, 6 * lin_dummy + 3)
 
     # Add linear
-    single_addition(5*lin_dummy + 3, 11*lin_dummy + 7, 16*lin_dummy + 10)
+    single_addition(5 * lin_dummy + 3, 11 * lin_dummy + 7, 16 * lin_dummy + 10)
 
     # Add unpacked linear
-    single_addition(5*lin_dummy + 3, 11*dummy     + 7, 16*lin_dummy + 10)
+    single_addition(5 * lin_dummy + 3, 11 * dummy + 7, 16 * lin_dummy + 10)
+
 
 def test_multiplication():
     dummy = Linear.of(DummyMap())
@@ -84,19 +89,19 @@ def test_multiplication():
     assert func2 == result
 
 
-
 # ============================== ranged condition ==============================
+
 
 def test_simplify_linear_ranged_condition():
     dummy = Linear.of(DummyMap(0))
 
     def inner_test(a, b, low, high) -> None:
         cond1 = RangeCondition(dummy, (low, high))
-        low, high = a*low + b, a*high + b
-        if a<0:
-            cond2 = RangeCondition(a*dummy+b, IntervalRange(high, low, False, True))
+        low, high = a * low + b, a * high + b
+        if a < 0:
+            cond2 = RangeCondition(a * dummy + b, IntervalRange(high, low, False, True))
         else:
-            cond2 = RangeCondition(a*dummy+b, (low, high))
+            cond2 = RangeCondition(a * dummy + b, (low, high))
 
         cond2 = cond2.simplify2()
         assert cond1 == cond2
@@ -105,28 +110,30 @@ def test_simplify_linear_ranged_condition():
     inner_test(a=-2, b=3, low=-5, high=0)
 
     # test zero coefficient - False
-    condition = RangeCondition(0*dummy+3, (5, 15))
+    condition = RangeCondition(0 * dummy + 3, (5, 15))
     condition = condition.simplify2()
     assert condition == FalseCondition
 
     # test zero coefficient - False
-    condition = RangeCondition(0*dummy+7, (5, 15))
+    condition = RangeCondition(0 * dummy + 7, (5, 15))
     condition = condition.simplify2()
     assert condition == TrueCondition
 
+
 def test_general_assignment():
     dummy = DummyMap()
-    lin_dummy = -3*Linear.of(dummy)+2
+    lin_dummy = -3 * Linear.of(dummy) + 2
 
     condition1 = (lin_dummy.where() == 17).simplify2()
     condition2 = (dummy.where() == -5).simplify2()
     assert condition1 == condition2
 
+
 def test_scalar_extraction():
     dummy1, dummy2 = DummyMap(1), DummyMap(2)
 
     function = (dummy1 + 1) + (dummy2 - 2)
-    assert str(function) == '((DummyMap(1)+DummyMap(2))+-1)'
+    assert str(function) == "((DummyMap(1)+DummyMap(2))+-1)"
 
 
 #

@@ -5,15 +5,18 @@ from mapping_field.serializable import DefaultSerializable
 
 IsCondition = OutputValidator("Condition")
 
+
 def validate_constant_condition(elem: MapElement) -> Optional[bool]:
     value = elem.evaluate()
     if value is None:
         return None
-    return value in (0,1)
+    return value in (0, 1)
+
 
 IsCondition.register_validator(validate_constant_condition)
 
 IsIntegral = OutputValidator("Integral")
+
 
 def validate_constant_integral(elem: MapElement) -> Optional[bool]:
     value = elem.evaluate()
@@ -21,7 +24,9 @@ def validate_constant_integral(elem: MapElement) -> Optional[bool]:
         return None
     return int(value) == value
 
+
 IsIntegral.register_validator(validate_constant_integral)
+
 
 @always_validate_promises
 class IntVar(Var, DefaultSerializable):
@@ -32,4 +37,3 @@ class IntVar(Var, DefaultSerializable):
     def __init__(self, name: str):
         super().__init__(name)
         self.promises.add_promise(IsIntegral)
-

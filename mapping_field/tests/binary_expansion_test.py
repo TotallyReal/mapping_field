@@ -5,16 +5,17 @@ from mapping_field.ranged_condition import BoolVar
 
 
 def test_simple_construction():
-    x, y = BoolVar('x'), BoolVar('y')
+    x, y = BoolVar("x"), BoolVar("y")
     func = BinaryExpansion([x, y, 0, 1])
 
+
 def test_post_generation_independence():
-    v: List[Union[BoolVar, int]] = [BoolVar(f'v_{i}') for i in range(4)]
+    v: List[Union[BoolVar, int]] = [BoolVar(f"v_{i}") for i in range(4)]
 
     v_copy = v.copy()
     func = BinaryExpansion(v_copy)
 
-    assert str(func) == 'Bin[v_0, v_1, v_2, v_3]'
+    assert str(func) == "Bin[v_0, v_1, v_2, v_3]"
 
     # Changing the input list v_copy should not change func
     v_copy[1] = 0
@@ -22,16 +23,17 @@ def test_post_generation_independence():
     func00 = BinaryExpansion(v_copy)
 
     assert func.simplify2() != func00.simplify2()
-    assert str(func) == 'Bin[v_0, v_1, v_2, v_3]'
-    assert str(func00) == 'Bin[v_0, 0, 0, v_3]'
+    assert str(func) == "Bin[v_0, v_1, v_2, v_3]"
+    assert str(func00) == "Bin[v_0, 0, 0, v_3]"
 
     # Calling the function
-    assigned = func({v[1]:0, v[2]:0})
+    assigned = func({v[1]: 0, v[2]: 0})
 
     assert assigned.simplify2() == func00.simplify2()
-    assert str(assigned) == 'Bin[v_0, 0, 0, v_3]'
+    assert str(assigned) == "Bin[v_0, 0, 0, v_3]"
     # Some indication that func is frozen
-    assert str(func) == 'Bin[v_0, v_1, v_2, v_3]'
+    assert str(func) == "Bin[v_0, v_1, v_2, v_3]"
+
 
 def test_equality_constant():
     x1 = BinaryExpansion([1, 0, 1, 1]).simplify2()
@@ -39,18 +41,19 @@ def test_equality_constant():
 
 
 def test_equality():
-    x1 = BinaryExpansion([BoolVar('v1'), 0, 1]).simplify2()
-    x2 = BinaryExpansion([BoolVar('v1'), 0, 1]).simplify2()
+    x1 = BinaryExpansion([BoolVar("v1"), 0, 1]).simplify2()
+    x2 = BinaryExpansion([BoolVar("v1"), 0, 1]).simplify2()
     assert x1 == x2
 
-    x2 = BinaryExpansion([BoolVar('v1'), 0, 1, 0, 0]).simplify2()
+    x2 = BinaryExpansion([BoolVar("v1"), 0, 1, 0, 0]).simplify2()
     assert x1 == x2
     assert x2 == x1
 
+
 def test_constant_split():
-    x = BinaryExpansion([BoolVar('v1'), 0, 1])
+    x = BinaryExpansion([BoolVar("v1"), 0, 1])
     constant = 4
-    pure = BinaryExpansion([BoolVar('v1')])
+    pure = BinaryExpansion([BoolVar("v1")])
     assert x.split_constant() == (pure, constant)
 
     x = BinaryExpansion([1, 0, 1])
@@ -58,9 +61,9 @@ def test_constant_split():
     pure = None
     assert x.split_constant() == (pure, constant)
 
-    x = BinaryExpansion([BoolVar('v1'), 0, BoolVar('v2')])
+    x = BinaryExpansion([BoolVar("v1"), 0, BoolVar("v2")])
     constant = 0
-    pure = BinaryExpansion([BoolVar('v1'), 0, BoolVar('v2')])
+    pure = BinaryExpansion([BoolVar("v1"), 0, BoolVar("v2")])
     assert x.split_constant() == (pure, constant)
 
 
@@ -69,6 +72,7 @@ def addition_test(x, y, x_plus_y):
     assert result == x_plus_y.simplify2()
     assert result - x == y.simplify2()
     assert result - y == x.simplify2()
+
 
 def test_arithmetic_constant():
     addition_test(
@@ -85,10 +89,10 @@ def test_arithmetic_constant():
     )
 
 def test_arithmetic_construction():
-    v1 = BoolVar('v1')
-    v2 = BoolVar('v2')
+    v1 = BoolVar("v1")
+    v2 = BoolVar("v2")
 
-    result = v1 + 2*v2
+    result = v1 + 2 * v2
     bin_expa = BinaryExpansion([v1, v2])
     assert result == bin_expa
 
@@ -96,9 +100,10 @@ def test_arithmetic_construction():
     bin_expa = BinaryExpansion([1, 0, v1, v2])
     assert result == bin_expa
 
+
 def test_arithmetic():
-    v1 = BoolVar('v1')
-    v2 = BoolVar('v2')
+    v1 = BoolVar("v1")
+    v2 = BoolVar("v2")
 
     addition_test(
         BinaryExpansion([v1, 0, 1]),
@@ -120,7 +125,7 @@ def test_arithmetic():
 
 
 def test_linear_of_binary_expansion():
-    xx = [BoolVar(f'x_{i}') for i in range(4)]
+    xx = [BoolVar(f"x_{i}") for i in range(4)]
     full_bin = BinaryExpansion(xx)
 
     v1 = BinaryExpansion([xx[0], xx[1]])
@@ -138,8 +143,8 @@ def test_linear_of_binary_expansion():
 
 
 def test_shift():
-    v1 = BoolVar('v1')
-    v2 = BoolVar('v2')
+    v1 = BoolVar("v1")
+    v2 = BoolVar("v2")
 
     x1 = BinaryExpansion([v1, v2, 0, 1, 1])
     x2 = BinaryExpansion([0, 0, v1, v2, 0, 1, 1])
@@ -154,28 +159,31 @@ def test_shift():
     assert x3.shift(-4) == x1
     assert x3.shift(-2) == x2
 
+
 def test_simplify_range_condition():
-    v = [BoolVar(f'v_{i}') for i in range(4)]
+    v = [BoolVar(f"v_{i}") for i in range(4)]
     x = BinaryExpansion(v)  # A number in [0,16)
 
-    condition1 = ((3<=x) & (x<100)).simplify2()
-    condition2 = ((3<=x) & (x<16)).simplify2()
+    condition1 = ((3 <= x) & (x < 100)).simplify2()
+    condition2 = ((3 <= x) & (x < 16)).simplify2()
     assert condition1 == condition2
 
     x = BinaryExpansion([1] + v)  # A number in [1,32), but only odd numbers
 
-    condition1 = ((0<=x) & (x<10)).simplify2()
-    condition2 = ((1<=x) & (x<10)).simplify2()
+    condition1 = ((0 <= x) & (x < 10)).simplify2()
+    condition2 = ((1 <= x) & (x < 10)).simplify2()
     assert condition1 == condition2
 
     # Only odd number in [16, 19) is 17, which is the only integer in [17,18)
-    condition1 = ((16<=x) & (x<19)).simplify2()
+    condition1 = ((16 <= x) & (x < 19)).simplify2()
     condition2 = (x << 17).simplify2()
     assert condition1 == condition2
 
-    condition1 = ((17<=x) & (x<100)).simplify2()
+    condition1 = ((17 <= x) & (x < 100)).simplify2()
     condition2 = (v[3] << 1).simplify2()
     assert condition1 == condition2
+
+
 #
 # def test_sum_of_bool():
 #     x, y = BoolVar('x'), BoolVar('y')
@@ -186,5 +194,3 @@ def test_simplify_range_condition():
 #
 #     assert condition == result
 #
-
-

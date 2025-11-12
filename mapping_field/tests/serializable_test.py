@@ -17,6 +17,7 @@ def reset_static_variables():
     Var.clear_vars()
     NamedFunc.clear_vars()
 
+
 def process(elem: Serializable):
 
     orig_data = elem.to_dict()
@@ -31,17 +32,19 @@ def process(elem: Serializable):
 
 
 def test_var_serialization():
-    x = Var('x')
+    x = Var("x")
     assert x == process(x)
 
+
 def test_named_func_serialization():
-    x, y = Var('x'), Var('y')
-    f = NamedFunc('f',[x,y])
+    x, y = Var("x"), Var("y")
+    f = NamedFunc("f", [x, y])
 
     assert f == process(f)
 
+
 def test_negative():
-    x= Var('x')
+    x = Var("x")
 
     neg = -x
     serialization = neg.to_dict()
@@ -51,8 +54,9 @@ def test_negative():
     assert g.function == MapElement.negation
     assert g.entries == [x]
 
+
 def test_addition():
-    x, y = Var('x'), Var('y')
+    x, y = Var("x"), Var("y")
 
     addition = x + y
     serialization = addition.to_dict()
@@ -62,36 +66,38 @@ def test_addition():
     assert g.function == MapElement.addition
     assert g.entries == [x, y]
 
+
 def test_binary_expansion():
-    vv = [BoolVar(f'x_{i}') for i in range(4)]
+    vv = [BoolVar(f"x_{i}") for i in range(4)]
     x = BinaryExpansion(vv)
 
     x == process(x)
 
+
 def test_linear():
-    x = Var('x')
+    x = Var("x")
     elem = Linear(5, x, 7)
 
     elem == process(elem)
 
 
 def test_assignment_condition():
-    x = Var('x')
+    x = Var("x")
     condition = SingleAssignmentCondition(x, 10)
 
     condition == process(condition)
 
 
 def test_ranged_condition():
-    x = Var('x')
-    condition = (x < 10)
-    condition = RangeCondition(x, (3,10))
+    x = Var("x")
+    condition = x < 10
+    condition = RangeCondition(x, (3, 10))
 
     condition == process(condition)
 
 
 def test_union_condition():
-    xx = [Var(f'x_{i}') for i in range(3)]
+    xx = [Var(f"x_{i}") for i in range(3)]
     conditions = [(x < 10) for x in xx]
 
     condition: ConditionUnion = conditions[0] | conditions[1] | conditions[2]
@@ -104,11 +110,11 @@ def test_union_condition():
 
 
 def test_conditional_function():
-    xx = [Var(f'x_{i}') for i in range(3)]
+    xx = [Var(f"x_{i}") for i in range(3)]
 
     func = ConditionalFunction([
-        ( (xx[0] <= 5), MapElementConstant(1)),
-        ( RangeCondition(xx[1], (3,10)), xx[1])
+        ((xx[0] <= 5), MapElementConstant(1)),
+        (RangeCondition(xx[1], (3,10)), xx[1])
     ])
 
     serialization = func.to_dict()

@@ -18,8 +18,10 @@ simplify_logger = TreeLogger(__name__)
 class Condition(MapElement):
     pass
 
+
 TrueCondition = None
 FalseCondition = None
+
 
 class BinaryCondition(Condition, DefaultSerializable):
     """
@@ -63,11 +65,12 @@ FalseCondition = BinaryCondition(False)
 
 # <editor-fold desc=" ----------------------- Not Condition ----------------------- ">
 
+
 @always_validate_promises
 class _NotCondition(Condition, _ArithmeticMapFromFunction):
 
     def __init__(self):
-        super().__init__('Not', lambda a: 1-a)
+        super().__init__("Not", lambda a: 1 - a)
         self.promises.add_promise(IsCondition)
         for v in self.vars:
             # TODO: Maybe switch directly to BoolVars?
@@ -75,10 +78,10 @@ class _NotCondition(Condition, _ArithmeticMapFromFunction):
 
     def to_string(self, vars_to_str: Dict[Var, str]):
         entries = [vars_to_str.get(v, v) for v in self.vars]
-        return f'~({entries[0]})'
+        return f"~({entries[0]})"
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
-        entries = [var_dict.get(v,v) for v in self.vars]
+        entries = [var_dict.get(v, v) for v in self.vars]
 
         if not isinstance(entries[0], CompositionFunction):
             return super()._simplify_with_var_values2(var_dict)
@@ -91,17 +94,21 @@ class _NotCondition(Condition, _ArithmeticMapFromFunction):
         return super()._simplify_with_var_values2(var_dict)
 
     def simplify(self):
-        raise NotImplementedError('Delete this function')
+        raise NotImplementedError("Delete this function")
+
 
 NotCondition = _NotCondition()
+
 
 def parameter_not_simplifier(var_dict: VarDict) -> Optional[MapElement]:
     entries = [var_dict[v] for v in NotCondition.vars]
     return entries[0].invert()
 
+
 NotCondition.register_simplifier(parameter_not_simplifier)
 
 MapElement.inversion = NotCondition
+
 
 def _as_inversion(condition: MapElement) -> Tuple[bool, MapElement]:
     """
@@ -111,7 +118,9 @@ def _as_inversion(condition: MapElement) -> Tuple[bool, MapElement]:
         return True, condition.entries[0]
     return False, condition
 
+
 # </editor-fold>
+
 
 class _ListCondition(Condition, DefaultSerializable):
     # For intersection \ union of conditions
@@ -119,11 +128,11 @@ class _ListCondition(Condition, DefaultSerializable):
     AND = 0
     OR = 1
 
-    list_classes = [cast(Type['_ListCondition'], None), cast(Type['_ListCondition'], None)]
+    list_classes = [cast(Type["_ListCondition"], None), cast(Type["_ListCondition"], None)]
     op_types = [operator.and_, operator.or_]
-    method_names = ['and_', 'or_']
+    method_names = ["and_", "or_"]
     trivials = [TrueCondition, FalseCondition]
-    join_delims = ['&', '|']
+    join_delims = ["&", "|"]
 
     def __init_subclass__(cls, op_type: int, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -134,7 +143,7 @@ class _ListCondition(Condition, DefaultSerializable):
         cls.op_type = cls.op_types[op_type]
         cls.join_delim = cls.join_delims[op_type]
         cls.one_condition = cls.trivials[op_type]
-        cls.zero_condition = cls.trivials[1-op_type]
+        cls.zero_condition = cls.trivials[1 - op_type]
         setattr(cls, cls.method_names[op_type], cls.op)
         setattr(cls, cls.method_names[1 - op_type], cls.rev_op)
 
@@ -162,14 +171,14 @@ class _ListCondition(Condition, DefaultSerializable):
     def to_string(self, vars_to_str: Dict[Var, str]):
         entries = [vars_to_str.get(v, v) for v in self.vars]
         delim = self.__class__.join_delim
-        if hasattr(self, '_binary_flag'):
+        if hasattr(self, "_binary_flag"):
             delim = delim * 2
-        delim = f' {delim} '
+        delim = f" {delim} "
         conditions_rep = delim.join(condition.to_string(vars_to_str) for condition in self.conditions)
-        return f'[{conditions_rep}]'
+        return f"[{conditions_rep}]"
 
     def serialization_name_conversion(self):
-        return {'simplified': self._simplify_with_var_values2}
+        return {"simplified": self._simplify_with_var_values2}
 
     def __eq__(self, other: MapElement) -> bool:
         if not isinstance(other, self.__class__):
@@ -199,7 +208,7 @@ class _ListCondition(Condition, DefaultSerializable):
 
         if isinstance(condition, BinaryCondition):
             # quick shortcut
-            return cls._op_between(condition , self)
+            return cls._op_between(condition, self)
 
         if isinstance(condition, self.__class__):
             return cls([*self.conditions, *condition.conditions])
@@ -213,7 +222,7 @@ class _ListCondition(Condition, DefaultSerializable):
 
         if isinstance(condition, BinaryCondition):
             # quick shortcut
-            return cls._rev_op_between(condition , self)._simplify2()
+            return cls._rev_op_between(condition, self)._simplify2()
 
         if len(self.conditions) == 0:
             return condition
@@ -227,9 +236,13 @@ class _ListCondition(Condition, DefaultSerializable):
         return cls._rev_op_against_single_condition(self.conditions, condition)
 
     @classmethod
-    def _rev_op_against_multiple_conditions(cls, list_cond1: '_ListCondition', list_cond2: '_ListCondition') -> Optional[MapElement]:
+    def _rev_op_against_multiple_conditions(
+        cls, list_cond1: "_ListCondition", list_cond2: "_ListCondition"
+    ) -> Optional[MapElement]:
         assert isinstance(list_cond1, cls) and isinstance(list_cond2, cls)
-        simplify_logger.log(f'rev_op( {cls.join_delims[1-cls.type]} ) the conditions: {yellow(list_cond1)} and {yellow(list_cond2)})')
+        simplify_logger.log(
+            f"rev_op( {cls.join_delims[1-cls.type]} ) the conditions: {yellow(list_cond1)} and {yellow(list_cond2)})"
+        )
         if len(list_cond1.conditions) < len(list_cond2.conditions):
             list_cond1, list_cond2 = list_cond2, list_cond1
 
@@ -279,7 +292,7 @@ class _ListCondition(Condition, DefaultSerializable):
         remaining_conditions = [cond1 for cond1, used in zip(conditions1, used_positions) if not used]
         if len(remaining_conditions) == 1:
             remaining_cond = remaining_conditions[0]
-        else:   # len(...) > 1 . Cannot be 0.
+        else:  # len(...) > 1 . Cannot be 0.
             remaining_cond = cls(remaining_conditions, simplified=list_cond1.is_simplified())
 
         # Remark: In case (remaining_cond = list_cond1), the following call should not loop back here,
@@ -292,11 +305,15 @@ class _ListCondition(Condition, DefaultSerializable):
         return None
 
     @classmethod
-    def _rev_op_against_single_condition(cls, conditions: List[MapElement], sp_condition: MapElement) -> Optional[MapElement]:
+    def _rev_op_against_single_condition(
+        cls, conditions: List[MapElement], sp_condition: MapElement
+    ) -> Optional[MapElement]:
 
         # Assumption:
         # Only called when sp_condition is not an instance of this class, and this class has at least 2 conditions
-        simplify_logger.log(f'rev_op( {cls.join_delims[1-cls.type]} ) the conditions vs 1: {yellow(conditions)} and {yellow(sp_condition)})')
+        simplify_logger.log(
+            f"rev_op( {cls.join_delims[1-cls.type]} ) the conditions vs 1: {yellow(conditions)} and {yellow(sp_condition)})"
+        )
 
         rev_cls = cls.list_classes[1 - cls.type]
 
@@ -341,7 +358,9 @@ class _ListCondition(Condition, DefaultSerializable):
             if isinstance(simplified_prod, rev_cls):
                 fewer_conditions = [cc for cc in simplified_prod.conditions if cc is not sp_condition]
                 if len(fewer_conditions) < len(simplified_prod.conditions):
-                    prod_0_conditions.append(rev_cls(fewer_conditions) if len(fewer_conditions) > 1 else fewer_conditions[0])
+                    prod_0_conditions.append(
+                        rev_cls(fewer_conditions) if len(fewer_conditions) > 1 else fewer_conditions[0]
+                    )
                     need_prod.append(True)
                     continue
 
@@ -357,10 +376,10 @@ class _ListCondition(Condition, DefaultSerializable):
             new_cls_condition = cls(prod_0_conditions)
             return rev_cls([new_cls_condition, sp_condition])
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
         if len(var_dict) == 0:
-            if hasattr(self, '_binary_flag'):
-                simplify_logger.log('Has binary flag - avoid simplifying here.')
+            if hasattr(self, "_binary_flag"):
+                simplify_logger.log("Has binary flag - avoid simplifying here.")
                 return None
             if self._simplified_version is self:
                 return None
@@ -397,7 +416,7 @@ class _ListCondition(Condition, DefaultSerializable):
             # continue forever.
             for existing_condition in final_conditions:
                 simplify_logger.log(
-                    f'Trying to combine {red(condition)} with existing {red(existing_condition)}',
+                    f"Trying to combine {red(condition)} {self.__class__.join_delim} with existing {red(existing_condition)}",
                 )
                 # prod_cond = AndCondition(existing_condition, condition, simplify=False)._simplify2()
                 # prod_cond = cls._op_between(existing_condition, condition)
@@ -407,7 +426,7 @@ class _ListCondition(Condition, DefaultSerializable):
 
                 if prod_cond is not None:
                     simplify_logger.log(
-                        f'Combined: {red(condition)} {cls.join_delim} {red(existing_condition)}  =>  {green(prod_cond)}',
+                        f"Combined: {red(condition)} {cls.join_delim} {red(existing_condition)}  =>  {green(prod_cond)}",
                     )
                     is_whole_simpler = True
                     final_conditions = [cond for cond in final_conditions if (cond is not existing_condition)]
@@ -424,11 +443,12 @@ class _ListCondition(Condition, DefaultSerializable):
             return final_conditions[0]
 
         if is_whole_simpler:
-            return cls(final_conditions, simplified = True)
+            return cls(final_conditions, simplified=True)
 
         return None
 
-def _binary_simplify(elem: MapElement, var_dict: VarDict) -> Optional['MapElement']:
+
+def _binary_simplify(elem: MapElement, var_dict: VarDict) -> Optional["MapElement"]:
     assert isinstance(elem, _ListCondition)
     if len(elem.conditions) != 2:
         return None
@@ -451,16 +471,16 @@ def _binary_simplify(elem: MapElement, var_dict: VarDict) -> Optional['MapElemen
         return cls.zero_condition
 
     method_name = cls.method_names[cls.type]
-    simplify_logger.log(f'Simplify \'{method_name}\' via 1st parameter')
+    simplify_logger.log(f"Simplify '{method_name}' via 1st parameter")
     result = getattr(cond1, method_name)(cond2)
     if result is not None:
         return result
 
-    simplify_logger.log(f'Simplify \'{method_name}\' via 2nd parameter')
+    simplify_logger.log(f"Simplify '{method_name}' via 2nd parameter")
     return getattr(cond2, method_name)(cond1)
 
 
-class IntersectionCondition(_ListCondition, MapElementProcessor, op_type = _ListCondition.AND):
+class IntersectionCondition(_ListCondition, MapElementProcessor, op_type=_ListCondition.AND):
 
     def process_function(self, func: MapElement, simplify: bool = True) -> MapElement:
         for condition in self.conditions:
@@ -469,7 +489,7 @@ class IntersectionCondition(_ListCondition, MapElementProcessor, op_type = _List
         return func
 
     @staticmethod
-    def _binary_and_simplify(intersection_cond: MapElement, var_dict: VarDict) -> Optional['MapElement']:
+    def _binary_and_simplify(intersection_cond: MapElement, var_dict: VarDict) -> Optional["MapElement"]:
         assert isinstance(intersection_cond, IntersectionCondition)
         if len(intersection_cond.conditions) != 2:
             return None
@@ -489,14 +509,16 @@ class IntersectionCondition(_ListCondition, MapElementProcessor, op_type = _List
             return FalseCondition
         return cond1_ & cond2_
 
+
 IntersectionCondition.register_class_simplifier(_binary_simplify)
 IntersectionCondition.register_class_simplifier(IntersectionCondition._binary_and_simplify)
 
 MapElement.intersection = lambda cond1, cond2: IntersectionCondition([cond1, cond2]).simplify2()
 
 
-class UnionCondition(_ListCondition, op_type = _ListCondition.OR):
+class UnionCondition(_ListCondition, op_type=_ListCondition.OR):
     pass
+
 
 UnionCondition.register_class_simplifier(_binary_simplify)
 

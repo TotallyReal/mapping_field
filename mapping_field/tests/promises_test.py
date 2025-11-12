@@ -8,14 +8,15 @@ from mapping_field.tests.utils import DummyMap
 
 
 def test_int_var_promise():
-    x = IntVar('x')
+    x = IntVar("x")
 
     assigned = x(3)
     with pytest.raises(InvalidInput):
         assigned = x(3.5)
 
+
 def test_bool_var_promise():
-    x = BoolVar('x')
+    x = BoolVar("x")
 
     assigned = x(0)
     assigned = x(1)
@@ -26,6 +27,7 @@ def test_bool_var_promise():
         assigned = x(2)
     with pytest.raises(InvalidInput):
         assigned = x(0.5)
+
 
 def test_integral_arithmetic():
     dummy1, dummy2 = DummyMap(1), DummyMap(2)

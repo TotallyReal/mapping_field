@@ -11,8 +11,8 @@ from mapping_field.log_utils.tree_loggers import (
 init(autoreset=True)
 logger = TreeLogger(__name__)
 
-Elem = TypeVar('Elem')
-Param = TypeVar('Param')
+Elem = TypeVar("Elem")
+Param = TypeVar("Param")
 
 """
 A processor is a method which processes a given Elem using the parameters in Param.
@@ -20,14 +20,18 @@ If a new Elem is generated, returns it, otherwise if nothing changes, returns No
 Hence to always get the final result, one can use:
     Processor(elem, param) or elem
 """
+
+
 @dataclasses.dataclass
 class ProcessFailureReason:
-    reason: str = ''
+    reason: str = ""
     trivial: bool = True
+
 
 Processor = Callable[[Elem, Param], Optional[Union[Elem, ProcessFailureReason]]]
 
 ParamProcessor = Callable[[Param], Optional[Union[Elem, ProcessFailureReason]]]
+
 
 class ProcessorCollection(Generic[Elem, Param]):
     """
@@ -67,25 +71,27 @@ class ProcessorCollection(Generic[Elem, Param]):
         If none of them changes the element, returns None.
         """
 
-        for processor in self.processors + self.elem_processors.get(id(elem), []) + self.class_processors.get(type(elem), []):
+        for processor in (
+            self.processors + self.elem_processors.get(id(elem), []) + self.class_processors.get(type(elem), [])
+        ):
 
             # TODO: Maybe use __qualname__ instead?
-            message = f'Processing {processor.__qualname__} ( {red(elem)} , {yellow(param)} )'
-            title_start = f'Step: {processor.__qualname__} ( {red(elem)} , {yellow(param)} )'
+            message = f"Processing {processor.__qualname__} ( {red(elem)} , {yellow(param)} )"
+            title_start = f"Step: {processor.__qualname__} ( {red(elem)} , {yellow(param)} )"
             logger.log(message, action=TreeAction.GO_DOWN)
             result = processor(elem, param)
 
             if result is None:
-                result = ProcessFailureReason('', False)
+                result = ProcessFailureReason("", False)
             if isinstance(result, ProcessFailureReason):
-                if result.reason != '':
+                if result.reason != "":
                     pass
                     # print(f'Simplification failed because of {result.reason}')
                 logger.set_context_title(f'{title_start} = {magenta("- - -")}')
-                logger.log(message=f'{magenta("- - -")}', action=TreeAction.GO_UP, delete_context=result.trivial)
+                logger.log(message=f"{magenta('- - -')}", action=TreeAction.GO_UP, delete_context=result.trivial)
                 continue
-            logger.set_context_title(f'{title_start} => {green(result)}')
-            logger.log(message=f'Produced {green(result)}', action=TreeAction.GO_UP)
+            logger.set_context_title(f"{title_start} => {green(result)}")
+            logger.log(message=f"Produced {green(result)}", action=TreeAction.GO_UP)
             return result
 
         return None
@@ -97,8 +103,8 @@ class ProcessorCollection(Generic[Elem, Param]):
         """
         was_processed = False
 
-        title_start = f'Full: [{cyan(elem.__class__.__name__)}] ( {red(elem)} , {yellow(param)} )'
-        message = f'Full Processing ( {red(elem)} , {yellow(param)} ) , [{cyan(elem.__class__.__name__)}]'
+        title_start = f"Full: [{cyan(elem.__class__.__name__)}] ( {red(elem)} , {yellow(param)} )"
+        message = f"Full Processing ( {red(elem)} , {yellow(param)} ) , [{cyan(elem.__class__.__name__)}]"
         logger.log(message=message, action=TreeAction.GO_DOWN, back=Back.LIGHTBLACK_EX)
         while True:
             # TODO:
@@ -111,12 +117,13 @@ class ProcessorCollection(Generic[Elem, Param]):
             was_processed = True
 
         if was_processed:
-            logger.set_context_title(f'{title_start} => {green(elem)}')
-            logger.log(f'Full Produced {green(elem)}', action=TreeAction.GO_UP)
+            logger.set_context_title(f"{title_start} => {green(elem)}")
+            logger.log(f"Full Produced {green(elem)}", action=TreeAction.GO_UP)
             return elem
         logger.set_context_title(f'{title_start} = {magenta("X X X")}')
         logger.log(f'{magenta("X X X")} ', action=TreeAction.GO_UP)
         return None
+
 
 def named_forgetful_function(func: ParamProcessor) -> Processor:
     def wrapper(elem: Elem, param: Param) -> Optional[Union[Elem, ProcessFailureReason]]:

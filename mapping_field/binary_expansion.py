@@ -19,120 +19,20 @@ from mapping_field.serializable import DefaultSerializable
 simplify_logger = TreeLogger(__name__)
 
 
-#
-# class BoundedIntVar(IntVar):
-#
-#     def __new__(cls, var_name: str, min_value: int, max_value: int):
-#         return super(IntVar, cls).__new__(cls, var_name)
-#
-#     def __init__(self, var_name: str, min_value: int, max_value: int):
-#         super().__init__(var_name)
-#         self.min_value = min_value
-#         self.max_value = max_value
-#
-#     def transform_range(self, range_values: Range) -> Optional[Condition]:
-#         a, b = range_values
-#         if a != float('-inf'):
-#             a = math.ceil(a)
-#         if b != float('inf'):
-#             b = math.ceil(b)
-#
-#         a = max(a, self.min_value)
-#         b = min(b, self.max_value)
-#
-#         if b == a + 1:
-#             return SingleAssignmentCondition(self, a)
-#
-#         if a != range_values[0] or b != range_values[1]:
-#             return RangeCondition(self, (a, b))
-#
-#         return None
-#
-#
-# class BoolVar(Var, RangeTransformer, DefaultSerializable):
-#
-#     def __new__(cls, var_name: str):
-#         return super(BoolVar, cls).__new__(cls, var_name)
-#
-#     def __init__(self, var_name: str):
-#         super().__init__(var_name)
-#
-#     @classmethod
-#     def serialization_name_conversion(self):
-#         return {'var_name' : 'name'}
-#
-#     def transform_range(self, range_values: Range) -> Optional[Condition]:
-#         a, b = range_values
-#         if 2 <= a or b <= 0 or b <= a:
-#             return FalseCondition
-#
-#         a = max(a, 0)
-#         b = min(b, 2)
-#
-#         if a == 0 and b == 2:
-#             return TrueCondition
-#         return SingleAssignmentCondition(self, 1 if a == 1 else 0)
-#
-# def _range_sum_bools_simplifier(function: MapElement, f_range: Range) -> Optional[Condition]:
-#     entries = MapElement.addition.__class__.try_get_entries(function)
-#     if entries is None:
-#         return None
-#
-#     def extract_bool_var(element: MapElement):
-#         if isinstance(element, Linear) and element.a == 1 and element.b == 0:
-#             element = element.elem
-#         if isinstance(element, BinaryExpansion) and all([v==0 for v in element.coefficients[1:]]):
-#             element = element.coefficients[0]
-#         if isinstance(element, BoolVar):
-#             return element
-#         return None
-#
-#     var0 = extract_bool_var(entries[0])
-#     var1 = extract_bool_var(entries[1])
-#
-#     if (var0 is None) or (var1 is None) or (entries[0] is entries[1]):
-#         return None
-#
-#     a, b = f_range
-#     a = max(a, 0)
-#     b = min(b, 3)
-#     if b <= a:
-#         return FalseCondition
-#
-#     if b-a == 3:
-#         return TrueCondition
-#
-#     if b-a == 2:
-#         if a == 0:
-#             return ( (var0 << 0) | (var1 << 0) )
-#         if a == 1:
-#             return ( (var0 << 1) | (var1 << 1) )
-#
-#     if b-a == 1:
-#         if a == 0:
-#             return ((var0 << 0) & (var1 << 0))
-#         if a == 1:
-#             return ((var0 << 0) & (var1 << 1)) | ((var0 << 1) & (var1 << 0))
-#         if a == 2:
-#             return ((var0 << 1) & (var1 << 1))
-#
-#     # Not possible to get here, but just in case:
-#     return FalseCondition
-#
-# RangeCondition.register_simplifier(_range_sum_bools_simplifier)
-#
 def _two_power(k):
     k = abs(k)
     m = 0
-    while k%2==0:
+    while k % 2 == 0:
         k /= 2
         m += 1
     return m
+
+
 #
 class BinaryExpansion(MapElement, DefaultSerializable):
 
     @classmethod
-    def of(cls, map_elem: MapElement) -> Optional['BinaryExpansion']:
+    def of(cls, map_elem: MapElement) -> Optional["BinaryExpansion"]:
         if isinstance(map_elem, BinaryExpansion):
             return map_elem
         if isinstance(map_elem, BoolVar):
@@ -146,9 +46,9 @@ class BinaryExpansion(MapElement, DefaultSerializable):
     def generate(var_name: str, num_digits: int):
         num_digits = max(num_digits, 1)
         for i in range(num_digits):
-            assert Var.try_get(f'{var_name}_{i}') is None
+            assert Var.try_get(f"{var_name}_{i}") is None
 
-        return BinaryExpansion([BoolVar(f'{var_name}_{i}') for i in range(num_digits)])
+        return BinaryExpansion([BoolVar(f"{var_name}_{i}") for i in range(num_digits)])
 
     def __init__(self, coefficients: List[Union[int, BoolVar]]):
         """
@@ -163,11 +63,13 @@ class BinaryExpansion(MapElement, DefaultSerializable):
             if isinstance(c, MapElementConstant):
                 c = c.evaluate()
             if isinstance(c, int):
-                assert c == 0 or c == 1, f'can only use 0 or 1 as integer coefficients, instead for {c}'
+                assert c == 0 or c == 1, f"can only use 0 or 1 as integer coefficients, instead for {c}"
                 self.coefficients.append(c)
                 continue
-            assert isinstance(c, BoolVar), (f'Coefficients for Binary expansion can only be BoolVar, 0 or 1.'
-                                            f'Instead got {c} of type {c.__class__}')
+            assert isinstance(c, BoolVar), (
+                f"Coefficients for Binary expansion can only be BoolVar, 0 or 1."
+                f"Instead got {c} of type {c.__class__}"
+            )
             self.coefficients.append(c)
 
         super().__init__([c for c in coefficients if isinstance(c, BoolVar)])
@@ -183,31 +85,31 @@ class BinaryExpansion(MapElement, DefaultSerializable):
             else:
                 self._bool_max_value.append(self._bool_max_value[-1] + two_power)
             two_power *= 2
-        self.promises.add_promise(InRange(
-            IntervalRange[self._constant, self._constant + self._bool_max_value[-1]]
-        ))
+        self.promises.add_promise(InRange(IntervalRange[self._constant, self._constant + self._bool_max_value[-1]]))
         self.promises.add_promise(IsIntegral)
 
     def to_string(self, vars_to_str: Dict[Var, str]):
-        indices = [i for i,v in enumerate(self.coefficients) if v!=0]
+        indices = [i for i, v in enumerate(self.coefficients) if v != 0]
         if len(indices) == 0:
-            return '0'
-        str_coefficients = [c.to_string(vars_to_str) if isinstance(c, MapElement) else str(c) for c in self.coefficients]
+            return "0"
+        str_coefficients = [
+            c.to_string(vars_to_str) if isinstance(c, MapElement) else str(c) for c in self.coefficients
+        ]
         if indices[-1] == 0:
             return str_coefficients[0]
-        vars_str = ', '.join([str(v) for v in str_coefficients[:1+indices[-1]]])
-        return f'Bin[{vars_str}]'
+        vars_str = ", ".join([str(v) for v in str_coefficients[: 1 + indices[-1]]])
+        return f"Bin[{vars_str}]"
 
     def evaluate(self) -> Optional[ExtElement]:
         return self._constant if (self._bool_max_value[-1] == 0) else None
 
-    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
-        coefs = [(c if isinstance(c,int) else var_dict.get(c,c)) for c in self.coefficients]
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> "MapElement":
+        coefs = [(c if isinstance(c, int) else var_dict.get(c, c)) for c in self.coefficients]
         if self.coefficients == coefs:
             return self
         return BinaryExpansion(coefs)
 
-    def split_constant(self) -> Tuple[Optional['BinaryExpansion'], MapElementConstant]:
+    def split_constant(self) -> Tuple[Optional["BinaryExpansion"], MapElementConstant]:
         constant_part = MapElementConstant(self._constant)
         if self._constant == 0:
             return self, constant_part
@@ -235,38 +137,43 @@ class BinaryExpansion(MapElement, DefaultSerializable):
 
         n = min(n1, n2)
 
-        return (all([c1 == c2 for c1, c2 in zip(coef1, coef2)]) and
-                all([c1 == 0 for c1 in coef1[n:]]) and
-                all([c2 == 0 for c2 in coef2[n:]]) )
-#
-#     def as_assignment(self, k: int) -> Condition:
-#         return RangeCondition(self, (k, k+1)).simplify()
-#
-#     # <editor-fold desc=" ------------------------ Arithmetic ------------------------">
-#
+        return (
+            all([c1 == c2 for c1, c2 in zip(coef1, coef2)])
+            and all([c1 == 0 for c1 in coef1[n:]])
+            and all([c2 == 0 for c2 in coef2[n:]])
+        )
+
+    #
+    #     def as_assignment(self, k: int) -> Condition:
+    #         return RangeCondition(self, (k, k+1)).simplify()
+    #
+    #     # <editor-fold desc=" ------------------------ Arithmetic ------------------------">
+    #
     @staticmethod
     def linear_combination(k1: int, elem1: MapElement, k2: int, elem2: MapElement) -> Optional[Tuple[int, MapElement]]:
         if not (isinstance(elem1, BinaryExpansion) and isinstance(elem2, BinaryExpansion)):
             return None
 
-        simplify_logger.log(f'Trying to linear combine to Binary Expansion {red(k1)} * {red(elem1)} + {red(k2)} * {red(elem2)}')
+        simplify_logger.log(
+            f"Trying to linear combine to Binary Expansion {red(k1)} * {red(elem1)} + {red(k2)} * {red(elem2)}"
+        )
 
         coef1 = elem1.coefficients
-        non_zero1 = [i for i, v in enumerate(coef1) if v!=0]
+        non_zero1 = [i for i, v in enumerate(coef1) if v != 0]
         if k1 == 0 or len(non_zero1) == 0:
             return k2, elem2
 
         coef2 = elem2.coefficients
-        non_zero2 = [i for i, v in enumerate(coef2) if v!=0]
+        non_zero2 = [i for i, v in enumerate(coef2) if v != 0]
         if k2 == 0 or len(non_zero2) == 0:
             return k1, elem1
 
         # Check if both elements are the same up to a power of 2
         if len(non_zero1) == len(non_zero2):
             diff = non_zero1[0] - non_zero2[0]
-            if all( ((coef1[i1] == coef2[i2]) and (i1 - i2 == diff)) for i1,i2 in zip(non_zero1, non_zero2)):
+            if all(((coef1[i1] == coef2[i2]) and (i1 - i2 == diff)) for i1, i2 in zip(non_zero1, non_zero2)):
                 if diff >= 0:
-                    return (2 ** diff) * k1 + k2, elem2
+                    return (2**diff) * k1 + k2, elem2
                 else:
                     return (2 ** (-diff)) * k2 + k1, elem1
 
@@ -274,7 +181,7 @@ class BinaryExpansion(MapElement, DefaultSerializable):
 
         m1 = _two_power(k1)
         m2 = _two_power(k2)
-        if abs(k1) != 2**m1 or abs(k2) != 2**m2:
+        if abs(k1) != 2 ** m1 or abs(k2) != 2**m2:
             return None
 
         if m2 > m1:
@@ -292,33 +199,34 @@ class BinaryExpansion(MapElement, DefaultSerializable):
 
         return as_neg(result)
 
-
     @staticmethod
-    def _combination(sign1: int, elem1: 'BinaryExpansion', sign2: int, elem2: 'BinaryExpansion') -> Optional[MapElement]:
+    def _combination(
+        sign1: int, elem1: "BinaryExpansion", sign2: int, elem2: "BinaryExpansion"
+    ) -> Optional[MapElement]:
 
         if sign1 == sign2:
             result = elem1.try_add_binary_expansion(elem2)
             if result is not None:
-                return result if sign1==1 else -result
+                return result if sign1 == 1 else -result
         else:
             result = elem1.try_sub_binary_expansion(elem2)
             if result is not None:
-                return result if sign1==1 else -result
+                return result if sign1 == 1 else -result
 
             result = elem2.try_sub_binary_expansion(elem1)
             if result is not None:
-                return result if sign2==1 else -result
+                return result if sign2 == 1 else -result
 
         return None
 
-    def try_add_binary_expansion(self, other: 'BinaryExpansion') -> Optional['BinaryExpansion']:
+    def try_add_binary_expansion(self, other: "BinaryExpansion") -> Optional["BinaryExpansion"]:
 
         coef1 = self.coefficients
         coef2 = other.coefficients
 
         n = max(len(coef1), len(coef2))
-        coef1 = list(coef1) + [0] * (n-len(coef1))
-        coef2 = list(coef2) + [0] * (n-len(coef2))
+        coef1 = list(coef1) + [0] * (n - len(coef1))
+        coef2 = list(coef2) + [0] * (n - len(coef2))
 
         carry = 0
         coefs = []
@@ -380,7 +288,7 @@ class BinaryExpansion(MapElement, DefaultSerializable):
     def radd(self, other: MapElement) -> Optional[MapElement]:
         return self.add(other)
 
-    def try_sub_binary_expansion(self, other: 'BinaryExpansion') -> Optional['BinaryExpansion']:
+    def try_sub_binary_expansion(self, other: "BinaryExpansion") -> Optional["BinaryExpansion"]:
         coef1 = self.coefficients
         coef2 = other.coefficients
 
@@ -443,11 +351,11 @@ class BinaryExpansion(MapElement, DefaultSerializable):
 
         return super().sub(other)
 
-    def shift(self, k: int) -> Optional['BinaryExpansion']:
+    def shift(self, k: int) -> Optional["BinaryExpansion"]:
         if k < 0:
             deg = 0
             for c in self.coefficients:
-                if c!=0:
+                if c != 0:
                     break
                 deg += 1
             if deg + k < 0:
@@ -456,18 +364,19 @@ class BinaryExpansion(MapElement, DefaultSerializable):
             return BinaryExpansion(self.coefficients[-k:])
 
         return BinaryExpansion([0] * k + list(self.coefficients))
-#
-#     # </editor-fold>
-#
-#     def transform_linear(self, a: int, b: int) -> Tuple[int, MapElement, int]:
-#         elem, constant = self.split_constant()
-#         constant = constant.evaluate()
-#         b += a * constant
-#         if elem is None:
-#             return 0, MapElementConstant.zero, b
-#         else:
-#             return a, elem, b
-#
+
+    #
+    #     # </editor-fold>
+    #
+    #     def transform_linear(self, a: int, b: int) -> Tuple[int, MapElement, int]:
+    #         elem, constant = self.split_constant()
+    #         constant = constant.evaluate()
+    #         b += a * constant
+    #         if elem is None:
+    #             return 0, MapElementConstant.zero, b
+    #         else:
+    #             return a, elem, b
+    #
 
     def _min_max_assignment_in_range(self, low: int, high: int) -> Tuple[Dict[BoolVar, int], Dict[BoolVar, int]]:
         # TODO: this has similar logic to transform_range method. Avoid it!
@@ -498,10 +407,11 @@ class BinaryExpansion(MapElement, DefaultSerializable):
             else:
                 high_dict[c] = 0
 
-
         return low_dict, high_dict
 
-    def _as_binary_range_data(self, condition: MapElement) -> Optional[Dict[Var, Tuple[Dict[Var, int], Dict[Var, int]]]]:
+    def _as_binary_range_data(
+        self, condition: MapElement
+    ) -> Optional[Dict[Var, Tuple[Dict[Var, int], Dict[Var, int]]]]:
 
         # TODO: hate this together with me...
         value = self.evaluate()
@@ -597,20 +507,20 @@ class BinaryExpansion(MapElement, DefaultSerializable):
         if used_vars is None:
             return None
 
-        low_point, high_point = self._min_max_assignment_in_range(low-1, high+1)
-        var_order = {v:i for i, v in enumerate(self.vars)}
+        low_point, high_point = self._min_max_assignment_in_range(low - 1, high + 1)
+        var_order = {v: i for i, v in enumerate(self.vars)}
 
         check_low = True
         check_high = True
         # TODO: possibly repeat some validations here. Unfortunately, the dict validations are unhashable to be put in a set.
         for cur_low_dict, cur_high_dict in used_vars.values():
-            var_keys = sorted(cur_low_dict.keys(), key = lambda v: var_order[v])
+            var_keys = sorted(cur_low_dict.keys(), key=lambda v: var_order[v])
             bin_exp = BinaryExpansion(var_keys)
             lower_bound = bin_exp(cur_low_dict).evaluate()
             upper_bound = bin_exp(cur_high_dict).evaluate()
-            if check_low and  not (lower_bound <= bin_exp(low_point).evaluate() <= upper_bound):
+            if check_low and not (lower_bound <= bin_exp(low_point).evaluate() <= upper_bound):
                 check_low = False
-            if check_high and  not (lower_bound <= bin_exp(high_point).evaluate() <= upper_bound):
+            if check_high and not (lower_bound <= bin_exp(high_point).evaluate() <= upper_bound):
                 check_high = False
             if not (check_low or check_high):
                 return None
@@ -625,11 +535,11 @@ class BinaryExpansion(MapElement, DefaultSerializable):
             low_point.update(cur_low_dict)
             break
 
-        return self(low_point).evaluate() if check_low else low, self(high_point).evaluate() if check_high else high
+        return self(low_point).evaluate() if check_low else low, (self(high_point).evaluate() if check_high else high)
 
     # <editor-fold desc=" ------------------------ Simplifiers ------------------------ ">
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
         elem, constant = self.split_constant()
         if constant == 0:
             return None
@@ -674,8 +584,8 @@ class BinaryExpansion(MapElement, DefaultSerializable):
 
         conditions = []
 
-        two_power = 2**len(coefs)
-        for i in range(len(coefs)-1,-1,-1):
+        two_power = 2 ** len(coefs)
+        for i in range(len(coefs) - 1, -1, -1):
             c = coefs[i]
             two_power //= 2
             if c == 0:
@@ -702,16 +612,18 @@ class BinaryExpansion(MapElement, DefaultSerializable):
         if len(conditions) > 1:
             condition = IntersectionCondition(conditions)
 
-        if a <= 0 and bin_exp._bool_max_value[i+1] <= b:
+        if a <= 0 and bin_exp._bool_max_value[i + 1] <= b:
             return condition
         else:
             if condition is TrueCondition and (a, b) == (f_range.low, f_range.high):
                 return None
             # TODO: Maybe don't simplify automatically in binary operations like &, |, etc?
-            return IntersectionCondition([condition, RangeCondition(BinaryExpansion(coefs[:i+1]), IntervalRange[a,b])])
+            return IntersectionCondition(
+                [condition, RangeCondition(BinaryExpansion(coefs[: i + 1]), IntervalRange[a, b])]
+            )
 
     @staticmethod
-    def _union_with_range_over_binary_expansion(union_elem: MapElement, var_dict: VarDict) -> Optional['MapElement']:
+    def _union_with_range_over_binary_expansion(union_elem: MapElement, var_dict: VarDict) -> Optional["MapElement"]:
         """
         If one of the factors in a union operation is a RangedCondition over a BinaryExpansion, try to write the union
         as another RangedCondition over the same BinaryExpansion.
@@ -722,13 +634,13 @@ class BinaryExpansion(MapElement, DefaultSerializable):
 
         cond1, cond2 = union_elem.conditions
         if isinstance(cond1, RangeCondition) and isinstance(cond1.function, BinaryExpansion):
-            simplify_logger.log(f'1st condition is ranged binary expansion: {red(cond1)}')
+            simplify_logger.log(f"1st condition is ranged binary expansion: {red(cond1)}")
             c_range = cond1.range.as_integral()
             interval = cond1.function.as_binary_range_containing(cond2, c_range.low, c_range.high)
             if interval is not None:
                 return RangeCondition(cond1.function, IntervalRange[*interval])
         if isinstance(cond2, RangeCondition) and isinstance(cond2.function, BinaryExpansion):
-            simplify_logger.log(f'2nd condition is ranged binary expansion: {red(cond2)}')
+            simplify_logger.log(f"2nd condition is ranged binary expansion: {red(cond2)}")
             c_range = cond2.range.as_integral()
             interval = cond2.function.as_binary_range_containing(cond1, c_range.low, c_range.high)
             if interval is not None:
@@ -740,7 +652,9 @@ class BinaryExpansion(MapElement, DefaultSerializable):
     #       After the big refactorzation, delete one of them.
 
     @staticmethod
-    def _binary_combination_to_expansion_simplifier(bin_comb:MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
+    def _binary_combination_to_expansion_simplifier(
+        bin_comb: MapElement, var_dict: VarDict
+    ) -> Optional[Union[MapElement, ProcessFailureReason]]:
         """
         Try to simplify a binary linear combination into a binary expansion
         """
@@ -748,11 +662,11 @@ class BinaryExpansion(MapElement, DefaultSerializable):
 
         elem1 = BinaryExpansion.of(bin_comb.elem1)
         if elem1 is None:
-            return ProcessFailureReason('1st element cannot become a binary expansion')
+            return ProcessFailureReason("1st element cannot become a binary expansion")
 
         elem2 = BinaryExpansion.of(bin_comb.elem2)
         if elem2 is None:
-            return ProcessFailureReason('2nd element cannot become a binary expansion')
+            return ProcessFailureReason("2nd element cannot become a binary expansion")
 
         result = BinaryExpansion.linear_combination(bin_comb.c1, elem1, bin_comb.c2, elem2)
         if result is not None:

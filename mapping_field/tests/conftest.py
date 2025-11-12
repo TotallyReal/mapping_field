@@ -14,12 +14,15 @@ def reset_static_variables():
     Var._instances = {}
     NamedFunc._instances = {}
 
+
 @pytest.fixture(autouse=True)
 def reset_logs():
     simplify_tree.reset()
 
-FULL_FORMAT = '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
-SIMPLE_FORMAT = '%(message)s'
+
+FULL_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+SIMPLE_FORMAT = "%(message)s"
+
 
 def log_to_file(log_format: str = FULL_FORMAT):
 
@@ -56,6 +59,7 @@ def log_to_file(log_format: str = FULL_FORMAT):
                 handler.close()
 
         return wrapper
+
     return decorator
 
 
@@ -65,19 +69,22 @@ def pytest_runtest_makereport(item, call):
     if call.when == "call" and call.excinfo is not None:
         save_logs_to_file(item)
 
+
 def save_logs_to_file(item):
     # Determine log folder
     log_dir = Path(__file__).parent / "logs"
     log_dir.mkdir(exist_ok=True)
 
     # Build log filename: <test_file>__<test_name>.log
-    test_file = item.fspath.basename[:-3]   # remove the '.py' at the end
+    test_file = item.fspath.basename[:-3]  # remove the '.py' at the end
     test_name = item.name
     log_file = log_dir / f"{test_file}__{test_name}.log_context"
 
     simplify_tree.root_context.save_element(log_file)
 
+
 _DEBUG_STATE = 0
+
 
 @pytest.fixture
 def simple_logs():
@@ -85,6 +92,7 @@ def simple_logs():
     handler.setFormatter(logging.Formatter(SIMPLE_FORMAT))
 
     logging.getLogger().addHandler(handler)
+
 
 def debug_step(value: int):
     global _DEBUG_STATE

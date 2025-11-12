@@ -26,6 +26,7 @@ simplify_logger = TreeLogger(__name__)
 #         return elem
 #     return None
 
+
 def convert_to_map(elem):
 
     if isinstance(elem, MapElement):
@@ -45,6 +46,7 @@ def convert_to_map(elem):
 
     return NotImplemented
 
+
 class MapElementProcessor:
     # TODO: Later change it to event registers.
     #       This is basically another function processor, where its main application was
@@ -52,13 +54,15 @@ class MapElementProcessor:
     #       More generally we should have:
     #       function_at(func: MapElement, cond: Condition, simplify: bool)
     @abstractmethod
-    def process_function(self, func: 'MapElement', simplify: bool = True) -> 'MapElement':
+    def process_function(self, func: "MapElement", simplify: bool = True) -> "MapElement":
         pass
 
-VarDict = Dict['Var', 'MapElement']
-FuncDict = Dict['NamedFunc', 'MapElement']
 
-def get_var_values(var_list: List['Var'], var_dict: VarDict) -> Optional[List['MapElement']]:
+VarDict = Dict["Var", "MapElement"]
+FuncDict = Dict["NamedFunc", "MapElement"]
+
+
+def get_var_values(var_list: List["Var"], var_dict: VarDict) -> Optional[List["MapElement"]]:
     """
     Looks for the valuations of the given variables, and return them as a list, if at least one of them
     is not trivial. Otherwise, returns None
@@ -75,6 +79,7 @@ def get_var_values(var_list: List['Var'], var_dict: VarDict) -> Optional[List['M
 
     return None if trivial else eval_entries
 
+
 def params_to_maps(f):
     @functools.wraps(f)
     def wrapper(self, element):
@@ -82,6 +87,7 @@ def params_to_maps(f):
         return NotImplemented if value is NotImplemented else f(self, value)
 
     return wrapper
+
 
 # Suppose that I have some function H(x,y), and we want to compute H(x0, y0) for some specific x0, y0. There
 # are 2 main ways how to simplify this expression. For example, consider the function H(x,y) = x + y, then:
@@ -99,15 +105,16 @@ def params_to_maps(f):
 # 5. If no simplification was found, save as generic (Composition) H(x0, y0).
 
 # TODO: find how to switch the order
-ElemSimplifier = ParamProcessor[VarDict, 'MapElement']      # (VarDict)               -> Optional['MapElement']
-ClassSimplifier = Processor['MapElement', VarDict]          # ('MapElement', VarDict) -> Optional['MapElement']
+ElemSimplifier = ParamProcessor[VarDict, "MapElement"]  # (VarDict)               -> Optional['MapElement']
+ClassSimplifier = Processor["MapElement", VarDict]  # ('MapElement', VarDict) -> Optional['MapElement']
 
-class OutputValidator(MultiValidator['MapElement', Context], Generic[Context]):
+
+class OutputValidator(MultiValidator["MapElement", Context], Generic[Context]):
     def __init__(self, name: Optional[str] = None, context: Optional[Context] = None):
-        super().__init__(name = name, context = context)
+        super().__init__(name=name, context=context)
         self.register_validator(self._check_promises_on_element)
 
-    def _check_promises_on_element(self, elem: 'MapElement') -> Optional[bool]:
+    def _check_promises_on_element(self, elem: "MapElement") -> Optional[bool]:
         # TODO: Find a better way
         if self in elem.promises._promises:
             return True
@@ -116,26 +123,31 @@ class OutputValidator(MultiValidator['MapElement', Context], Generic[Context]):
         return None
 
 
-OutputValidatorType = TypeVar('OutputValidatorType', bound=OutputValidator)
+OutputValidatorType = TypeVar("OutputValidatorType", bound=OutputValidator)
+
+
 class InvalidInput(Exception):
     pass
+
 
 def validate_promises_var_dict(var_dict: VarDict):
     # TODO: Do I really need this, or should I validate the promises inside Var?
     for v, value in var_dict.items():
         for promise in v.promises.output_promises():
             if not value.has_promise(promise):
-                raise InvalidInput(f'{v}={value} does not satisfy the promise of {promise}')
+                raise InvalidInput(f"{v}={value} does not satisfy the promise of {promise}")
 
-T = TypeVar('T', bound='MapElement')
+
+T = TypeVar("T", bound="MapElement")
+
 
 def always_validate_promises(cls: Type[T]) -> Type[T]:
 
     original_call_method = cls.__call__
 
     def call_wrapper(self, *args, **kwargs):
-        if 'validate_promises' not in kwargs:
-            kwargs['validate_promises'] = True
+        if "validate_promises" not in kwargs:
+            kwargs["validate_promises"] = True
         return original_call_method(self, *args, **kwargs)
 
     cls.__call__ = call_wrapper
@@ -154,7 +166,7 @@ class OutputPromises:
         self._promises: Set[OutputValidator] = promises.copy() if promises is not None else set()
         self._invalid_promises: Set[OutputValidator] = invalid_promises.copy() if promises is not None else set()
 
-    def copy(self) -> 'OutputPromises':
+    def copy(self) -> "OutputPromises":
         return OutputPromises(self._promises, set())
 
     def add_promise(self, promise: OutputValidator):
@@ -181,15 +193,18 @@ class OutputPromises:
     # </editor-fold>
 
 
-KeywordValue = TypeVar('KeywordValue')
-def extract_keyword(kwargs, key:str, value_type: Type[KeywordValue]) -> KeywordValue:
+KeywordValue = TypeVar("KeywordValue")
+
+
+def extract_keyword(kwargs, key: str, value_type: Type[KeywordValue]) -> KeywordValue:
     if key not in kwargs:
         return None
     value = kwargs[key]
     if not isinstance(value, value_type):
-        raise Exception(f'The {key} flag must be a {value_type}, instead got {value}')
+        raise Exception(f"The {key} flag must be a {value_type}, instead got {value}")
     del kwargs[key]
     return value
+
 
 class MapElement:
     """
@@ -207,9 +222,9 @@ class MapElement:
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
 
-        processor = getattr(cls, '_simplify_with_var_values2')
+        processor = getattr(cls, "_simplify_with_var_values2")
         if processor is not None:
-            processor.__name__ = f'{cls.__name__}_simplify_with_var_values'
+            processor.__name__ = f"{cls.__name__}_simplify_with_var_values"
             MapElement._simplifier.register_class_processor(cls, processor)
 
     def __init__(self, variables: List['Var'], name: Optional[str] = None, promises: Optional[OutputPromises] = None,
@@ -220,21 +235,22 @@ class MapElement:
         self.name = name or self.__class__.__name__
         var_names = set(v.name for v in variables)
         if len(variables) > len(var_names):
-            raise Exception(f'Function must have distinct variables: {variables}')
+            raise Exception(f"Function must have distinct variables: {variables}")
         self.vars = variables
         self.num_vars = len(variables)
         self._simplified_version = self if simplified else None
         self.promises = OutputPromises() if promises is None else promises
 
-    def set_var_order(self, variables: List['Var']):
+    def set_var_order(self, variables: List["Var"]):
         """
         Reset the order of the standard variables
         """
+        # TODO: update the entries in CompositionFunction
         if len(variables) > len(set(variables)):
-            raise Exception(f'Function must have distinct variables')
+            raise Exception(f"Function must have distinct variables")
 
         if collections.Counter(variables) != collections.Counter(self.vars):
-            raise Exception(f'New variables order {variables} have to be on the function\'s variables {self.vars}')
+            raise Exception(f"New variables order {variables} have to be on the function's variables {self.vars}")
 
         self.vars = variables
 
@@ -258,15 +274,15 @@ class MapElement:
     def __str__(self):
         return self.to_string({v: v.name for v in self.vars})
 
-    def to_string(self, vars_to_str: Dict['Var',str]):
+    def to_string(self, vars_to_str: Dict["Var", str]):
         """
         --------------- Override ---------------
         Represents the function, given the string representations of its variables
         """
         if len(self.vars) == 0:
             return self.name
-        vars_str = ','.join([vars_to_str[v] for v in self.vars])
-        return f'{self.name}({vars_str})'
+        vars_str = ",".join([vars_to_str[v] for v in self.vars])
+        return f"{self.name}({vars_str})"
 
     # </editor-fold>
 
@@ -274,7 +290,7 @@ class MapElement:
 
     def _extract_var_dicts(self, args, kwargs) -> Tuple[VarDict, FuncDict]:
         if len(args) != 0 and len(kwargs) != 0:
-            raise Exception(f'When calling a function use just args or just kwargs, not both.')
+            raise Exception(f"When calling a function use just args or just kwargs, not both.")
 
         var_dict = {}
         func_dict = {}
@@ -283,7 +299,7 @@ class MapElement:
                 kwargs = args[0]
             else:
                 if len(args) != self.num_vars:
-                    raise Exception(f'Function needs to get {self.num_vars} values, and instead got {len(args)}.')
+                    raise Exception(f"Function needs to get {self.num_vars} values, and instead got {len(args)}.")
                 var_dict = {v: convert_to_map(value) for v, value in zip(self.vars, args)}
                 return var_dict, dict()
 
@@ -300,11 +316,11 @@ class MapElement:
                 func_dict[key_value_pair[0]] = key_value_pair[1]
                 continue
 
-            raise Exception(f'Cannot assign new value to element which is not a variable of a named function : {key}')
+            raise Exception(f"Cannot assign new value to element which is not a variable of a named function : {key}")
 
         return var_dict, func_dict
 
-    def __call__(self, *args, **kwargs) -> 'MapElement':
+    def __call__(self, *args, **kwargs) -> "MapElement":
         """
         There are three ways to apply this function:
         1. Positional: Call f(a_1, ..., a_n), where the a_i are either elements or maps.
@@ -321,15 +337,15 @@ class MapElement:
         To implement this method in a subclass, you must implement the function _call_with_dict below.
         """
         # Extract simplify flag
-        simplify = extract_keyword(kwargs, 'simplify', bool)
+        simplify = extract_keyword(kwargs, "simplify", bool)
         if simplify is None:
             simplify = True
-        validate_promises = extract_keyword(kwargs, 'validate_promises', bool)
+        validate_promises = extract_keyword(kwargs, "validate_promises", bool)
         if validate_promises is None:
             validate_promises = False
 
         # TODO: Should I keep this here? In any case, handle the 'condition' parameter better.
-        condition = extract_keyword(kwargs, 'condition', MapElement)
+        condition = extract_keyword(kwargs, "condition", MapElement)
         if condition is not None:
             if isinstance(condition, MapElementProcessor):
                 result = condition.process_function(self, simplify=simplify)
@@ -347,7 +363,7 @@ class MapElement:
         return result.simplify2() if simplify else result
 
     # Override when needed
-    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> "MapElement":
         """
         Apply the map with the given values of the standard and function variables
         """
@@ -374,12 +390,12 @@ class MapElement:
 
     # <editor-fold desc=" ------------------------ Simplify 2 ------------------------">
 
-    def simplify2(self) -> 'MapElement':
+    def simplify2(self) -> "MapElement":
         return self._simplify2() or self
 
-    _simplifier = ProcessorCollection['MapElement', VarDict]()
+    _simplifier = ProcessorCollection["MapElement", VarDict]()
 
-    def _simplify2(self, var_dict: Optional[VarDict] = None) -> Optional['MapElement']:
+    def _simplify2(self, var_dict: Optional[VarDict] = None) -> Optional["MapElement"]:
         if var_dict is None:
             var_dict = {}
 
@@ -388,7 +404,7 @@ class MapElement:
         if len(var_dict) == 0:
             if self._simplified_version is not None:
                 return self._simplified_version if self._simplified_version is not self else None
-            if getattr(self, '_in_simplification_process', False):
+            if getattr(self, "_in_simplification_process", False):
                 simplify_logger.log(f'{red("!!!")} looped back to simplify {red(self)}')
                 return None
             started_process_here = True
@@ -414,7 +430,7 @@ class MapElement:
         return self._simplified_version is self
 
     # Override when needed
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[Union['MapElement', ProcessFailureReason]]:
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[Union["MapElement", ProcessFailureReason]]:
         """
         --------------- Override when needed ---------------
         Try to simplify the given function, given assignment of variables.
@@ -427,9 +443,11 @@ class MapElement:
         If x=2, and y doesn't change, then the function remains a multiplication function 3*y, namely we
         can't do any simplification other than setting the variables. In this case we return None.
         """
-        return ProcessFailureReason('Trivial empty implementation', trivial=True)
+        return ProcessFailureReason("Trivial empty implementation", trivial=True)
 
-    def _simplify_caller_function2(self, function:'MapElement', position: int, var_dict: VarDict) -> Optional['MapElement']:
+    def _simplify_caller_function2(
+        self, function: "MapElement", position: int, var_dict: VarDict
+    ) -> Optional["MapElement"]:
         return None
 
     @classmethod
@@ -471,13 +489,13 @@ class MapElement:
     # <editor-fold desc=" ------------------------ Negation ------------------------">
 
     @staticmethod
-    def negation(elem: 'MapElement') -> 'MapElement':
+    def negation(elem: "MapElement") -> "MapElement":
         return NotImplemented
 
-    def __neg__(self) -> 'MapElement':
+    def __neg__(self) -> "MapElement":
         return MapElement.negation(self)
 
-    def neg(self) -> Optional['MapElement']:
+    def neg(self) -> Optional["MapElement"]:
         return None
 
     # </editor-fold>
@@ -485,27 +503,27 @@ class MapElement:
     # <editor-fold desc=" ------------------------ Addition ------------------------">
 
     @staticmethod
-    def addition(elem1: 'MapElement' ,elem2: 'MapElement') -> 'MapElement':
+    def addition(elem1: "MapElement", elem2: "MapElement") -> "MapElement":
         return NotImplemented
 
     @params_to_maps
-    def __add__(self, other) -> 'MapElement':
+    def __add__(self, other) -> "MapElement":
         # Very quick simplifiers:
         if other == 0:
             return self
         return MapElement.addition(self, other)
 
     @params_to_maps
-    def __radd__(self, other) -> 'MapElement':
+    def __radd__(self, other) -> "MapElement":
         # Very quick simplifiers:
         if other == 0:
             return self
         return MapElement.addition(other, self)
 
-    def add(self, other: 'MapElement') -> Optional['MapElement']:
+    def add(self, other: "MapElement") -> Optional["MapElement"]:
         return None
 
-    def radd(self, other: 'MapElement') -> Optional['MapElement']:
+    def radd(self, other: "MapElement") -> Optional["MapElement"]:
         return None
 
     # </editor-fold>
@@ -513,24 +531,24 @@ class MapElement:
     # <editor-fold desc=" ------------------------ Subtraction ------------------------">
 
     @staticmethod
-    def subtraction(elem1: 'MapElement' ,elem2: 'MapElement') -> 'MapElement':
+    def subtraction(elem1: "MapElement", elem2: "MapElement") -> "MapElement":
         return NotImplemented
 
     @params_to_maps
-    def __sub__(self, other) -> 'MapElement':
+    def __sub__(self, other) -> "MapElement":
         return MapElement.subtraction(self, other)
 
     @params_to_maps
-    def __rsub__(self, other) -> 'MapElement':
+    def __rsub__(self, other) -> "MapElement":
         return MapElement.subtraction(other, self)
 
-    def sub(self, other: 'MapElement') -> Optional['MapElement']:
+    def sub(self, other: "MapElement") -> Optional["MapElement"]:
         # Very quick simplifiers:
         if other == 0:
             return self
         return None
 
-    def rsub(self, other: 'MapElement') -> Optional['MapElement']:
+    def rsub(self, other: "MapElement") -> Optional["MapElement"]:
         return None
 
     # </editor-fold>
@@ -538,14 +556,14 @@ class MapElement:
     # <editor-fold desc=" ------------------------ Multiplication ------------------------">
 
     @staticmethod
-    def multiplication(elem1: 'MapElement' ,elem2: 'MapElement') -> 'MapElement':
+    def multiplication(elem1: "MapElement", elem2: "MapElement") -> "MapElement":
         """
         A default implementation, overridden in arithmetics.py
         """
         return NotImplemented
 
     @params_to_maps
-    def __mul__(self, other) -> 'MapElement':
+    def __mul__(self, other) -> "MapElement":
         # Very quick simplifiers:
         if other == 1:
             return self
@@ -554,7 +572,7 @@ class MapElement:
         return MapElement.multiplication(self, other)
 
     @params_to_maps
-    def __rmul__(self, other) -> 'MapElement':
+    def __rmul__(self, other) -> "MapElement":
         # Very quick simplifiers:
         if other == 1:
             return self
@@ -562,10 +580,10 @@ class MapElement:
             return MapElementConstant.zero
         return MapElement.multiplication(other, self)
 
-    def mul(self, other: 'MapElement') -> Optional['MapElement']:
+    def mul(self, other: "MapElement") -> Optional["MapElement"]:
         return None
 
-    def rmul(self, other: 'MapElement') -> Optional['MapElement']:
+    def rmul(self, other: "MapElement") -> Optional["MapElement"]:
         return None
 
     # </editor-fold>
@@ -573,24 +591,24 @@ class MapElement:
     # <editor-fold desc=" ------------------------ Division ------------------------">
 
     @staticmethod
-    def division(elem1: 'MapElement' ,elem2: 'MapElement') -> 'MapElement':
+    def division(elem1: "MapElement", elem2: "MapElement") -> "MapElement":
         """
         A default implementation, overridden in arithmetics.py
         """
         return NotImplemented
 
     @params_to_maps
-    def __truediv__(self, other) -> 'MapElement':
+    def __truediv__(self, other) -> "MapElement":
         return MapElement.division(self, other)
 
     @params_to_maps
-    def __rtruediv__(self, other) -> 'MapElement':
+    def __rtruediv__(self, other) -> "MapElement":
         return MapElement.division(other, self)
 
-    def div(self, other: 'MapElement') -> Optional['MapElement']:
+    def div(self, other: "MapElement") -> Optional["MapElement"]:
         return None
 
-    def rdiv(self, other: 'MapElement') -> Optional['MapElement']:
+    def rdiv(self, other: "MapElement") -> Optional["MapElement"]:
         return None
 
     # </editor-fold>
@@ -607,13 +625,13 @@ class MapElement:
     # <editor-fold desc=" ------------------------ Inversion ------------------------">
 
     @staticmethod
-    def inversion(condition: 'MapElement') -> 'MapElement':
+    def inversion(condition: "MapElement") -> "MapElement":
         raise NotImplementedError()
 
-    def __invert__(self) -> 'MapElement':
+    def __invert__(self) -> "MapElement":
         return MapElement.inversion(self)
 
-    def invert(self) -> Optional['MapElement']:
+    def invert(self) -> Optional["MapElement"]:
         return None
 
     # </editor-fold>
@@ -621,13 +639,13 @@ class MapElement:
     # <editor-fold desc=" ------------------------ And ------------------------">
 
     @staticmethod
-    def intersection(condition1: 'MapElement', condition2: 'MapElement') -> 'MapElement':
+    def intersection(condition1: "MapElement", condition2: "MapElement") -> "MapElement":
         raise NotImplementedError()
 
-    def __and__(self, condition: 'MapElement') -> 'MapElement':
+    def __and__(self, condition: "MapElement") -> "MapElement":
         return MapElement.intersection(self, condition)
 
-    def and_(self, condition: 'MapElement') -> Optional['MapElement']:
+    def and_(self, condition: "MapElement") -> Optional["MapElement"]:
         return None
 
     # </editor-fold>
@@ -635,13 +653,13 @@ class MapElement:
     # <editor-fold desc=" ------------------------ Or ------------------------">
 
     @staticmethod
-    def union(condition1: 'MapElement', condition2: 'MapElement') -> 'MapElement':
+    def union(condition1: "MapElement", condition2: "MapElement") -> "MapElement":
         raise NotImplementedError()
 
-    def __or__(self, condition: 'MapElement') -> 'MapElement':
+    def __or__(self, condition: "MapElement") -> "MapElement":
         return MapElement.union(self, condition)
 
-    def or_(self, condition: 'MapElement') -> Optional['MapElement']:
+    def or_(self, condition: "MapElement") -> Optional["MapElement"]:
         return None
 
     # </editor-fold>
@@ -651,25 +669,25 @@ class MapElement:
     # <editor-fold desc=" ------------------------ Comparison condition ------------------------">
 
     """
-    All the comparison methods are implemented in the ranged_condition.py file. The return a RangedCondition,
+    All the comparison methods are implemented in the ranged_condition.py file. They return a RangedCondition,
     and not a bool. The left shift operator `elem << n` returns the condition element `elem == n` (in contrast to
     __eq__ which returns a bool which compares the two functions). 
     For now, these are only defined for comparison with an integer.
     """
 
-    def __le__(self, n: int) -> 'MapElement':
+    def __le__(self, n: int) -> "MapElement":
         raise NotImplementedError()
 
-    def __lt__(self, n: int) -> 'MapElement':
+    def __lt__(self, n: int) -> "MapElement":
         raise NotImplementedError()
 
-    def __ge__(self, n: int) -> 'MapElement':
+    def __ge__(self, n: int) -> "MapElement":
         raise NotImplementedError()
 
-    def __gt__(self, n: int) -> 'MapElement':
+    def __gt__(self, n: int) -> "MapElement":
         raise NotImplementedError()
 
-    def __lshift__(self, n: int) -> 'MapElement':
+    def __lshift__(self, n: int) -> "MapElement":
         raise NotImplementedError()
 
     # </editor-fold>
@@ -685,10 +703,11 @@ class Var(MapElement, DefaultSerializable):
 
     Cannot generate two variables with the same name. Trying to do so, will return the same variable.
     """
-    _instances: Dict[str, 'Var'] = {}
+
+    _instances: Dict[str, "Var"] = {}
 
     @classmethod
-    def try_get(cls, var_name: str) -> Optional['Var']:
+    def try_get(cls, var_name: str) -> Optional["Var"]:
         """
         Checks if there is a variable with the given name. Return it if exists, and otherwise None.
         """
@@ -697,7 +716,7 @@ class Var(MapElement, DefaultSerializable):
     # TODO: Consider using __class_getitem__ for the try_get method
 
     @classmethod
-    def try_get_valid_assignment(cls, key, value) -> Optional[Tuple['Var', MapElement]]:
+    def try_get_valid_assignment(cls, key, value) -> Optional[Tuple["Var", MapElement]]:
         value = convert_to_map(value)
         if value is NotImplemented:
             return None
@@ -715,7 +734,9 @@ class Var(MapElement, DefaultSerializable):
     def __new__(cls, name: str):
         if name in cls._instances:
             v = cls._instances[name]
-            assert v.__class__ == cls, f'Attempted to create two variables of different classes with the same name {name}'
+            assert (
+                v.__class__ == cls
+            ), f"Attempted to create two variables of different classes with the same name {name}"
             return v
 
         instance = super(Var, cls).__new__(cls)
@@ -727,12 +748,12 @@ class Var(MapElement, DefaultSerializable):
         Initializes the Variable. If a Variable with the given name already exists, will not create a
         second object, and instead returns the existing variable.
         """
-        if hasattr(self, 'initialized'):
+        if hasattr(self, "initialized"):
             return
         super().__init__([self], name, simplified=True)
         self.initialized = True
 
-    def to_string(self, vars_to_str: Dict['Var', str]):
+    def to_string(self, vars_to_str: Dict["Var", str]):
         entries = [vars_to_str.get(v, v) for v in self.vars]
         return entries[0]
 
@@ -742,19 +763,19 @@ class Var(MapElement, DefaultSerializable):
             return self
         for promise in self.promises.output_promises():
             if not value.has_promise(promise):
-                raise InvalidInput(f'{self}={value} does not satisfy the promise of {promise}')
+                raise InvalidInput(f"{self}={value} does not satisfy the promise of {promise}")
         return value
 
     def __eq__(self, other):
         return isinstance(other, Var) and self.name == other.name
 
     def __hash__(self):
-        return hash(('Var', self.name))
+        return hash(("Var", self.name))
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
         value = var_dict.get(self, None)
         if value is self or value is None:
-            return ProcessFailureReason(f'The variable {self} did not change', trivial=True)
+            return ProcessFailureReason(f"The variable {self} did not change", trivial=True)
         return value
 
 
@@ -764,14 +785,15 @@ class NamedFunc(MapElement, DefaultSerializable):
 
     Cannot generate two functions with the same name. Trying to do so, will raise an exception.
     """
-    _instances: Dict[str, 'NamedFunc'] = {}
+
+    _instances: Dict[str, "NamedFunc"] = {}
 
     @classmethod
-    def try_get(cls, func_name: str) -> Optional['NamedFunc']:
+    def try_get(cls, func_name: str) -> Optional["NamedFunc"]:
         return cls._instances.get(func_name, None)
 
     @classmethod
-    def try_get_valid_assignment(cls, key, value) -> Optional[Tuple['NamedFunc', MapElement]]:
+    def try_get_valid_assignment(cls, key, value) -> Optional[Tuple["NamedFunc", MapElement]]:
         value = convert_to_map(value)
         if value is NotImplemented:
             return None
@@ -786,8 +808,9 @@ class NamedFunc(MapElement, DefaultSerializable):
 
         if func.num_vars != value.num_vars:
             raise Exception(
-                f'Cannot assign function {func} with {func.num_vars} variables to '
-                f'{value} with {value.num_vars} variables.')
+                f"Cannot assign function {func} with {func.num_vars} variables to "
+                f"{value} with {value.num_vars} variables."
+            )
 
         return func, value
 
@@ -800,7 +823,7 @@ class NamedFunc(MapElement, DefaultSerializable):
             cur_instance = cls._instances[func_name]
             if cur_instance.vars != variables:
                 # TODO: Consider creating a specified exception
-                raise Exception(f'Cannot create two functions with the same name {func_name}')
+                raise Exception(f"Cannot create two functions with the same name {func_name}")
             return cur_instance
 
         instance = super(NamedFunc, cls).__new__(cls)
@@ -808,17 +831,14 @@ class NamedFunc(MapElement, DefaultSerializable):
         return instance
 
     def __init__(self, func_name: str, variables: List[Var]):
-        if hasattr(self, 'initialized'):
+        if hasattr(self, "initialized"):
             return
         super().__init__(variables, func_name, simplified=True)
         self.initialized = True
 
     @classmethod
     def serialization_name_conversion(cls) -> Dict:
-        return {
-            'func_name': 'name',
-            'variables': 'vars'
-        }
+        return {"func_name": "name", "variables": "vars"}
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
 
@@ -845,7 +865,7 @@ class Func:
 
     def __call__(self, *variables) -> NamedFunc:
         if self.assigned is not None:
-            raise Exception(f'The name {self.name} was already assigned to a function')
+            raise Exception(f"The name {self.name} was already assigned to a function")
 
         # transform variables to Var
         actual_vars = []
@@ -856,11 +876,12 @@ class Func:
             if isinstance(v, str):
                 actual_vars.append(Var(v))
                 continue
-            raise Exception(f'Could not define the function {self.name}: Variable {v} is not well defined.')
+            raise Exception(f"Could not define the function {self.name}: Variable {v} is not well defined.")
 
         # TODO: why composition
         self.assigned = NamedFunc(self.name, actual_vars)
         return self.assigned
+
 
 # </editor-fold>
 
@@ -910,7 +931,7 @@ class CompositionFunction(MapElement, DefaultSerializable):
             for v, entry in zip(self.function.vars, self.entries)}
         return self.function.to_string(entries_to_str)
 
-    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> "MapElement":
         if len(var_dict) == 0 and len(func_dict) == 0:
             return self
         eval_function = self.function._call_with_dict({}, func_dict)
@@ -924,10 +945,10 @@ class CompositionFunction(MapElement, DefaultSerializable):
     #       we should check if it has a new type of arithmetic function that we can call.
 
     # Override when needed
-    def _simplify_with_var_values2(self, var_dict: Optional[VarDict] = None) -> Optional['MapElement']:
-        simplify_logger.log('Simplifying just the function')
+    def _simplify_with_var_values2(self, var_dict: Optional[VarDict] = None) -> Optional["MapElement"]:
+        simplify_logger.log("Simplifying just the function")
         function: MapElement = self.function._simplify2()
-        simplify_logger.log('Simplifying just the entries')
+        simplify_logger.log("Simplifying just the entries")
         simplified_entries = [entry._simplify2(var_dict) for entry in self.entries]
 
         is_simpler = (function is not None) | any([entry is not None for entry in simplified_entries])
@@ -942,16 +963,16 @@ class CompositionFunction(MapElement, DefaultSerializable):
             return result
 
         # TODO: consider moving it into a simplifier processor, since it is mainly used for arithmetics
-        simplify_logger.log('Simplifying via positional entries')
+        simplify_logger.log("Simplifying via positional entries")
         for position, v in enumerate(function.vars):
             pos_entry = simplified_entries_dict[v]
-            log_title = f'Pos: [{cyan(pos_entry.__class__.__name__)}] {red(v)} <== {red(pos_entry)}'
+            log_title = f"Pos: [{cyan(pos_entry.__class__.__name__)}] {red(v)} <== {red(pos_entry)}"
             simplify_logger.log(log_title, TreeAction.GO_DOWN)
             result = pos_entry._simplify_caller_function2(function, position, simplified_entries_dict)
 
             if result is not None:
-                simplify_logger.set_context_title(f'{log_title} => {green(result)}')
-                simplify_logger.log(f'Pos {green(result)}', TreeAction.GO_UP)
+                simplify_logger.set_context_title(f"{log_title} => {green(result)}")
+                simplify_logger.log(f"Pos {green(result)}", TreeAction.GO_UP)
                 return result
             simplify_logger.set_context_title(f'{log_title} = {magenta("& & &")}')
             simplify_logger.log(f'Pos {magenta("& & &")}', TreeAction.GO_UP)
@@ -994,6 +1015,7 @@ class MapElementConstant(MapElement, DefaultSerializable):
     def evaluate(self) -> ExtElement:
         return self.elem
 
+
 MapElementConstant.zero = MapElementConstant(0)
 MapElementConstant.one = MapElementConstant(1)
 
@@ -1008,17 +1030,17 @@ class MapElementFromFunction(MapElement):
         """
         self.function = function
         self.num_parameters = len(inspect.signature(function).parameters)
-        variables = [Var(f'X_{name}_{i}') for i in range(self.num_parameters)]
+        variables = [Var(f"X_{name}_{i}") for i in range(self.num_parameters)]
         # TODO: Maybe use the names of the variables of the original function
         super().__init__(variables, name, simplified=simplified)
 
-    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> 'MapElement':
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> "MapElement":
         eval_entries = get_var_values(self.vars, var_dict)
 
         return self if eval_entries is None else CompositionFunction(function=self, entries=eval_entries)
 
     # Override when needed
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional["MapElement"]:
         entries = get_var_values(self.vars, var_dict)
         if entries is None:
             return None
@@ -1028,4 +1050,3 @@ class MapElementFromFunction(MapElement):
             return MapElementConstant(result)
 
         return None
-

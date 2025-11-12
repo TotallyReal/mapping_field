@@ -34,6 +34,7 @@ When simplifying map with arithmetics I use the following rules:
 
 # --------------------- MapElements for arithmetic operator ---------------------
 
+
 class _ArithmeticMapFromFunction(MapElementFromFunction, DefaultSerializable):
     # Create a singleton for each arithmetic function
 
@@ -45,9 +46,9 @@ class _ArithmeticMapFromFunction(MapElementFromFunction, DefaultSerializable):
         return cls._instance
 
     def __init__(self, name: str, function: Callable[[List[ExtElement]], ExtElement]):
-        if hasattr(self, '_initialized'):
+        if hasattr(self, "_initialized"):
             return
-        super().__init__(name, function, simplified = True)
+        super().__init__(name, function, simplified=True)
         self._initialized = True
 
     @classmethod
@@ -60,16 +61,17 @@ class _ArithmeticMapFromFunction(MapElementFromFunction, DefaultSerializable):
 
         return tuple(elem.entries)
 
+
 class _Negative(_ArithmeticMapFromFunction):
 
     def __init__(self):
-        super().__init__('Neg', lambda a: -a)
+        super().__init__("Neg", lambda a: -a)
 
-    def to_string(self, vars_to_str: Dict[Var,str]):
-        return f'(-{vars_to_str.get(self.vars[0])})'
+    def to_string(self, vars_to_str: Dict[Var, str]):
+        return f"(-{vars_to_str.get(self.vars[0])})"
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
-        entries = [var_dict.get(v,v) for v in self.vars]
+        entries = [var_dict.get(v, v) for v in self.vars]
 
         if not isinstance(entries[0], CompositionFunction):
             return super()._simplify_with_var_values2(var_dict)
@@ -93,10 +95,10 @@ def as_neg(map_elem: MapElement) -> Tuple[int, MapElement]:
 class _Add(_ArithmeticMapFromFunction):
 
     def __init__(self):
-        super().__init__('Add', lambda a, b: a + b)
+        super().__init__("Add", lambda a, b: a + b)
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
-        entries = [var_dict.get(v,v) for v in self.vars]
+        entries = [var_dict.get(v, v) for v in self.vars]
 
         if entries[0].evaluate() == 0:
             return entries[1]
@@ -106,7 +108,7 @@ class _Add(_ArithmeticMapFromFunction):
         sign0, map0 = as_neg(entries[0])
         sign1, map1 = as_neg(entries[1])
         if sign0 == -1 and sign1 == -1:
-            return (-(map0+map1)).simplify2()
+            return (-(map0 + map1)).simplify2()
 
         if sign0 == 1 and sign1 == -1:
             # Remark: I would like to return map0 - map1, however, if any MapElement subclass defines
@@ -119,18 +121,18 @@ class _Add(_ArithmeticMapFromFunction):
         # sign0 == sign1 == 1
         return super()._simplify_with_var_values2(var_dict)
 
-    def to_string(self, vars_to_str: Dict[Var,str]):
+    def to_string(self, vars_to_str: Dict[Var, str]):
         entries = [vars_to_str.get(v, v) for v in self.vars]
-        return f'({entries[0]}+{entries[1]})'
+        return f"({entries[0]}+{entries[1]})"
 
 
 class _Sub(_ArithmeticMapFromFunction):
 
     def __init__(self):
-        super().__init__('Sub', lambda a, b: a - b)
+        super().__init__("Sub", lambda a, b: a - b)
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
-        entries = [var_dict.get(v,v) for v in self.vars]
+        entries = [var_dict.get(v, v) for v in self.vars]
 
         if entries[0].evaluate() == 0:
             return Neg(entries[1]).simplify2()
@@ -157,7 +159,8 @@ class _Sub(_ArithmeticMapFromFunction):
 
     def to_string(self, vars_to_str: Dict[Var, str]):
         entries = [vars_to_str.get(v, v) for v in self.vars]
-        return f'({entries[0]}-{entries[1]})'
+        return f"({entries[0]}-{entries[1]})"
+
 
 def _as_scalar_mult(map_elem: MapElement) -> Tuple[int, MapElement]:
     value = map_elem.evaluate()
@@ -174,6 +177,7 @@ def _as_scalar_mult(map_elem: MapElement) -> Tuple[int, MapElement]:
         if b_value is not None:
             return b_value, a
     return 1, map_elem
+
 
 # TODO: consider creating a LinearCombination class?
 #       also, make this function recursive.
@@ -235,10 +239,10 @@ def _as_rational(map_elem: MapElement) -> (int, MapElement, MapElement):
 class _Mult(_ArithmeticMapFromFunction):
 
     def __init__(self):
-        super().__init__('Mult', lambda a, b: a * b)
+        super().__init__("Mult", lambda a, b: a * b)
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
-        entries = [var_dict.get(v,v) for v in self.vars]
+        entries = [var_dict.get(v, v) for v in self.vars]
 
         # Multiplication by 0 and 1
         if entries[0].evaluate() == 0:
@@ -268,19 +272,19 @@ class _Mult(_ArithmeticMapFromFunction):
 
     def to_string(self, vars_to_str: Dict[Var, str]):
         entries = [vars_to_str.get(v, v) for v in self.vars]
-        return f'({entries[0]}*{entries[1]})'
+        return f"({entries[0]}*{entries[1]})"
 
 
 class _Div(_ArithmeticMapFromFunction):
 
     def __init__(self):
-        super().__init__('Div', lambda a, b: a / b)
+        super().__init__("Div", lambda a, b: a / b)
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
-        entries = [var_dict.get(v,v) for v in self.vars]
+        entries = [var_dict.get(v, v) for v in self.vars]
 
         if entries[1] == 0:
-            raise Exception('Cannot divide by zero')
+            raise Exception("Cannot divide by zero")
         if entries[1] == 1:
             return entries[0]
 
@@ -292,15 +296,16 @@ class _Div(_ArithmeticMapFromFunction):
         if entries[0] is numerator0 and entries[1] is numerator1:
             return super()._simplify_with_var_values2(var_dict)
 
-        abs_value = ((numerator0 * denominator1) / (denominator0 * numerator1))
+        abs_value = (numerator0 * denominator1) / (denominator0 * numerator1)
         return abs_value if sign0 * sign1 == 1 else -abs_value
 
     def to_string(self, vars_to_str: Dict[Var, str]):
         entries = [vars_to_str.get(v, v) for v in self.vars]
-        return f'( {entries[0]}/{entries[1]} )'
+        return f"( {entries[0]}/{entries[1]} )"
 
 
 # --------------------- Override arithmetic operators for MapElement ---------------------
+
 
 def params_to_maps(f):
 
@@ -315,20 +320,23 @@ Neg = _Negative()
 MapElement.negation = Neg
 
 Add = _Add()
-MapElement.addition  = Add
+MapElement.addition = Add
 
 Sub = _Sub()
-MapElement.subtraction  = Sub
+MapElement.subtraction = Sub
 
 Mult = _Mult()
-MapElement.multiplication  = Mult
+MapElement.multiplication = Mult
 
 Div = _Div()
-MapElement.division  = Div
+MapElement.division = Div
 
 original_simplify_caller_function2 = MapElement._simplify_caller_function2
+
+
 def _simplify_caller_function2_arithmetics(
-        self: MapElement, function: 'MapElement', position: int, var_dict: VarDict) -> Optional['MapElement']:
+    self: MapElement, function: "MapElement", position: int, var_dict: VarDict
+) -> Optional["MapElement"]:
 
     entries = [var_dict[v] for v in function.vars]
 
@@ -347,6 +355,7 @@ def _simplify_caller_function2_arithmetics(
 
     return original_simplify_caller_function2(self, function, position, var_dict)
 
+
 MapElement._simplify_caller_function2 = _simplify_caller_function2_arithmetics
 
 
@@ -356,18 +365,16 @@ class BinaryCombination(MapElement):
     #       Later, I should just make a LinearCombination element for expressions of the form sum c_i f_i
 
     def __init__(self, c1: int, elem1: MapElement, c2: int, elem2: MapElement):
-        super().__init__(
-            list(set(elem1.vars + elem2.vars))
-        )
+        super().__init__(list(set(elem1.vars + elem2.vars)))
         self.c1 = c1
         self.elem1 = elem1
         self.c2 = c2
         self.elem2 = elem2
 
     def to_string(self, vars_to_str: Dict[Var, str]):
-        return f'Comb[{self.c1}*{self.elem1.to_string(vars_to_str)}+{self.c2}*{self.elem2.to_string(vars_to_str)}]'
+        return f"Comb[{self.c1}*{self.elem1.to_string(vars_to_str)}+{self.c2}*{self.elem2.to_string(vars_to_str)}]"
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional['MapElement']:
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional["MapElement"]:
         if self.c1 == 0:
             return self.c2 * self.elem2
         if self.c2 == 0:
@@ -381,11 +388,14 @@ class BinaryCombination(MapElement):
             return BinaryCombination(self.c1, elem1, self.c2, elem2)
         return None
 
+
 # TODO: add tests
-def _binary_combination_simplifier(comp_function: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
+def _binary_combination_simplifier(
+    comp_function: MapElement, var_dict: VarDict
+) -> Optional[Union[MapElement, ProcessFailureReason]]:
     assert isinstance(comp_function, CompositionFunction)
     if not comp_function.function in (Add, Sub):
-        return ProcessFailureReason('Function is not Add or Sub', trivial=True)
+        return ProcessFailureReason("Function is not Add or Sub", trivial=True)
     c1, elem1, c2, elem2 = _as_combination(comp_function)
     if c2 == 0:
         return None
@@ -393,5 +403,7 @@ def _binary_combination_simplifier(comp_function: MapElement, var_dict: VarDict)
     if result is None or isinstance(result, BinaryCombination):
         return None
     return result
+
+
 # TODO: should class simplifiers be inherited?
 CompositionFunction.register_class_simplifier(_binary_combination_simplifier)

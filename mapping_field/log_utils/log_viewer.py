@@ -14,13 +14,14 @@ from mapping_field.serializable import Serializable
 ensure_real_terminal()
 
 # -------- CONFIGURATION --------
-LOG_DIR = PROJECT_ROOT / 'mapping_field/tests/logs'
-LOG_FILE_EXTENSION = 'log_context'
+LOG_DIR = PROJECT_ROOT / "mapping_field/tests/logs"
+LOG_FILE_EXTENSION = "log_context"
+
 
 # -------- UTILITY FUNCTIONS --------
 def get_latest_log_file() -> Path:
     """Return the latest *.log file in LOG_DIR"""
-    log_files = sorted(LOG_DIR.glob(f'*.{LOG_FILE_EXTENSION}'), key=lambda f: f.stat().st_mtime, reverse=True)
+    log_files = sorted(LOG_DIR.glob(f"*.{LOG_FILE_EXTENSION}"), key=lambda f: f.stat().st_mtime, reverse=True)
     return log_files[0] if log_files else None
 
 
@@ -36,13 +37,16 @@ class LogViewer(App):
 
     def update_view(self):
         if self.latest_file is None:
-            header = Text(f'Could not find a {LOG_FILE_EXTENSION} file in {LOG_DIR} ')
-            lines_rich = ''
+            header = Text(f"Could not find a {LOG_FILE_EXTENSION} file in {LOG_DIR} ")
+            lines_rich = ""
         else:
             filename = file_path_to_module(self.latest_file)
-            header = Text(f"{filename} | [depth = {len(self.context_path)}, log_count={self.tree_context.information_count}]\n", style="bold")
+            header = Text(
+                f"{filename} | [depth = {len(self.context_path)}, log_count={self.tree_context.information_count}]\n",
+                style="bold",
+            )
 
-            lines_rich = ("\n".join(self.collect_lines(0, self.tree_context, tab_count=0)))
+            lines_rich = "\n".join(self.collect_lines(0, self.tree_context, tab_count=0))
 
         header.append(lines_rich)
 
@@ -67,7 +71,7 @@ class LogViewer(App):
             self.exit()
         elif event.key == "r":  # reload latest log
             self.load_latest_log()
-        self.context_path[-1] = max(0, min(len(self.current_context.information)-1, self.context_path[-1]))
+        self.context_path[-1] = max(0, min(len(self.current_context.information) - 1, self.context_path[-1]))
         self.update_view()
 
     def load_latest_log(self):
@@ -78,20 +82,26 @@ class LogViewer(App):
             self.context_path = [0]
             self.line_index = 0
 
-    def collect_lines(self, path_position:int, context:TreeContext, tab_count: int):
+    def collect_lines(self, path_position: int, context: TreeContext, tab_count: int):
         information = context.information
-        tabs = '    '*tab_count
-        lines = [f'{tabs}{"+" if isinstance(single, TreeContext) else ""}{single}' for single in information[:self.context_path[path_position]]]
-        if path_position < len(self.context_path)-1:
-            lines += self.collect_lines(path_position+1, information[self.context_path[path_position]], tab_count + 1)
+        tabs = "    " * tab_count
+        lines = [
+            f'{tabs}{"+" if isinstance(single, TreeContext) else ""}{single}'
+            for single in information[: self.context_path[path_position]]
+        ]
+        if path_position < len(self.context_path) - 1:
+            lines += self.collect_lines(path_position + 1, information[self.context_path[path_position]], tab_count + 1)
         else:
-            lines.append(tabs + ' > ' + str(information[self.context_path[path_position]]))
-        lines += [f'{tabs}{"+" if isinstance(single, TreeContext) else ""}{single}' for single in information[self.context_path[path_position]+1:]]
-        if path_position == len(self.context_path)-1:
-            lines = [''] + lines + ['']
+            lines.append(tabs + " > " + str(information[self.context_path[path_position]]))
+        lines += [
+            f'{tabs}{"+" if isinstance(single, TreeContext) else ""}{single}'
+            for single in information[self.context_path[path_position] + 1 :]
+        ]
+        if path_position == len(self.context_path) - 1:
+            lines = [""] + lines + [""]
         return lines
+
 
 # -------- MAIN --------
 if __name__ == "__main__":
     LogViewer().run()
-

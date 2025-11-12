@@ -12,24 +12,21 @@ from mapping_field.tests.utils import DummyCondition, DummyMap
 logger = logging.getLogger(__name__)
 
 
-
-
 def test_simple_construction():
     dummy = DummyMap(0)
-    cond_func = ConditionalFunction([
-        (dummy < 0, dummy)
-    ])
-    assert str(cond_func) == '[ DummyMap(0)<0 -> DummyMap(0) ]'
+    cond_func = ConditionalFunction([(dummy < 0, dummy)])
+    assert str(cond_func) == "[ DummyMap(0)<0 -> DummyMap(0) ]"
+
 
 def test_post_generation_independence():
     dummy0 = DummyMap(0)
-    x = Var('x')
+    x = Var("x")
     regions = [
         (dummy0 < 0, x),
         (x < 0, dummy0),
     ]
     func = ConditionalFunction(regions)
-    assert str(func) == '[ DummyMap(0)<0 -> x  ;  x<0 -> DummyMap(0) ]'
+    assert str(func) == "[ DummyMap(0)<0 -> x  ;  x<0 -> DummyMap(0) ]"
 
     # Changing the region list should not change the function
     dummy1 = DummyMap(1)
@@ -37,15 +34,16 @@ def test_post_generation_independence():
     regions[1] = (dummy1 < 0, dummy0)
     region_changed_func = ConditionalFunction(regions)
 
-    assert str(func) == '[ DummyMap(0)<0 -> x  ;  x<0 -> DummyMap(0) ]'
-    assert str(region_changed_func) == '[ DummyMap(0)<0 -> DummyMap(1)  ;  DummyMap(1)<0 -> DummyMap(0) ]'
+    assert str(func) == "[ DummyMap(0)<0 -> x  ;  x<0 -> DummyMap(0) ]"
+    assert str(region_changed_func) == "[ DummyMap(0)<0 -> DummyMap(1)  ;  DummyMap(1)<0 -> DummyMap(0) ]"
 
     # Calling the function
     assigned_func = func({x: dummy1})
 
-    assert str(assigned_func) == '[ DummyMap(0)<0 -> DummyMap(1)  ;  DummyMap(1)<0 -> DummyMap(0) ]'
+    assert str(assigned_func) == "[ DummyMap(0)<0 -> DummyMap(1)  ;  DummyMap(1)<0 -> DummyMap(0) ]"
     # Some indication that func is frozen
-    assert str(func) == '[ DummyMap(0)<0 -> x  ;  x<0 -> DummyMap(0) ]'
+    assert str(func) == "[ DummyMap(0)<0 -> x  ;  x<0 -> DummyMap(0) ]"
+
 
 def test_evaluate():
     dummy_conditions = [DummyCondition(i) for i in range(3)]
@@ -69,6 +67,7 @@ def test_evaluate():
         (dummy_conditions[1], DummyMap(0)),
     ])
     assert func.evaluate() is None
+
 
 def test_equality_to_standard_function():
     dummy_conditions = [DummyCondition(i) for i in range(3)]
@@ -109,13 +108,14 @@ def test_equality_to_conditional_function():
 
     assert cond_func1 == cond_func2
 
+
 def test_combining_regions():
-    x, y = BoolVar('x'), BoolVar('y')
+    x, y = BoolVar("x"), BoolVar("y")
 
     func = ConditionalFunction([
-        ( (x << 0) & (y << 0) , MapElementConstant(0)),
-        ( (x << 1) & (y << 0) , MapElementConstant(1)),
-        ( (y << 1) , x),
+            ((x << 0) & (y << 0), MapElementConstant(0)),
+            ((x << 1) & (y << 0), MapElementConstant(1)),
+            ((y << 1), x),
     ])
 
     func = func.simplify2()
@@ -123,12 +123,12 @@ def test_combining_regions():
 
 
 def test_equality_region_wise():
-    x = Var('x')
+    x = Var("x")
 
     cond_func = ConditionalFunction([
         (x << 0, MapElementConstant(0)),
         (x << 2, MapElementConstant(2)),
-        ( (7 <= x) & (x < 17), x),
+        ((7 <= x) & (x < 17), x),
     ])
 
     assert cond_func == x
@@ -155,7 +155,7 @@ def test_addition():
         (dummies[2], MapElementConstant(210))
     ])
 
-    assert result == cond_add, f'could not match:\n{result}\n{cond_add}'
+    assert result == cond_add, f"could not match:\n{result}\n{cond_add}"
 
 
 def test_addition_with_ranges():
@@ -182,7 +182,7 @@ def test_addition_with_ranges():
         (ranged(20,30), MapElementConstant(210))
     ])
 
-    assert  result == cond_add
+    assert result == cond_add
 
 
 def test_simplification():
@@ -206,7 +206,7 @@ def test_simplification():
     assert cond_func == simplified
 
     # Combine regions with assignments
-    x = Var('x')
+    x = Var("x")
     xx = Linear.of(x)
 
     cond_func = ConditionalFunction([
@@ -220,12 +220,12 @@ def test_simplification():
 
 
 def test_linear_ranged_condition_subtraction():
-    vv = [BoolVar(f'x_{i}') for i in range(4)]
+    vv = [BoolVar(f"x_{i}") for i in range(4)]
     x = BinaryExpansion(vv)
     xx = Linear.of(x)
 
-    v1 = ReLU(xx-7)
-    v2 = ReLU(xx-8)
+    v1 = ReLU(xx - 7)
+    v2 = ReLU(xx - 8)
     # Full Processing ( 0 < Lin[Bin[x_0, x_1, x_2, x_3] - 8] < inf , {} ) , [RangeCondition]
     v = v1 - v2
     v = v.simplify2()
@@ -242,7 +242,7 @@ def test_linear_ranged_condition_subtraction():
 
 
 def test_ranges_over_conditional_function():
-    x = Linear.of(Var('x'))
+    x = Linear.of(Var("x"))
 
     # absolute value of x:
     func = ConditionalFunction([
@@ -267,6 +267,7 @@ def test_ranges_over_conditional_function():
     condition1 = (func << 10).simplify2()
     condition2 = (x << -10) | (x << 10)
     assert condition1 == condition2
+
 
 def test_output_promise():
     dummy_cond = [DummyCondition(values={i}) for i in range(2)]
@@ -305,11 +306,10 @@ def test_output_promise():
     assert cond_func.has_promise(IsIntegral)
 
 
-
 def test_mul_generation():
-    x = Linear.of(Var('x'))
+    x = Linear.of(Var("x"))
 
-    func1 = (3<=x) * x
+    func1 = (3 <= x) * x
 
     func2 = ConditionalFunction([
         (3<=x, x),
@@ -317,4 +317,3 @@ def test_mul_generation():
     ])
 
     assert func1 == func2
-

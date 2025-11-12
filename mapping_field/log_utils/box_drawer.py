@@ -3,6 +3,7 @@ from typing import Optional
 
 # TODO: also check rich.panel.Panel
 
+
 @dataclass(frozen=True)
 class Box:
     hor: str
@@ -14,10 +15,10 @@ class Box:
 
 
 # 4 box styles
-SINGLE = Box('─', '│', '┌', '┐', '└', '┘')
-DOUBLE = Box('═', '║', '╔', '╗', '╚', '╝')
-HEAVY  = Box('━', '┃', '┏', '┓', '┗', '┛')
-ROUND  = Box('─', '│', '╭', '╮', '╰', '╯')
+SINGLE = Box("─", "│", "┌", "┐", "└", "┘")
+DOUBLE = Box("═", "║", "╔", "╗", "╚", "╝")
+HEAVY  = Box("━", "┃", "┏", "┓", "┗", "┛")
+ROUND  = Box("─", "│", "╭", "╮", "╰", "╯")
 
 
 def draw_box(text: str, box: Box, width: Optional[int] = None, height: Optional[int] = None) -> str:
@@ -25,7 +26,7 @@ def draw_box(text: str, box: Box, width: Optional[int] = None, height: Optional[
     Draw a text box with the given style and optional size constraints.
     """
 
-    lines = text.splitlines() or ['']
+    lines = text.splitlines() or [""]
     max_text_width = max(len(line) for line in lines)
     text_height = len(lines)
 
@@ -40,17 +41,17 @@ def draw_box(text: str, box: Box, width: Optional[int] = None, height: Optional[
     padding_bottom = inner_height - text_height - padding_top
 
     content_lines = [top]
-    content_lines.extend([box.vert + ' ' * inner_width + box.vert] * padding_top)
+    content_lines.extend([box.vert + " " * inner_width + box.vert] * padding_top)
 
     for line in lines:
         pad_left = (inner_width - len(line)) // 2
         pad_right = inner_width - len(line) - pad_left
-        content_lines.append(box.vert + ' ' * pad_left + line + ' ' * pad_right + box.vert)
+        content_lines.append(box.vert + " " * pad_left + line + " " * pad_right + box.vert)
 
-    content_lines.extend([box.vert + ' ' * inner_width + box.vert] * padding_bottom)
+    content_lines.extend([box.vert + " " * inner_width + box.vert] * padding_bottom)
     content_lines.append(bottom)
 
-    return '\n'.join(content_lines)
+    return "\n".join(content_lines)
 
 
 # --- Example usage ---

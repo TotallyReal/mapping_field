@@ -11,7 +11,7 @@ simplify_logger = TreeLogger(__name__)
 
 
 def test_simplify_range():
-    vv = [BoolVar(f'x_{i}') for i in range(4)] # a number in [0,15]
+    vv = [BoolVar(f"x_{i}") for i in range(4)]  # a number in [0,15]
     x = BinaryExpansion(vv)
     x3 = BinaryExpansion(vv[:3])
 
@@ -28,7 +28,7 @@ def test_simplify_range():
     assert cond1 == cond2
 
     cond1 = (x >= 9).simplify2()
-    cond2 = ((vv[3] << 1) & (1 <= x3 )).simplify2()
+    cond2 = ((vv[3] << 1) & (1 <= x3)).simplify2()
     assert cond1 == cond2
 
     # TODO: The following doesn't work. Think if I should and then how to implement it.
@@ -44,20 +44,21 @@ def test_simplify_range():
 def test_extend_range_to_full():
     # Ranged conditions on binary expansion get simplified to their boolean variables.
     # Make sure that they can recombined back together
-    vv = [BoolVar(f'x_{i}') for i in range(3)]
+    vv = [BoolVar(f"x_{i}") for i in range(3)]
     x = BinaryExpansion(vv)
 
-    cond1 = (x <  8).simplify2()
+    cond1 = (x < 8).simplify2()
     cond2 = (x >= 0).simplify2()
     assert cond1 is TrueCondition
     assert cond2 is TrueCondition
 
-    for k in range(0,8):
+    for k in range(0, 8):
         simplify_logger.tree.reset()
-        simplify_logger.log(f'Running test on {blue(k)}')
+        simplify_logger.log(f"Running test on {blue(k)}")
         cond1 = (x < k).simplify2()
         cond2 = (k <= x).simplify2()
-        assert cond1 | cond2 is TrueCondition, f'Could not combine Bin<{k} | {k}<=Bin'
+        assert cond1 | cond2 is TrueCondition, f"Could not combine Bin<{k} | {k}<=Bin"
+
 
 #
 # def test_extend_range_partially():

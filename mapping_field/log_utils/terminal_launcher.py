@@ -19,7 +19,7 @@ def ensure_real_terminal():
     command = command.replace('"', '\\"')  # escape any double quotes
 
     if sys.platform == "darwin":  # macOS
-        applescript = f'''
+        applescript = f"""
         tell application "Terminal"
             if not (exists window 1) then
                 do script "{command}"
@@ -32,7 +32,7 @@ def ensure_real_terminal():
             set custom title of front window to "Logger Terminal"
             # do script "tput rmam" in front window
         end tell
-        '''
+        """
         subprocess.run(["osascript", "-e", applescript])
         sys.exit(0)
 

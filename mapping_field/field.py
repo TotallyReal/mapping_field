@@ -4,7 +4,7 @@ from typing import List, Union
 
 from mapping_field.math_utils import gcd
 
-ExtElement = Union['FieldElement', int]
+ExtElement = Union["FieldElement", int]
 
 
 def get_int_value(element: ExtElement) -> int:
@@ -54,35 +54,35 @@ class FieldElement:
     # ----------------------- arithmetics -------------------------
 
     @_convert_param_to_int
-    def __add__(self, element: ExtElement) -> 'FieldElement':
+    def __add__(self, element: ExtElement) -> "FieldElement":
         return FieldElement(self.n + element)
 
     @_convert_param_to_int
-    def __radd__(self, element: ExtElement) -> 'FieldElement':
+    def __radd__(self, element: ExtElement) -> "FieldElement":
         return FieldElement(self.n + element)
 
     @_convert_param_to_int
-    def __sub__(self, element: ExtElement) -> 'FieldElement':
+    def __sub__(self, element: ExtElement) -> "FieldElement":
         return FieldElement(self.n - element)
 
     @_convert_param_to_int
-    def __rsub__(self, element: ExtElement) -> 'FieldElement':
+    def __rsub__(self, element: ExtElement) -> "FieldElement":
         return FieldElement(element - self.n)
 
     @_convert_param_to_int
-    def __mul__(self, element: ExtElement) -> 'FieldElement':
+    def __mul__(self, element: ExtElement) -> "FieldElement":
         return FieldElement(self.n * element)
 
     @_convert_param_to_int
-    def __rmul__(self, element: ExtElement) -> 'FieldElement':
+    def __rmul__(self, element: ExtElement) -> "FieldElement":
         return FieldElement(self.n * element)
 
     @_convert_param_to_int
-    def __truediv__(self, element: ExtElement) -> 'FieldElement':
+    def __truediv__(self, element: ExtElement) -> "FieldElement":
         return self * FieldElement(element).inv()
 
     @_convert_param_to_int
-    def __rtruediv__(self, element: ExtElement) -> 'FieldElement':
+    def __rtruediv__(self, element: ExtElement) -> "FieldElement":
         return element * self.inv()
 
     def __pow__(self, power: int):

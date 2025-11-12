@@ -2,7 +2,7 @@ import isort
 
 from mapping_field.global_config import PROJECT_ROOT
 
-src_root = PROJECT_ROOT / 'mapping_field'
+src_root = PROJECT_ROOT / "mapping_field"
 ignore_dir = src_root / "old_code"
 
 for py_file in src_root.rglob("*.py"):

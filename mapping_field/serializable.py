@@ -9,20 +9,24 @@ import yaml
 
 def tuple_representer(dumper, data):
     """Tell YAML how to represent a Python tuple."""
-    return dumper.represent_sequence('tag:yaml.org,2002:python/tuple', data)
+    return dumper.represent_sequence("tag:yaml.org,2002:python/tuple", data)
+
 
 def tuple_constructor(loader, node):
     """Tell YAML how to construct a tuple safely."""
     return tuple(loader.construct_sequence(node))
 
-yaml.SafeDumper.add_representer(tuple, tuple_representer)
-yaml.SafeLoader.add_constructor('tag:yaml.org,2002:python/tuple', tuple_constructor)
 
-_type = '_serialization_type'
-_ref = '_serialization_reference'
+yaml.SafeDumper.add_representer(tuple, tuple_representer)
+yaml.SafeLoader.add_constructor("tag:yaml.org,2002:python/tuple", tuple_constructor)
+
+_type = "_serialization_type"
+_ref = "_serialization_reference"
+
 
 class Serializable(ABC):
     """Interface for classes that can be saved to and loaded from dicts."""
+
     _subclasses = dict()
     _ref_to_objects = dict()
     _objects_to_refs = dict()
@@ -36,13 +40,13 @@ class Serializable(ABC):
     @abstractmethod
     def to_dict(self) -> Dict:
         """Convert object to a serializable dictionary."""
-        raise Exception(f'Method \'to_dict\' is not implemented in {self.__class__}')
+        raise Exception(f"Method 'to_dict' is not implemented in {self.__class__}")
 
     @classmethod
     @abstractmethod
     def from_dict(cls, data: Dict):
         """Reconstruct object from a dictionary."""
-        raise Exception(f'Method \'from_dict\' is not implemented in {cls}')
+        raise Exception(f"Method 'from_dict' is not implemented in {cls}")
 
     def save_element(self, path):
         path = Path(path)
@@ -57,9 +61,10 @@ class Serializable(ABC):
         cls: Serializable = DefaultSerializable.get_class(data)
         return cls.from_dict(data)
 
+
 class DefaultSerializable(Serializable):
 
-    _name_conversion = 'serialized_fields'
+    _name_conversion = "serialized_fields"
     _serialized_fields: List[str] = []
 
     def __init_subclass__(cls, **kwargs):
@@ -82,10 +87,11 @@ class DefaultSerializable(Serializable):
         if isinstance(element, tuple):
             return tuple([DefaultSerializable._dictify(v) for v in element])
         if isinstance(element, dict):
-            return {DefaultSerializable._dictify(key) : DefaultSerializable._dictify(value)
-                    for key, value in element.items()}
+            return {
+                DefaultSerializable._dictify(key): DefaultSerializable._dictify(value) for key, value in element.items()
+            }
 
-        raise Exception(f'Could not convert to dict: {element}')
+        raise Exception(f"Could not convert to dict: {element}")
 
     @staticmethod
     def _undictify(dict_rep):
@@ -99,10 +105,12 @@ class DefaultSerializable(Serializable):
             if _type in dict_rep:
                 value_cls = DefaultSerializable.get_class(dict_rep)
                 return value_cls.from_dict(dict_rep)
-            return {DefaultSerializable._undictify(key) : DefaultSerializable._undictify(value)
-                    for key, value in dict_rep.items()}
+            return {
+                DefaultSerializable._undictify(key): DefaultSerializable._undictify(value)
+                for key, value in dict_rep.items()
+            }
 
-        raise Exception(f'Could not rebuild the element from: {dict_rep}')
+        raise Exception(f"Could not rebuild the element from: {dict_rep}")
 
     def to_dict(self) -> Dict:
         serialized_dict = dict()
@@ -113,7 +121,7 @@ class DefaultSerializable(Serializable):
             serialized_dict[field_name] = DefaultSerializable._dictify(value)
 
         serialized_dict[_type] = self.__class__.__name__
-        serialized_dict[_ref]  = id(self)
+        serialized_dict[_ref] = id(self)
         return serialized_dict
 
     @classmethod
@@ -135,8 +143,8 @@ class DefaultSerializable(Serializable):
     @staticmethod
     def get_class(dict_rep) -> Type[Serializable]:
         if _type not in dict_rep:
-            raise Exception(f'Dictionary representation must have a type.\n{dict_rep}')
+            raise Exception(f"Dictionary representation must have a type.\n{dict_rep}")
         type_name = dict_rep[_type]
         if type_name not in Serializable._subclasses:
-            raise Exception(f'Class type {type_name} is not registered as Serializable.')
+            raise Exception(f"Class type {type_name} is not registered as Serializable.")
         return Serializable._subclasses[type_name]

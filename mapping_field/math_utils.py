@@ -1,4 +1,3 @@
-
 def _inner_gcd(n: int, m: int):  # n>m>0
     """
     Assuming that n>m>0, finds the gcd(n,m)=d and returns a triple (d,a,b) such that
