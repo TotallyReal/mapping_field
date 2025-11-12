@@ -83,6 +83,7 @@ class LogTree:
         self.root_context = self.context
         self.context.add_information(name)
         self.name = name
+        self.print_logs = False
 
     def open_context(self) -> TreeContext:
         parent = self.context
@@ -166,7 +167,8 @@ class TreeLogger:
             self.tree.add_information(message)
         tab_symbols = [f'{s}{c}{Style.RESET_ALL} ' for c, s in zip(tab_symbols, self.tree.tab_styles)]
         initial = ''.join(tab_symbols)
-        self.logger.info(f'{initial}{message}')
+        if self.tree.print_logs:
+            self.logger.info(f'{initial}{message}')
         if self.tree.depth > self.tree.max_depth:
             raise Exception('Too many recursive logs')
         if action == TreeAction.GO_UP:

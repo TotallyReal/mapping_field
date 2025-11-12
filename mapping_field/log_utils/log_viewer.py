@@ -81,12 +81,12 @@ class LogViewer(App):
     def collect_lines(self, path_position:int, context:TreeContext, tab_count: int):
         information = context.information
         tabs = '    '*tab_count
-        lines = [tabs + str(single) for single in information[:self.context_path[path_position]]]
+        lines = [f'{tabs}{"+" if isinstance(single, TreeContext) else ""}{single}' for single in information[:self.context_path[path_position]]]
         if path_position < len(self.context_path)-1:
             lines += self.collect_lines(path_position+1, information[self.context_path[path_position]], tab_count + 1)
         else:
             lines.append(tabs + ' > ' + str(information[self.context_path[path_position]]))
-        lines += [tabs + str(single) for single in information[self.context_path[path_position]+1:]]
+        lines += [f'{tabs}{"+" if isinstance(single, TreeContext) else ""}{single}' for single in information[self.context_path[path_position]+1:]]
         if path_position == len(self.context_path)-1:
             lines = [''] + lines + ['']
         return lines
