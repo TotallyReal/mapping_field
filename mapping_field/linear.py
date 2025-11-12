@@ -50,7 +50,7 @@ class Linear(MapElement, DefaultSerializable):
             b_str = f" - {-self.b}"
         return f"Lin[{a_str}{self.elem.to_string(vars_to_str)}{b_str}]"
 
-    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> "MapElement":
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
         elem = self.elem._call_with_dict(var_dict, func_dict)
         if elem is self.elem:
             return self

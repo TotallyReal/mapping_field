@@ -19,7 +19,7 @@ class ImprovedDummyMap(MapElement):
 
     def _simplify_caller_function2(
         self, function: MapElement, position: int, var_dict: VarDict
-    ) -> Optional["MapElement"]:
+    ) -> Optional[MapElement]:
         elem2 = var_dict[function.vars[1 - position]]
         if function in (MapElement.addition, MapElement.multiplication):
             if isinstance(elem2, DummyMap):

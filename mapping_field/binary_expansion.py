@@ -103,7 +103,7 @@ class BinaryExpansion(MapElement, DefaultSerializable):
     def evaluate(self) -> Optional[ExtElement]:
         return self._constant if (self._bool_max_value[-1] == 0) else None
 
-    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> "MapElement":
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
         coefs = [(c if isinstance(c, int) else var_dict.get(c, c)) for c in self.coefficients]
         if self.coefficients == coefs:
             return self
@@ -623,7 +623,7 @@ class BinaryExpansion(MapElement, DefaultSerializable):
             )
 
     @staticmethod
-    def _union_with_range_over_binary_expansion(union_elem: MapElement, var_dict: VarDict) -> Optional["MapElement"]:
+    def _union_with_range_over_binary_expansion(union_elem: MapElement, var_dict: VarDict) -> Optional[MapElement]:
         """
         If one of the factors in a union operation is a RangedCondition over a BinaryExpansion, try to write the union
         as another RangedCondition over the same BinaryExpansion.

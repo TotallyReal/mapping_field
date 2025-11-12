@@ -335,8 +335,8 @@ original_simplify_caller_function2 = MapElement._simplify_caller_function2
 
 
 def _simplify_caller_function2_arithmetics(
-    self: MapElement, function: "MapElement", position: int, var_dict: VarDict
-) -> Optional["MapElement"]:
+    self: MapElement, function: MapElement, position: int, var_dict: VarDict
+) -> Optional[MapElement]:
 
     entries = [var_dict[v] for v in function.vars]
 
@@ -374,7 +374,7 @@ class BinaryCombination(MapElement):
     def to_string(self, vars_to_str: Dict[Var, str]):
         return f"Comb[{self.c1}*{self.elem1.to_string(vars_to_str)}+{self.c2}*{self.elem2.to_string(vars_to_str)}]"
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional["MapElement"]:
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
         if self.c1 == 0:
             return self.c2 * self.elem2
         if self.c2 == 0:

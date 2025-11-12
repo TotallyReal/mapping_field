@@ -379,7 +379,7 @@ class RangeCondition(Condition, MapElementProcessor):
         # TODO: Maybe have a better hash?
         return id(self)
 
-    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> "MapElement":
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
         return RangeCondition(self.function._call_with_dict(var_dict, func_dict), self.range)
 
     def process_function(self, func: MapElement, simplify: bool = True) -> MapElement:
@@ -424,7 +424,7 @@ class RangeCondition(Condition, MapElementProcessor):
 
     # <editor-fold desc=" ======= Simplifiers ======= ">
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional["MapElement"]:
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
         if self.range.is_empty:
             return FalseCondition
         if self.range.low == float("-inf") and self.range.high == float("inf"):

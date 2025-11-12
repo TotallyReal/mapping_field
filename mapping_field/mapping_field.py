@@ -931,7 +931,7 @@ class CompositionFunction(MapElement, DefaultSerializable):
             for v, entry in zip(self.function.vars, self.entries)}
         return self.function.to_string(entries_to_str)
 
-    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> "MapElement":
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
         if len(var_dict) == 0 and len(func_dict) == 0:
             return self
         eval_function = self.function._call_with_dict({}, func_dict)
@@ -945,7 +945,7 @@ class CompositionFunction(MapElement, DefaultSerializable):
     #       we should check if it has a new type of arithmetic function that we can call.
 
     # Override when needed
-    def _simplify_with_var_values2(self, var_dict: Optional[VarDict] = None) -> Optional["MapElement"]:
+    def _simplify_with_var_values2(self, var_dict: Optional[VarDict] = None) -> Optional[MapElement]:
         simplify_logger.log("Simplifying just the function")
         function: MapElement = self.function._simplify2()
         simplify_logger.log("Simplifying just the entries")
@@ -1037,13 +1037,13 @@ class MapElementFromFunction(MapElement):
         # TODO: Maybe use the names of the variables of the original function
         super().__init__(variables, name, simplified=simplified)
 
-    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> "MapElement":
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
         eval_entries = get_var_values(self.vars, var_dict)
 
         return self if eval_entries is None else CompositionFunction(function=self, entries=eval_entries)
 
     # Override when needed
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional["MapElement"]:
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
         entries = get_var_values(self.vars, var_dict)
         if entries is None:
             return None

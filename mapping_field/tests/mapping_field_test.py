@@ -238,7 +238,7 @@ def test_double_simplification():
             super().__init__()
             self.simplified_counter = 0
 
-        def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional["MapElement"]:
+        def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
             self.simplified_counter += 1
             return MapElementConstant(5)
 
