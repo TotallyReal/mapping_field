@@ -386,6 +386,13 @@ class MapElement:
     def is_zero(self) -> bool:
         return self.evaluate() == 0
 
+    def get_entries(self, as_function: Union[Type['MapElement'], List[Type['MapElement']]]) -> Optional[List['MapElement']]:
+        """
+        In case this function is a CompositionFunction where the root is of type as_function, return the entries.
+        Otherwise, return None.
+        """
+        return None
+
     # </editor-fold>
 
     # <editor-fold desc=" ------------------------ Simplify 2 ------------------------">
@@ -983,6 +990,11 @@ class CompositionFunction(MapElement, DefaultSerializable):
         if is_simpler:
             return CompositionFunction(function, simplified_entries)
 
+        return None
+
+    def get_entries(self, as_function: Union[Type['MapElement'], List[Type['MapElement']]]) -> Optional[List['MapElement']]:
+        if isinstance(self.function, as_function):
+            return self.entries
         return None
 
 

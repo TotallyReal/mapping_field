@@ -96,16 +96,13 @@ class _NotCondition(Condition, _ArithmeticMapFromFunction):
     def simplify(self):
         raise NotImplementedError("Delete this function")
 
+    @staticmethod
+    def _to_inversion_simplifier(var_dict: VarDict) -> Optional[MapElement]:
+        entries = [var_dict[v] for v in NotCondition.vars]
+        return entries[0].invert()
 
 NotCondition = _NotCondition()
-
-
-def parameter_not_simplifier(var_dict: VarDict) -> Optional[MapElement]:
-    entries = [var_dict[v] for v in NotCondition.vars]
-    return entries[0].invert()
-
-
-NotCondition.register_simplifier(parameter_not_simplifier)
+NotCondition.register_simplifier(NotCondition._to_inversion_simplifier)
 
 MapElement.inversion = NotCondition
 

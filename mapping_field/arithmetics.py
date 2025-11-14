@@ -62,10 +62,14 @@ class _ArithmeticMapFromFunction(MapElementFromFunction, DefaultSerializable):
         return tuple(elem.entries)
 
 
+# <editor-fold desc=" ------------------- Negation ------------------- ">
+
+
 class _Negative(_ArithmeticMapFromFunction):
 
     def __init__(self):
         super().__init__("Neg", lambda a: -a)
+        self.register_simplifier(_Negative._to_negation_simplifier)
 
     def to_string(self, vars_to_str: Dict[Var, str]):
         return f"(-{vars_to_str.get(self.vars[0])})"
@@ -84,18 +88,25 @@ class _Negative(_ArithmeticMapFromFunction):
 
         return super()._simplify_with_var_values2(var_dict)
 
+    @staticmethod
+    def _to_negation_simplifier(var_dict: VarDict) -> Optional[MapElement]:
+        entries = [var_dict[v] for v in Neg.vars]
+        return entries[0].neg()
 
-def as_neg(map_elem: MapElement) -> Tuple[int, MapElement]:
-    if isinstance(map_elem, CompositionFunction) and map_elem.function == Neg:
-        return -1, map_elem.entries[0]
+Neg = _Negative()
+MapElement.negation = Neg
 
-    return 1, map_elem
 
+# </editor-fold>
+
+
+# <editor-fold desc=" ------------------- Addition ------------------- ">
 
 class _Add(_ArithmeticMapFromFunction):
 
     def __init__(self):
         super().__init__("Add", lambda a, b: a + b)
+        self.register_simplifier(_Add._to_add_simplifier)
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
         entries = [var_dict.get(v, v) for v in self.vars]
@@ -125,11 +136,24 @@ class _Add(_ArithmeticMapFromFunction):
         entries = [vars_to_str.get(v, v) for v in self.vars]
         return f"({entries[0]}+{entries[1]})"
 
+    @staticmethod
+    def _to_add_simplifier(var_dict: VarDict) -> Optional[MapElement]:
+        entries = [var_dict[v] for v in Add.vars]
+        return entries[0].add(entries[1]) or entries[1].add(entries[0])
+
+Add = _Add()
+MapElement.addition = Add
+
+# </editor-fold>
+
+
+# <editor-fold desc=" ------------------- Subtraction ------------------- ">
 
 class _Sub(_ArithmeticMapFromFunction):
 
     def __init__(self):
         super().__init__("Sub", lambda a, b: a - b)
+        self.register_simplifier(_Sub._to_sub_simplifier)
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
         entries = [var_dict.get(v, v) for v in self.vars]
@@ -161,13 +185,127 @@ class _Sub(_ArithmeticMapFromFunction):
         entries = [vars_to_str.get(v, v) for v in self.vars]
         return f"({entries[0]}-{entries[1]})"
 
+    @staticmethod
+    def _to_sub_simplifier(var_dict: VarDict) -> Optional[MapElement]:
+        entries = [var_dict[v] for v in Sub.vars]
+        return entries[0].sub(entries[1]) or entries[1].rsub(entries[0])
+
+Sub = _Sub()
+MapElement.subtraction = Sub
+
+# </editor-fold>
+
+
+# <editor-fold desc=" ------------------- Multiplication ------------------- ">
+
+
+class _Mult(_ArithmeticMapFromFunction):
+
+    def __init__(self):
+        super().__init__("Mult", lambda a, b: a * b)
+        self.register_simplifier(_Mult._to_mult_simplifier)
+
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+        entries = [var_dict.get(v, v) for v in self.vars]
+
+        # Multiplication by 0 and 1
+        if entries[0].evaluate() == 0:
+            return MapElementConstant.zero
+        if entries[0].evaluate() == 1:
+            return entries[1]
+
+        if entries[1].evaluate() == 0:
+            return MapElementConstant.zero
+        if entries[1].evaluate() == 1:
+            return entries[0]
+
+        if entries[0].evaluate() == -1:
+            return Neg(entries[1])
+        if entries[1].evaluate() == -1:
+            return Neg(entries[0])
+
+        sign0, numerator0, denominator0 = _as_rational(entries[0])
+        sign1, numerator1, denominator1 = _as_rational(entries[1])
+        if entries[0] is numerator0 and entries[1] is numerator1:
+            return super()._simplify_with_var_values2(var_dict)
+
+        numerator = numerator0 * numerator1
+        denominator = denominator0 * denominator1
+        abs_value = numerator / denominator
+        return abs_value.simplify2() if sign0 * sign1 == 1 else (-abs_value).simplify2()
+
+    def to_string(self, vars_to_str: Dict[Var, str]):
+        entries = [vars_to_str.get(v, v) for v in self.vars]
+        return f"({entries[0]}*{entries[1]})"
+
+    @staticmethod
+    def _to_mult_simplifier(var_dict: VarDict) -> Optional[MapElement]:
+        entries = [var_dict[v] for v in Mult.vars]
+        return entries[0].mul(entries[1]) or entries[1].mul(entries[0])
+
+Mult = _Mult()
+MapElement.multiplication = Mult
+
+# </editor-fold>
+
+
+# <editor-fold desc=" ------------------- Division ------------------- ">
+
+
+class _Div(_ArithmeticMapFromFunction):
+
+    def __init__(self):
+        super().__init__("Div", lambda a, b: a / b)
+        self.register_simplifier(_Div._to_div_simplifier)
+
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+        entries = [var_dict.get(v, v) for v in self.vars]
+
+        if entries[1] == 0:
+            raise Exception("Cannot divide by zero")
+        if entries[1] == 1:
+            return entries[0]
+
+        if entries[0] == 0:
+            return entries[0]
+
+        sign0, numerator0, denominator0 = _as_rational(entries[0])
+        sign1, numerator1, denominator1 = _as_rational(entries[1])
+        if entries[0] is numerator0 and entries[1] is numerator1:
+            return super()._simplify_with_var_values2(var_dict)
+
+        abs_value = (numerator0 * denominator1) / (denominator0 * numerator1)
+        return abs_value if sign0 * sign1 == 1 else -abs_value
+
+    def to_string(self, vars_to_str: Dict[Var, str]):
+        entries = [vars_to_str.get(v, v) for v in self.vars]
+        return f"( {entries[0]}/{entries[1]} )"
+
+    @staticmethod
+    def _to_div_simplifier(var_dict: VarDict) -> Optional[MapElement]:
+        entries = [var_dict[v] for v in Div.vars]
+        return entries[0].mul(entries[1]) or entries[1].mul(entries[0])
+
+Div = _Div()
+MapElement.division = Div
+
+# </editor-fold>
+
+
+# Arithmetic decompositions
+
+def as_neg(map_elem: MapElement) -> Tuple[int, MapElement]:
+    entries = map_elem.get_entries(_Negative)
+    return (-1, entries[0]) if entries is not None else (1, map_elem)
 
 def _as_scalar_mult(map_elem: MapElement) -> Tuple[int, MapElement]:
     value = map_elem.evaluate()
     if value is not None:
         return value, MapElementConstant.one
-    if isinstance(map_elem, CompositionFunction) and map_elem.function == Mult:
-        a, b = map_elem.entries
+
+    entries = map_elem.get_entries(_Mult)
+    if entries is not None:
+        a, b = entries
         a_value = a.evaluate()
         b_value = b.evaluate()
         if a_value is not None:
@@ -234,129 +372,6 @@ def _as_rational(map_elem: MapElement) -> (int, MapElement, MapElement):
         return sign, comp_map.entries[0], comp_map.entries[1]
 
     return sign, map_elem, MapElementConstant.one
-
-
-class _Mult(_ArithmeticMapFromFunction):
-
-    def __init__(self):
-        super().__init__("Mult", lambda a, b: a * b)
-
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
-        entries = [var_dict.get(v, v) for v in self.vars]
-
-        # Multiplication by 0 and 1
-        if entries[0].evaluate() == 0:
-            return MapElementConstant.zero
-        if entries[0].evaluate() == 1:
-            return entries[1]
-
-        if entries[1].evaluate() == 0:
-            return MapElementConstant.zero
-        if entries[1].evaluate() == 1:
-            return entries[0]
-
-        if entries[0].evaluate() == -1:
-            return Neg(entries[1])
-        if entries[1].evaluate() == -1:
-            return Neg(entries[0])
-
-        sign0, numerator0, denominator0 = _as_rational(entries[0])
-        sign1, numerator1, denominator1 = _as_rational(entries[1])
-        if entries[0] is numerator0 and entries[1] is numerator1:
-            return super()._simplify_with_var_values2(var_dict)
-
-        numerator = numerator0 * numerator1
-        denominator = denominator0 * denominator1
-        abs_value = numerator / denominator
-        return abs_value.simplify2() if sign0 * sign1 == 1 else (-abs_value).simplify2()
-
-    def to_string(self, vars_to_str: Dict[Var, str]):
-        entries = [vars_to_str.get(v, v) for v in self.vars]
-        return f"({entries[0]}*{entries[1]})"
-
-
-class _Div(_ArithmeticMapFromFunction):
-
-    def __init__(self):
-        super().__init__("Div", lambda a, b: a / b)
-
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
-        entries = [var_dict.get(v, v) for v in self.vars]
-
-        if entries[1] == 0:
-            raise Exception("Cannot divide by zero")
-        if entries[1] == 1:
-            return entries[0]
-
-        if entries[0] == 0:
-            return entries[0]
-
-        sign0, numerator0, denominator0 = _as_rational(entries[0])
-        sign1, numerator1, denominator1 = _as_rational(entries[1])
-        if entries[0] is numerator0 and entries[1] is numerator1:
-            return super()._simplify_with_var_values2(var_dict)
-
-        abs_value = (numerator0 * denominator1) / (denominator0 * numerator1)
-        return abs_value if sign0 * sign1 == 1 else -abs_value
-
-    def to_string(self, vars_to_str: Dict[Var, str]):
-        entries = [vars_to_str.get(v, v) for v in self.vars]
-        return f"( {entries[0]}/{entries[1]} )"
-
-
-# --------------------- Override arithmetic operators for MapElement ---------------------
-
-
-def params_to_maps(f):
-
-    def wrapper(self, element):
-        value = convert_to_map(element)
-        return NotImplemented if value is NotImplemented else f(self, value)
-
-    return wrapper
-
-
-Neg = _Negative()
-MapElement.negation = Neg
-
-Add = _Add()
-MapElement.addition = Add
-
-Sub = _Sub()
-MapElement.subtraction = Sub
-
-Mult = _Mult()
-MapElement.multiplication = Mult
-
-Div = _Div()
-MapElement.division = Div
-
-original_simplify_caller_function2 = MapElement._simplify_caller_function2
-
-
-def _simplify_caller_function2_arithmetics(
-    self: MapElement, function: MapElement, position: int, var_dict: VarDict
-) -> Optional[MapElement]:
-
-    entries = [var_dict[v] for v in function.vars]
-
-    if function is MapElement.negation:
-        return self.neg()
-
-    if function is MapElement.addition:
-        return self.add(entries[1 - position])
-    if function is MapElement.multiplication:
-        return self.mul(entries[1 - position])
-
-    if function is MapElement.subtraction:
-        return self.sub(entries[1]) if position == 0 else self.rsub(entries[0])
-    if function is MapElement.division:
-        return self.div(entries[1]) if position == 0 else self.rdiv(entries[0])
-
-    return original_simplify_caller_function2(self, function, position, var_dict)
-
-
-MapElement._simplify_caller_function2 = _simplify_caller_function2_arithmetics
 
 
 class BinaryCombination(MapElement):
