@@ -1,5 +1,6 @@
 import math
 import operator
+from abc import abstractmethod
 
 from typing import Dict, Optional, Tuple, Union
 
@@ -75,6 +76,12 @@ class IntervalRange:
             return "∅"
         return f'{"[" if self.contain_low else "("}{self.low},{self.high}{"]" if self.contain_high else ")"}'
 
+    def is_closed(self) -> bool:
+        return self.contain_low and self.contain_high
+
+    def is_open(self) -> bool:
+        return ~self.contain_low and ~self.contain_high
+
     def str_middle(self, middle: str):
         if self.is_empty:
             return "!∅!"
@@ -144,6 +151,16 @@ class IntervalRange:
                 return None
             return IntervalRange.of_point(low)
 
+        return IntervalRange(low, high, contain_low, contain_high)
+
+    def union_fill(self, other: "IntervalRange") -> "IntervalRange":
+        """
+        Returns the smallest interval containing this interval and the other interval
+        """
+        low = min(self.low, other.low)
+        contain_low = self.contains(low) or other.contains(low)
+        high = max(self.high, other.high)
+        contain_high = self.contains(high) or other.contains(high)
         return IntervalRange(low, high, contain_low, contain_high)
 
     def union(self, other: "IntervalRange") -> Optional["IntervalRange"]:
@@ -247,7 +264,10 @@ class IntervalRange:
         return IntervalRange[low, high]
 
 
-Range = Tuple[float, float]
+class Ranged:
+    @abstractmethod
+    def get_range(self) -> Optional[IntervalRange]:
+        raise NotImplementedError()
 
 
 class InRange(OutputValidator[IntervalRange]):
@@ -256,10 +276,18 @@ class InRange(OutputValidator[IntervalRange]):
     @classmethod
     def get_range_of(cls, elem: MapElement) -> Optional[IntervalRange]:
         in_range = next(elem.promises.output_promises(of_type=InRange), None)
-        if in_range is None and isinstance(elem, MapElementConstant):
+        if in_range is not None:
+            return in_range.range
+
+        if isinstance(elem, MapElementConstant):
             value = elem.evaluate()
             return IntervalRange.of_point(value)
-        return None if in_range is None else in_range.range
+        if elem.has_promise(IsCondition):
+            return IntervalRange[0,1]
+        if isinstance(elem, Ranged):
+            return elem.get_range()
+
+        return None
 
     def __init__(self, f_range: Union[IntervalRange, Tuple[float, float]]):
         self.range = f_range if isinstance(f_range, IntervalRange) else IntervalRange(*f_range)
@@ -418,6 +446,31 @@ class RangeCondition(Condition, MapElementProcessor):
                 f_range = self.range.union(condition.range)
             return None if (f_range is None) else RangeCondition(condition.function, f_range)
 
+        if isinstance(condition, MapElementProcessor):
+            processed_function = condition.process_function(self.function)
+            value = processed_function.evaluate()
+            if value is None:
+                return None
+            simplify_logger.log(f'Condition {red(condition)} implies {green(self.function)}={green(value)}')
+            if self.range.contains(value):
+                return self
+
+            # See if it extends the range to an interval.
+            interval = IntervalRange.of_point(value)
+            if self.function.has_promise(IsIntegral):
+                interval = self.range.integral_union(interval)
+            else:
+                interval = self.range.union(interval)
+            if interval is None:
+                return None
+
+            # See if it exactly what was missing:
+            at_value_cond = (self.function << value)
+            simplify_logger.log(f'Check if {red(condition)} == {red(at_value_cond)}')
+            at_value_cond = at_value_cond.simplify2()
+            if at_value_cond == condition:
+                return RangeCondition(self.function, interval)
+
         return None
 
     # </editor-fold>
@@ -442,6 +495,23 @@ class RangeCondition(Condition, MapElementProcessor):
         if value is None:
             return None
         return TrueCondition if element.range.contains(value) else FalseCondition
+
+    @staticmethod
+    def _condition_in_range_simplifier(element: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
+        # TODO: add tests.
+        #       I don't like this step too much. If I start with (x << 1) for bool var, it will become just x.
+        #       However, if I now try to set x = 1, instead of getting TrueCondition, I will get 1. And while they are
+        #       the same, it is easier to think about them (and view them on screen) differently.
+        assert isinstance(element, RangeCondition)
+        if not element.function.has_promise(IsCondition):
+            return ProcessFailureReason("Only applicable for ranges on conditions")
+        if isinstance(element.function, BoolVar):
+            return None
+        if element.range == IntervalRange.of_point(1):
+            return element.function
+        if element.range == IntervalRange.of_point(0):
+            return ~element.function
+        return None
 
     @staticmethod
     def _ranged_promise_simplifier(
@@ -545,6 +615,7 @@ class RangeCondition(Condition, MapElementProcessor):
 
 
 RangeCondition.register_class_simplifier(RangeCondition._evaluated_simplifier)
+RangeCondition.register_class_simplifier(RangeCondition._condition_in_range_simplifier)
 RangeCondition.register_class_simplifier(RangeCondition._ranged_promise_simplifier)
 RangeCondition.register_class_simplifier(RangeCondition._integral_simplifier)
 RangeCondition.register_class_simplifier(RangeCondition._linear_combination_simplifier)
@@ -594,6 +665,7 @@ class BoolVar(Var):
         self.promises.add_promise(IsIntegral)
         self.promises.add_promise(InRange(IntervalRange[0, 1]))
         self.promises.add_promise(IsCondition)
+
 
 
 def two_bool_vars_simplifier(elem: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
@@ -669,5 +741,20 @@ def two_bool_vars_simplifier(elem: MapElement, var_dict: VarDict) -> Optional[Un
 
     return None
 
+def mult_binary_assignment_by_numbers(var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
+    entries = [var_dict.get(v,v) for v in Mult.vars]
+    value0 = entries[0].evaluate()
+    value1 = entries[1].evaluate()
+    if (value0 is None) + (value1 is None) != 1:
+        return ProcessFailureReason("Exactly one of the factors must by a constant value", trivial=True)
+
+    value = value0 or value1
+    elem = entries[1] if value1 is None else entries[0]
+    if isinstance(elem, RangeCondition) and isinstance(elem.function, BoolVar):
+        if elem.range.is_point == 1 and value != 1:
+            return value * elem.function
+    return None
 
 MapElement._simplifier.register_processor(two_bool_vars_simplifier)
+
+Mult.register_simplifier(mult_binary_assignment_by_numbers)

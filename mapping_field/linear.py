@@ -10,13 +10,13 @@ from mapping_field.mapping_field import (
     params_to_maps,
 )
 from mapping_field.processors import ProcessFailureReason
-from mapping_field.ranged_condition import RangeCondition
+from mapping_field.ranged_condition import RangeCondition, Ranged, IntervalRange, InRange
 from mapping_field.serializable import DefaultSerializable
 
 logger = TreeLogger(__name__)
 
 
-class Linear(MapElement, DefaultSerializable):
+class Linear(MapElement, DefaultSerializable, Ranged):
 
     @staticmethod
     def of(elem: MapElement):
@@ -49,6 +49,12 @@ class Linear(MapElement, DefaultSerializable):
         if self.b < 0:
             b_str = f" - {-self.b}"
         return f"Lin[{a_str}{self.elem.to_string(vars_to_str)}{b_str}]"
+
+    def get_range(self) -> Optional[IntervalRange]:
+        f_range = InRange.get_range_of(self.elem)
+        if f_range is None:
+            return None
+        return self.a * f_range + self.b
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
         elem = self.elem._call_with_dict(var_dict, func_dict)

@@ -83,6 +83,9 @@ class _NotCondition(Condition, _ArithmeticMapFromFunction):
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
         entries = [var_dict.get(v, v) for v in self.vars]
 
+        if isinstance(entries[0], BinaryCondition):
+            return entries[0].invert()
+
         if not isinstance(entries[0], CompositionFunction):
             return super()._simplify_with_var_values2(var_dict)
         function = entries[0].function

@@ -1,10 +1,13 @@
 from mapping_field.arithmetics import Add
-from mapping_field.conditions import FalseCondition, TrueCondition, UnionCondition
+from mapping_field.conditional_function import ReLU
+from mapping_field.conditions import FalseCondition, TrueCondition, UnionCondition, IntersectionCondition
+from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.mapping_field import MapElementConstant, Var
 from mapping_field.promises import IsIntegral
 from mapping_field.ranged_condition import BoolVar, InRange, IntervalRange, RangeCondition
 from mapping_field.tests.utils import DummyMap
 
+simplify_logger = TreeLogger(__name__)
 
 def test_in_range_promise():
     dummy = DummyMap()
@@ -327,6 +330,23 @@ def test_ranged_condition_as_input():
     assert str(assigned) == "((1+2)+3)"
     assert assigned.simplify2() == 6
 
+
+def test_range_of_constant():
+    c = MapElementConstant(5)
+
+    assert InRange.get_range_of(c) == IntervalRange.of_point(5)
+
+def test_sum_of_conditions():
+    n = 2
+    simplify_logger.tree.max_log_count = -1
+    x = [Var(f'x_{i}') for i in range(n)]
+    # simplify_logger.tree.set_active(False)
+    elem = sum([x[i]<<2*i for i in range(n)], 1-n)
+    elem = ReLU(elem)
+    # simplify_logger.tree.set_active(True)
+    cond1 = elem.simplify2()
+    cond2 = IntersectionCondition([x[i]<<2*i for i in range(n)])
+    assert cond1 == cond2
 
 def test_add_ranged_functions():
     dummy1, dummy2 = DummyMap(1), DummyMap(2)

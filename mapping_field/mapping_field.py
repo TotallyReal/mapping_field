@@ -405,6 +405,7 @@ class MapElement:
     def _simplify2(self, var_dict: Optional[VarDict] = None) -> Optional["MapElement"]:
         if var_dict is None:
             var_dict = {}
+        var_dict = {key: value for key, value in var_dict.items() if key in self.vars}
 
         started_process_here = False
 
@@ -902,6 +903,35 @@ class Func:
 #   for which x,y,z are the entries, then I can use a composition class.
 #   Sounds legit. I will think about more it after finishing with the Condition to MapElement stuff.
 #
+# TODO:
+#   You are wrong, past me. There was a good reason why past past us chose to write it this way. If we combine each
+#   function class with its entries, then it makes it more difficult to compare the root of the computation tree. For
+#   example, we can't register a simplifier fo a specific function (of a given MapElement class) at the top of the
+#   tree, without adding an equality process between two functions which can ignore the entries.
+#   In any case, the right way to go is actually to change the Simplifier process. Instead of
+#           MapElement, VarDict -> MapElement,
+#   it should be
+#           MapElement, VarDict -> MapElement, VarDict,
+#   or in other words use CompositionFunctions. Then the composition function can have an is_simplified flag,
+#   which can also help make the simplification much faster, while now it is always a problem if var_dict is not empty.
+#
+# TODO:
+#   This is an interesting discussion. I am rethinking the MapElement with entries approach.
+#   We think of function as computation trees, where is node is a "basic" function. If we go this route, we have to
+#   add to each basic function the method to copy itself with new entries, which up to now was simple via
+#   the CompositionFunction class. This is already an issue right now with the OutputPromise mechanism which
+#   is coupled with the base MapElement class, since when we change it we change the function, instead of creating
+#   a new function.
+#
+#   The most basic components of a function are
+#       1) Its domain, represented by OutputPromises on the variables,
+#       2) Its target, represented by the OutputPromises on the function itself, and
+#       3) The computation of the function, done via the __call__ function and simplify mechanism.
+#   If we always think of the computation via the computation tree, I think it is better to move the entries also
+#   into the MapElement class. In any case, the weird mix of it sometimes being in CompositionFunction, and sometimes
+#   part of the other classes makes the code complicated. For example, _call_with_dict should be almost unified for
+#   all function types, and not as it is right now. It will give us a canonical way to scan the computation tree
+#   and only apply the dict where needed.
 class CompositionFunction(MapElement, DefaultSerializable):
 
     def __init__(self, function: MapElement, entries: List[MapElement]):
@@ -997,6 +1027,13 @@ class CompositionFunction(MapElement, DefaultSerializable):
             return self.entries
         return None
 
+    def __eq__(self, other):
+        if isinstance(other, CompositionFunction):
+            if self.function == other.function and self.entries == other.entries:
+                return True
+
+        return super().__eq__(other)
+
 
 class MapElementConstant(MapElement, DefaultSerializable):
     """
@@ -1059,9 +1096,9 @@ class MapElementFromFunction(MapElement):
         entries = get_var_values(self.vars, var_dict)
         if entries is None:
             return None
+        values = [entry.evaluate() for entry in entries]
+        if any(value is None for value in values):
+            return None
 
-        if all(isinstance(entry, MapElementConstant) for entry in entries):
-            result = self.function(*[entry.evaluate() for entry in entries])
-            return MapElementConstant(result)
-
-        return None
+        result = self.function(*values)
+        return MapElementConstant(result)

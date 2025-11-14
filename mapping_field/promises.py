@@ -24,8 +24,12 @@ def validate_constant_integral(elem: MapElement) -> Optional[bool]:
         return None
     return int(value) == value
 
+def condition_is_integral(elem: MapElement) -> Optional[bool]:
+    return True if elem.has_promise(IsCondition) else None
+
 
 IsIntegral.register_validator(validate_constant_integral)
+IsIntegral.register_validator(condition_is_integral)
 
 
 @always_validate_promises

@@ -12,12 +12,12 @@ from mapping_field.mapping_field import (
 )
 from mapping_field.processors import ProcessFailureReason
 from mapping_field.promises import IsCondition, IsIntegral
-from mapping_field.ranged_condition import BoolVar, InRange, RangeCondition
+from mapping_field.ranged_condition import BoolVar, InRange, RangeCondition, Ranged, IntervalRange
 
 simplify_logger = TreeLogger(__name__)
 
 
-class SingleRegion(MapElement):
+class SingleRegion(MapElement, Ranged):
 
     def __init__(self, condition: MapElement, function: MapElement):
         assert condition.has_promise(IsCondition)
@@ -63,8 +63,13 @@ class SingleRegion(MapElement):
             return SingleRegion(condition, function)
         return None
 
+    def get_range(self) -> Optional[IntervalRange]:
+        # TODO: This really calls to a register process, since we might be able to improve the range if we know
+        #       specifically the condition and function.
+        return InRange.get_range_of(self.function)
 
-class ConditionalFunction(MapElement):
+
+class ConditionalFunction(MapElement, Ranged):
     """
     A conditional function of the form:
        1_(cond_1) * f_1 + 1_(cond_2) * f_2 + ... + 1_(cond_n) * f_n
@@ -124,6 +129,15 @@ class ConditionalFunction(MapElement):
                     return False
 
         return True
+
+    def get_range(self) -> Optional[IntervalRange]:
+        interval = IntervalRange.empty()
+        for region in self.regions:
+            next_interval = InRange.get_range_of(region)
+            if next_interval is None:
+                return None
+            interval = interval.union_fill(next_interval)
+        return interval
 
     # <editor-fold desc=" ------------------------ arithmetics ------------------------">
 
@@ -285,30 +299,40 @@ class ConditionalFunction(MapElement):
         if value1 is None or value2 is None:
             return None
 
-        if not (isinstance(cond1, RangeCondition) and isinstance(cond2, RangeCondition)):
-            return None
-        assign1 = cond1.as_assignment()
-        assign2 = cond2.as_assignment()
-        if assign1 is None or assign2 is None:
-            return None
+        simplify_logger.log(f'Verify that the 2 regions combine to the whole space.')
+        if (cond1 | cond2).simplify2() is not TrueCondition:
+            return ProcessFailureReason(
+                "Conditional Function on two regions should have complement conditions, "
+                "instead got {red(cond1)}, {red(cond2)}",
+                trivial=False
+            )
 
-        v1 = assign1[0]
-        v2 = assign2[0]
-        if not (isinstance(v1, BoolVar) and v1 is v2):
-            return None
+        return value2 + (value1 - value2) * cond1
 
-        assigned_value1 = assign1[1]
-        assigned_value2 = assign2[1]
-
-        if (assigned_value1, assigned_value2) == (0, 1):
-            return (value1 + (value2 - value1) * v1).simplify2()
-
-        if (assigned_value1, assigned_value2) == (1, 0):
-            return (value2 + (value1 - value2) * v1).simplify2()
-
-        raise Exception(
-            f"The assigned values should be 0 and 1, but instead got {assigned_value1} and {assigned_value2}"
-        )
+        # if not (isinstance(cond1, RangeCondition) and isinstance(cond2, RangeCondition)):
+        #     return None
+        # assign1 = cond1.as_assignment()
+        # assign2 = cond2.as_assignment()
+        # if assign1 is None or assign2 is None:
+        #     return None
+        #
+        # v1 = assign1[0]
+        # v2 = assign2[0]
+        # if not (isinstance(v1, BoolVar) and v1 is v2):
+        #     return None
+        #
+        # assigned_value1 = assign1[1]
+        # assigned_value2 = assign2[1]
+        #
+        # if (assigned_value1, assigned_value2) == (0, 1):
+        #     return (value1 + (value2 - value1) * v1).simplify2()
+        #
+        # if (assigned_value1, assigned_value2) == (1, 0):
+        #     return (value2 + (value1 - value2) * v1).simplify2()
+        #
+        # raise Exception(
+        #     f"The assigned values should be 0 and 1, but instead got {assigned_value1} and {assigned_value2}"
+        # )
 
     @staticmethod
     def promise_validate_conditional_function(validator: OutputValidator, elem: MapElement) -> Optional[bool]:

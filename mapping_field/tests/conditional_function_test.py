@@ -232,7 +232,7 @@ def test_linear_ranged_condition_subtraction():
 
     # TODO: improve union \ intersection of conditions
 
-    assert v == x.coefficients[3]
+    assert v == (x.coefficients[3] << 1)
 
     v = 8 * v
     u = xx - v

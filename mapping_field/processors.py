@@ -84,8 +84,8 @@ class ProcessorCollection(Generic[Elem, Param]):
             if result is None:
                 result = ProcessFailureReason("", False)
             if isinstance(result, ProcessFailureReason):
-                if result.reason != "":
-                    pass
+                if result.reason != "" and not result.trivial:
+                    logger.log(message=result.reason)
                     # print(f'Simplification failed because of {result.reason}')
                 logger.set_context_title(f'{title_start} = {magenta("- - -")}')
                 logger.log(message=f"{magenta('- - -')}", action=TreeAction.GO_UP, delete_context=result.trivial)
