@@ -8,6 +8,7 @@ from mapping_field.conditions import (
     FalseCondition, IntersectionCondition, NotCondition, TrueCondition, UnionCondition,
     _ListCondition,
 )
+from mapping_field.mapping_field import Var
 from mapping_field.ranged_condition import BoolVar
 from mapping_field.tests.utils import DummyCondition
 
@@ -401,3 +402,20 @@ def test_intersection_of_union_component_simplification():
     assert intersection == (dummies3[0] | small_dummy)
     #
     # assert intersection == small_dummy
+
+def test_small_big_condition_switch():
+    """
+    given three conditions A, B_s, B_l with B_s < B_l we have
+
+    (A & B_l) | B_s = (A | B_s) & (B_l | B_s) = (A | B_s) & B_l
+    Make sure this doesn't cause a simplification loop.
+    """
+    cond_big = DummyCondition(type=0, values={0,1})
+    cond_small = DummyCondition(type=0, values={0})
+    # TODO: Causes problems if we just use x instead of x<<0, since trying to simplify x by setting x==0, causes 0
+    #       to appear in the computation instead of FalseCondition. Need to find a way to either 'join' these together
+    #       or to know when to treat 0 as a number and when to treat it as a false condition.
+    cond1 = BoolVar('x')<<0
+    cond = ( ( cond1 & cond_big ) | cond_small )
+
+    cond.simplify2()

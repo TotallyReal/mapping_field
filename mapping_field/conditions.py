@@ -319,19 +319,36 @@ class _ListCondition(Condition, DefaultSerializable):
 
         # Use the fact that
         #   (A | B | C) & D = (A & D) | (B & D) | (C & D)
-        # If intersection with D simplified one of A,B,C, we should change them.
+        # If intersection with D simplifies one of A,B,C, we might want to use it.
         # There are two possibilities:
         #       1. A & D = A_0 & D where A_0 is simpler than A, however we cannot remove the intersection with D.
-        #       2. A & D = A_0     where A_0 is not computed as intersection of something with D
+        #       2. A & D = A_0     where A_0 is not computed as intersection of something with D.
+        # In any case we get that :
+        #   (A | B | C) & D = (A0 & D) | (B0 & D) | (C0 & D) = (A0 | B0 | C0) & D
+        # We want to choose between the 2nd and 3rd expression as possible simplifications.
         #
-        # If all (but one) can be written as in type (2), we return
-        #       A_0 | B_0 | C_0      or     (A_0 & D) | B_0 | C_0
-        # Otherwise return:
+        # The simplest case is if A & D = D , since then
+        #       (A & D) | (B & D) | (C & D) = D | (B & D) | (C & D) = D
+        #
+        # The second case, is if when there is a simplification, it is because D is larger. For example if
+        # both B & D and C & D cannot be simplified, and A & D = A, then the expression from above are:
+        #       (A | B | C) & D = A | (B & D) | (C & D) = (A | B | C) & D
+        # The middle expression is not 'simpler' than the original, and the right expression is exactly the original.
+        # In this case, there is no simplification. However, if B & D = B and C & D = C as well, then we can simplify
+        # it to be just
+        #       ( A | B | C )
+        #
+        # Finally, assume that A & D = A0 & D with A0 different from both A and D, then:
+        #
+        # 1. If all (but one) can be written as in type (2), we return
+        #       A_0 | B_0 | C_0      or     (A_0 & D) | B_0 | C_0  ,
+        # 2. Otherwise return:
         #       ( A_0 | B_0 | C_0 ) & D
 
-        prod_conditions   = []  # A  & D
+        prod_conditions   = []  # A & D = A0 & D
         prod_0_conditions = []  # A0
-        need_prod         = []  # True if A & D = A0 & D , False if A & D = A0
+        need_prod         = []  # True if A & D != A0, namely we must write it as A & D = A0 & D
+        contain_count     = 0   # Count number of times where A & D = A
         is_simpler = False
 
         for cond in conditions:
@@ -344,16 +361,18 @@ class _ListCondition(Condition, DefaultSerializable):
 
             prod_conditions.append(simplified_prod or prod)
             if simplified_prod is None:
+                # Can't write A & D in a simpler way
                 prod_0_conditions.append(cond)
                 need_prod.append(True)
                 continue
 
-            is_simpler = True
+            # In case where A <= D, so that A & D = A
+            if (simplified_prod is cond) or (simplified_prod == cond):
+                contain_count += 1
+                need_prod.append(False)
+                continue
 
-            # # In case where A <= D, ( iff A = A & D ) ????????
-            # if (simplified_prod is cond) or (simplified_prod == cond):
-            #     need_prod.append(False)
-            #     continue
+            is_simpler = True
 
             if isinstance(simplified_prod, rev_cls):
                 fewer_conditions = [cc for cc in simplified_prod.conditions if cc is not sp_condition]
@@ -367,10 +386,30 @@ class _ListCondition(Condition, DefaultSerializable):
             prod_0_conditions.append(simplified_prod)
             need_prod.append(False)
 
+        if contain_count == len(conditions):
+            return cls(conditions)
+
         if not is_simpler:
             return None
 
+        # # There is one other case we should ignore when "simplifying".
+        # # If A, B_s, B_l are conditions with B_s < B_l, then
+        # #       (A & B_l) | B_s = (A | B_s) & (B_l | B_s) = (A | B_s) & B_l
+        # # If we simplify in one direction, we will have to simplify in the other direction as well, which will
+        # # cause a loop.
+        #
+        # if sum(need_prod) == 1 and len(conditions) == 2:
+        #     index = 0 if need_prod[1] else 1
+        #     # TODO: The following line is not that good, since the == operator doesn't always return true
+        #     #       even when the conditions are the same.
+        #     #       If it causes too many problems in the future, we can ignore this case whole together, and just
+        #     #       return None.
+        #     if prod_conditions[index] == conditions[index]:    # flag is false exactly once
+        #         return None
+
+
         if sum(need_prod) <= 1:
+            # Almost all products are simplified
             return cls(prod_conditions)
         else:
             new_cls_condition = cls(prod_0_conditions)
