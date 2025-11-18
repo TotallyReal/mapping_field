@@ -1,4 +1,5 @@
 import collections
+import copy
 import functools
 import inspect
 
@@ -701,6 +702,62 @@ class MapElement:
     # </editor-fold>
 
 
+class CompositeElement(MapElement):
+    """
+    MapElement where the computation is done via a computation tree.
+    The class more or less indicates the root, and the first level is saved in the
+    'operands' variable.
+    """
+
+    def __init_subclass__(cls, **kwargs):
+        # TODO: Simplifier mechanism should be able to see super classes, then we can register this only once.
+        cls.register_class_simplifier(CompositeElement._entries_simplifier)
+        super().__init_subclass__(**kwargs)
+
+    def __init__(self, operands: List[MapElement], name: Optional[str] = None, simplified: bool = False) -> None:
+
+        self.operands = operands
+        super().__init__(variables=Var.extract_variables(operands), name=name, simplified=simplified)
+
+    def copy_with_operands(self, operands: List[MapElement]) -> MapElement:
+        copy_version = copy.copy(self)
+        # TODO: Note that this also copies the output promises in a shallow copy
+        copy_version.operands = operands
+        # TODO: I don't like that the variables are set here. They should be set in MapElement.
+        copy_version.vars = Var.extract_variables(operands)
+        copy_version._simplified_version = None
+        return copy_version
+
+    def to_string(self, vars_to_str: Dict["Var", str]):
+        """
+        --------------- Override ---------------
+        Represents the function, given the string representations of its variables
+        """
+        if len(self.operands) == 0:
+            return self.name
+        entries_str = ",".join([entry.to_string(vars_to_str) for entry in self.operands])
+        return f"{self.name}({entries_str})"
+
+    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
+        """
+        Apply the map with the given values of the standard and function variables
+        """
+        if set(var_dict.keys()).isdisjoint(set(self.vars)):
+            return self
+
+        return self.copy_with_operands(operands=[entry._call_with_dict(var_dict, func_dict) for entry in self.operands])
+
+    @staticmethod
+    def _entries_simplifier(elem: 'CompositeElement', var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
+        assert isinstance(elem, CompositeElement)
+        simplified_entries = [entry._simplify2(var_dict) for entry in elem.operands]
+        if all(entry is None for entry in simplified_entries):
+            return None
+        simplified_entries = [simp_entry or entry for simp_entry, entry in zip(simplified_entries, elem.operands)]
+        return elem.copy_with_operands(operands=simplified_entries)
+
+
+
 # <editor-fold desc=" ---------------------- Standard and Function Variables ---------------------- ">
 
 
@@ -738,6 +795,16 @@ class Var(MapElement, DefaultSerializable):
     @classmethod
     def clear_vars(cls):
         cls._instances = {}
+
+    @staticmethod
+    def extract_variables(elements: List[MapElement]) -> List['Var']:
+        seen = set()
+        variables = []
+
+        for element in elements:
+            variables += [v for v in element.vars if v not in seen]
+            seen.update(element.vars)
+        return variables
 
     def __new__(cls, name: str):
         if name in cls._instances:
