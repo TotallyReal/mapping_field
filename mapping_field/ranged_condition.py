@@ -51,7 +51,7 @@ class IntervalRange:
                 (self.high < self.low) or
                 (self.high == self.low and not (self.contain_low and self.contain_high)
         ))
-        self.is_all = low == float("-inf") and high == float("inf")
+        self.is_all = (low == float("-inf")) and (high == float("inf"))
         self.is_point: Optional[float] = None
         if self.low == self.high and self.contain_low and self.contain_high:
             self.is_point = self.low
@@ -90,7 +90,7 @@ class IntervalRange:
         # TODO: I can use ≤ instead of <=. However, it doesn't always looks good in terminal, and sometimes I
         #       just see the ASCII \u2264 instead.
         lower = "" if self.low == float("-inf") else (str(self.low) + ("<=" if self.contain_low else "<"))
-        upper = "" if self.high == float("-inf") else (("<=" if self.contain_high else "<") + str(self.high))
+        upper = "" if self.high == float("inf") else (("<=" if self.contain_high else "<") + str(self.high))
         return f"{lower}{middle}{upper}"
 
     def __eq__(self, other):
@@ -291,7 +291,9 @@ class InRange(OutputValidator[IntervalRange]):
 
     def __init__(self, f_range: Union[IntervalRange, Tuple[float, float]]):
         self.range = f_range if isinstance(f_range, IntervalRange) else IntervalRange(*f_range)
-        super().__init__(f"InRange {f_range}", context=self.range)
+        c = self.range.is_point
+        name = f"Equal {c}" if c is not None else f"InRange {f_range}"
+        super().__init__(name, context=self.range)
         self.register_validator(self._validate_constant_in_range)
         self.register_validator(self._validate_using_other_ranges)
 
@@ -480,7 +482,7 @@ class RangeCondition(Condition, MapElementProcessor):
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
         if self.range.is_empty:
             return FalseCondition
-        if self.range.low == float("-inf") and self.range.high == float("inf"):
+        if self.range.is_all:
             return TrueCondition
 
         simplified_function = self.function._simplify2(var_dict)
@@ -577,11 +579,11 @@ class RangeCondition(Condition, MapElementProcessor):
         return RangeCondition(elem1, f_range)
 
     @staticmethod
-    def _in_range_arithmetic_simplification(ranged_cond: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    def _in_range_arithmetic_simplification(ranged_cond: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(ranged_cond, RangeCondition)
         elem = ranged_cond.function
         if not isinstance(elem, CompositionFunction):
-            return None
+            return ProcessFailureReason('Must be a composition with Add or Sub', trivial=True)
         if elem.function is Add:
             op = operator.add
             op1 = operator.sub
@@ -591,7 +593,7 @@ class RangeCondition(Condition, MapElementProcessor):
             op1 = operator.add
             op2 = lambda e1, e2: e2 - e1
         else:
-            return None
+            return ProcessFailureReason('Only works for addition or subtraction', trivial=True)
         elem1, elem2 = elem.entries
         total_range = ranged_cond.range
         f_range1 = InRange.get_range_of(elem1) or IntervalRange.all()
@@ -609,7 +611,7 @@ class RangeCondition(Condition, MapElementProcessor):
                 [RangeCondition(elem1, f_range1_updated), RangeCondition(elem2, f_range2_updated)]
             )
 
-        return None
+        return ProcessFailureReason(f'The ranges {f_range1_updated} and {f_range2_updated} on the factors are not enough to imply the original range', trivial=False)
 
     # </editor-fold>
 
@@ -656,6 +658,9 @@ MapElement.where = lambda self: WhereFunction(self)
 
 @always_validate_promises
 class BoolVar(Var):
+
+    # TODO: change into a method, so no one will use isinstance(v, BoolVar), as this is equivalent to checking
+    #       the conditions.
 
     def __new__(cls, var_name: str):
         return super(BoolVar, cls).__new__(cls, var_name)

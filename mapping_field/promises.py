@@ -35,7 +35,7 @@ IsIntegral.register_validator(condition_is_integral)
 @always_validate_promises
 class IntVar(Var, DefaultSerializable):
 
-    def __new__(cls, var_name: str):
+    def __new__(cls, var_name: str, *args, **kwargs):
         return super(IntVar, cls).__new__(cls, var_name)
 
     def __init__(self, name: str):
