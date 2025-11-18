@@ -148,8 +148,7 @@ def test_subtraction_rules():
     assert str(x - y) == "(DummyMap(0)-DummyMap(1))"
     assert str(x - (-y)) == "(DummyMap(0)+DummyMap(1))"
 
-    # TODO: 0,1 switched positions! Need a better way to compare.
-    assert str((-x) - y) == "(-(DummyMap(1)+DummyMap(0)))"
+    assert str((-x) - y) == "(-(DummyMap(0)+DummyMap(1)))"
     assert str((-x) - (-y)) == "(DummyMap(1)-DummyMap(0))"
 
 
@@ -167,7 +166,7 @@ def test_multiplication_rules():
     g = Func("g")(z)
     h = Func("h")(y, z)
 
-    assert str(((-x) / y) / (g * (-h) / (x * (-f)))) == "(-( (x*(x*f(x,y)))/(y*(g(z)*h(y,z))) ))"
+    assert str(((-x) / y) / (g * (-h) / (x * (-f)))) == "(-( ((f(x,y)*x)*x)/((g(z)*h(y,z))*y) ))"
 
 
 # ----------------- assignment -----------------

@@ -422,3 +422,18 @@ def _binary_combination_simplifier(
 
 # TODO: should class simplifiers be inherited?
 CompositionFunction.register_class_simplifier(_binary_combination_simplifier)
+
+def _binary_commutative_simplifier(
+    comp_function: MapElement, var_dict: VarDict
+) -> Optional[Union[MapElement, ProcessFailureReason]]:
+    assert isinstance(comp_function, CompositionFunction)
+    if not comp_function.function in (Add, Mult):
+        return ProcessFailureReason("Only applicable to Add or Mult", trivial=True)
+    entries = comp_function.entries
+    if str(entries[0]) > str(entries[1]):
+        # TODO: This actually changes the function itself
+        commute_entries = CompositionFunction(comp_function.function, [entries[1], entries[0]])
+        commute_entries.promises = commute_entries.promises.copy()
+        return commute_entries
+    return ProcessFailureReason("Did not need to change the order of parts", trivial=True)
+CompositionFunction.register_class_simplifier(_binary_commutative_simplifier)
