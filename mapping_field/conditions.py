@@ -438,7 +438,7 @@ class _ListCondition(CompositeElement, DefaultSerializable):
         if hasattr(self, "_binary_flag"):
             simplify_logger.log("Has binary flag - avoid simplifying here.")
             return None
-        if self._simplified_version is self:
+        if MapElement._simplifier.final_version.get(self, None) is self:
             return None
 
         cls = self.__class__

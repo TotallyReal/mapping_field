@@ -729,7 +729,6 @@ def two_bool_vars_simplifier(elem: MapElement) -> Optional[Union[MapElement, Pro
             v = y if (values[0][0] == values[1][0]) else x
             value = 0 if values[0][0] is TrueCondition else 1
             result = v << value
-            result._simplified_version = result
             return result
         if count_true == 3:
             for x0, y0 in assignments:

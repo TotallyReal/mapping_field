@@ -233,7 +233,6 @@ class MapElement:
         """
         self.name = name or self.__class__.__name__
         self._set_variables(variables)
-        self._simplified_version = self if simplified else None
         self.promises = OutputPromises() if promises is None else promises
 
     def set_var_order(self, variables: List["Var"]):
@@ -259,8 +258,7 @@ class MapElement:
             raise Exception(f"Function must have distinct variables: {variables}")
         self.vars = variables
         self.num_vars = len(variables)
-        self._simplified_version = None         # When trying to reset this element from the outside
-        self._in_simplification_process = False
+        self._simplifier.reset_element(self)
         self.promises = OutputPromises()
 
 
@@ -414,27 +412,10 @@ class MapElement:
     _simplifier = ProcessorCollection["MapElement"]()
 
     def _simplify2(self) -> Optional["MapElement"]:
-
-        if self._simplified_version is not None:
-            return self._simplified_version if self._simplified_version is not self else None
-        if self._in_simplification_process:
-            simplify_logger.log(f'{red("!!!")} looped back to simplify {red(self)}')
-            return None
-        self._in_simplification_process = True
-
-        simplified_version = MapElement._simplifier.full_process(self)
-        self._in_simplification_process = False
-
-        if simplified_version is not None:
-            simplified_version._simplified_version = simplified_version
-            self._simplified_version = simplified_version
-            return simplified_version
-
-        self._simplified_version = self
-        return None
+        return MapElement._simplifier.full_process(self)
 
     def is_simplified(self) -> bool:
-        return self._simplified_version is self
+        return self._simplifier.final_version.get(self, None) is self
 
     # Override when needed
     def _simplify_with_var_values2(self) -> Optional[Union["MapElement", ProcessFailureReason]]:

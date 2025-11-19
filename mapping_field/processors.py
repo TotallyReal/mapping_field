@@ -1,4 +1,5 @@
 import dataclasses
+import weakref
 
 from typing import Callable, Dict, Generic, List, Optional, Type, TypeVar, Union
 
@@ -10,6 +11,61 @@ from mapping_field.log_utils.tree_loggers import (
 
 init(autoreset=True)
 logger = TreeLogger(__name__)
+
+K = TypeVar("K")  # key type (any object)
+V = TypeVar("V")  # value type (context)
+
+class WeakContextDictionary(Generic[K, V]):
+    """
+    Dictionary-like object mapping id(obj) -> context.
+    Automatically removes entries when the object is garbage-collected.
+    Works for any object, even unhashable.
+    """
+
+    def __init__(self):
+        self._data: dict[int, V] = {}                       # id(obj) -> context
+        self._finalizers: dict[int, weakref.finalize] = {}  # id(obj) -> finalizer
+
+    def __setitem__(self, obj: K, context: V) -> None:
+        oid = id(obj)
+        self._data[oid] = context
+
+        if oid not in self._finalizers:
+            self._finalizers[oid] = weakref.finalize(obj, self._cleanup, oid)
+
+    def __contains__(self, obj: K) -> bool:
+        return id(obj) in self._data
+
+    def __getitem__(self, obj: K) -> V:
+        oid = id(obj)
+        return self._data[oid]
+
+    def get(self, obj: K, default: Optional[V] = None) -> Optional[V]:
+        return self._data.get(id(obj), default)
+
+    def __delitem__(self, obj: K) -> None:
+        """
+        Delete the entry for obj using 'del wc[obj]'.
+        """
+        oid = id(obj)
+        self._data.pop(oid)
+
+        finalizer = self._finalizers.pop(oid, None)
+        if finalizer is not None:
+            finalizer.detach()
+
+    def _cleanup(self, oid: int) -> None:
+        """Called automatically when the object is garbage-collected."""
+        self._data.pop(oid, None)
+        self._finalizers.pop(oid, None)
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __repr__(self) -> str:
+        return f"WeakContextDictionary({self._data})"
+
+
 
 Elem = TypeVar("Elem")
 
@@ -43,6 +99,14 @@ class ProcessorCollection(Generic[Elem]):
     def __init__(self):
         self.processors: List[Processor] = []
         self.class_processors: Dict[type, List[Processor]] = {}
+        self.final_version = WeakContextDictionary[Elem, Elem]()
+        self._process_stage = WeakContextDictionary[Elem, bool]()
+
+    def reset_element(self, element: Elem) -> None:
+        if element in self.final_version:
+            del self.final_version[element]
+        if element in self._process_stage:
+            del self._process_stage[element]
 
     def register_processor(self, processor: Processor) -> None:
         self.processors.append(processor)
@@ -90,6 +154,15 @@ class ProcessorCollection(Generic[Elem]):
         Runs all the registered processes again and again until none of them changes the resulting element, and
         returns it. Returns None if there wasn't any change.
         """
+        if elem in self.final_version:
+            elem_final_version = self.final_version[elem]
+            return elem_final_version if (elem_final_version is not elem) else None
+        if self._process_stage.get(elem, False):
+            logger.log(f'{red("!!!")} looped back to processing {red(elem)}')
+            return None
+        self._process_stage[elem] = True
+        original_elem = elem
+
         was_processed = False
 
         title_start = f"Full: [{cyan(elem.__class__.__name__)}] ( {red(elem)} )"
@@ -105,11 +178,15 @@ class ProcessorCollection(Generic[Elem]):
             elem = result
             was_processed = True
 
+        self._process_stage[original_elem] = False
         if was_processed:
             logger.set_context_title(f"{title_start} => {green(elem)}")
             logger.log(f"Full Produced {green(elem)}", action=TreeAction.GO_UP)
+            self.final_version[original_elem] = elem
+            self.final_version[elem] = elem
             return elem
         logger.set_context_title(f'{title_start} = {magenta("X X X")}')
         logger.log(f'{magenta("X X X")} ', action=TreeAction.GO_UP)
+        self.final_version[original_elem] = elem
         return None
 
