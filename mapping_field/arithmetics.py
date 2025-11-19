@@ -382,8 +382,8 @@ class BinaryCombination(MapElement):
         if self.c2 == 0:
             return self.c1 * self.elem1
 
-        elem1 = self.elem1._simplify2(None)
-        elem2 = self.elem2._simplify2(None)
+        elem1 = self.elem1._simplify2()
+        elem2 = self.elem2._simplify2()
         if elem1 is not None or elem2 is not None:
             elem1 = elem1 or self.elem1
             elem2 = elem2 or self.elem2

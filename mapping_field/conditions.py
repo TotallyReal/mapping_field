@@ -450,7 +450,7 @@ class _ListCondition(CompositeElement, DefaultSerializable):
 
         for condition in conditions:
 
-            simplified_condition = condition._simplify2(None)
+            simplified_condition = condition._simplify2()
             if simplified_condition is not None:
                 is_whole_simpler = True
             condition = simplified_condition or condition

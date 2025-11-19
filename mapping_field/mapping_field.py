@@ -413,36 +413,24 @@ class MapElement:
 
     _simplifier = ProcessorCollection["MapElement"]()
 
-    def _simplify2(self, var_dict: Optional[VarDict] = None) -> Optional["MapElement"]:
-        if var_dict is None:
-            var_dict = {}
-        var_dict = {key: value for key, value in var_dict.items() if key in self.vars}
+    def _simplify2(self) -> Optional["MapElement"]:
 
-        started_process_here = False
-
-        if len(var_dict) == 0:
-            if self._simplified_version is not None:
-                return self._simplified_version if self._simplified_version is not self else None
-            if self._in_simplification_process:
-                simplify_logger.log(f'{red("!!!")} looped back to simplify {red(self)}')
-                return None
-            started_process_here = True
-            self._in_simplification_process = True
+        if self._simplified_version is not None:
+            return self._simplified_version if self._simplified_version is not self else None
+        if self._in_simplification_process:
+            simplify_logger.log(f'{red("!!!")} looped back to simplify {red(self)}')
+            return None
+        self._in_simplification_process = True
 
         simplified_version = MapElement._simplifier.full_process(self)
-        if started_process_here:
-            self._in_simplification_process = False
+        self._in_simplification_process = False
 
         if simplified_version is not None:
             simplified_version._simplified_version = simplified_version
-            if len(var_dict) == 0:
-                self._simplified_version = simplified_version
+            self._simplified_version = simplified_version
             return simplified_version
 
-        if len(var_dict) == 0:
-            self._simplified_version = self
-            return None
-
+        self._simplified_version = self
         return None
 
     def is_simplified(self) -> bool:
@@ -765,7 +753,7 @@ class CompositeElement(MapElement):
     @staticmethod
     def _entries_simplifier(elem: 'CompositeElement') -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(elem, CompositeElement)
-        simplified_entries = [entry._simplify2(None) for entry in elem.operands]
+        simplified_entries = [entry._simplify2() for entry in elem.operands]
         if all(entry is None for entry in simplified_entries):
             return None
         simplified_entries = [simp_entry or entry for simp_entry, entry in zip(simplified_entries, elem.operands)]

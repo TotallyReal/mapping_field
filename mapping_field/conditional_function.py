@@ -76,7 +76,7 @@ class SingleRegion(CompositeElement, Ranged):
             return None
 
         function = simplified_func
-        function = function._simplify2(None) or function
+        function = function._simplify2() or function
 
         return SingleRegion(self.condition, function)
 
@@ -238,7 +238,7 @@ class ConditionalFunction(CompositeElement, Ranged):
         is_simpler = False
         for region in self.regions:
 
-            simplified_region = region._simplify2(None)
+            simplified_region = region._simplify2()
             if simplified_region is not None:
                 is_simpler = True
             region = simplified_region or region
