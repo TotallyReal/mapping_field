@@ -7,7 +7,7 @@ from mapping_field.conditions import (
 from mapping_field.linear import Linear
 from mapping_field.log_utils.tree_loggers import TreeLogger, red
 from mapping_field.mapping_field import (
-    ExtElement, FuncDict, MapElement, MapElementConstant, Var, VarDict,
+    ExtElement, MapElement, MapElementConstant, Var, VarDict, CompositeElement, convert_to_map,
 )
 from mapping_field.processors import ProcessFailureReason
 from mapping_field.promises import IsCondition, IsIntegral
@@ -29,7 +29,9 @@ def _two_power(k):
 
 
 #
-class BinaryExpansion(MapElement, DefaultSerializable):
+class BinaryExpansion(CompositeElement, DefaultSerializable):
+
+    auto_promises = [IsIntegral]
 
     @classmethod
     def of(cls, map_elem: MapElement) -> Optional["BinaryExpansion"]:
@@ -50,7 +52,26 @@ class BinaryExpansion(MapElement, DefaultSerializable):
 
         return BinaryExpansion([BoolVar(f"{var_name}_{i}") for i in range(num_digits)])
 
-    def __init__(self, coefficients: List[Union[int, BoolVar]]):
+    @staticmethod
+    def convert_coefficients(coefficients: List) -> List[Union[MapElementConstant, BoolVar]]:
+        converted_coefficients = []
+        for c in coefficients:
+            c = convert_to_map(c)
+
+            value = c.evaluate()
+            if value is not None:
+                assert c in (0,1), f"Only possible integers are 0 or 1, instead got {c}"
+                converted_coefficients.append(MapElementConstant.zero if c == 0 else MapElementConstant.one)
+                continue
+
+            assert c.has_promise(IsCondition), (
+                f"Coefficients for Binary expansion must be conditions (0\\1 valued). "
+                f"Instead got {c} of type {c.__class__}"
+            )
+            converted_coefficients.append(c)
+        return converted_coefficients
+
+    def __init__(self, coefficients: List[Union[int, MapElementConstant, BoolVar]]):
         """
         Represents an integer number in a binary expansion:
 
@@ -58,43 +79,44 @@ class BinaryExpansion(MapElement, DefaultSerializable):
 
         """
         # For now, each bool variable can appear at most once
-        self.coefficients: List[Union[int, BoolVar]] = []
-        for c in coefficients:
-            if isinstance(c, MapElementConstant):
-                c = c.evaluate()
-            if isinstance(c, int):
-                assert c == 0 or c == 1, f"can only use 0 or 1 as integer coefficients, instead for {c}"
-                self.coefficients.append(c)
-                continue
-            assert isinstance(c, BoolVar), (
-                f"Coefficients for Binary expansion can only be BoolVar, 0 or 1."
-                f"Instead got {c} of type {c.__class__}"
-            )
-            self.coefficients.append(c)
+        super().__init__(operands=BinaryExpansion.convert_coefficients(coefficients))
+        self._compute_range()
 
-        super().__init__([c for c in coefficients if isinstance(c, BoolVar)])
+    def _compute_range(self):
 
         self._constant = 0                  # The value of this map element without the bool variables
         self._bool_max_value = [0]          # max value of only bool variables, up to position i-1
 
         two_power = 1
         for i, cc in enumerate(self.coefficients):
-            if isinstance(cc, int):
-                self._constant += two_power * cc
+            value = cc.evaluate()
+            if value is not None:
+                self._constant += two_power * value
                 self._bool_max_value.append(self._bool_max_value[-1])
             else:
                 self._bool_max_value.append(self._bool_max_value[-1] + two_power)
             two_power *= 2
         self.promises.add_promise(InRange(IntervalRange[self._constant, self._constant + self._bool_max_value[-1]]))
-        self.promises.add_promise(IsIntegral)
+
+    @property
+    def coefficients(self) -> List[MapElement]:
+        return self.operands
+
+    @coefficients.setter
+    def coefficients(self, value: List[MapElement]):
+        self.operands = BinaryExpansion.convert_coefficients(value)
+
+    def copy_with_operands(self, operands: List[MapElement]) -> MapElement:
+        copy_version = super().copy_with_operands(operands)
+        assert isinstance(copy_version, BinaryExpansion)
+        copy_version._compute_range()
+        return copy_version
 
     def to_string(self, vars_to_str: Dict[Var, str]):
         indices = [i for i, v in enumerate(self.coefficients) if v != 0]
         if len(indices) == 0:
             return "0"
-        str_coefficients = [
-            c.to_string(vars_to_str) if isinstance(c, MapElement) else str(c) for c in self.coefficients
-        ]
+        str_coefficients = [c.to_string(vars_to_str) for c in self.coefficients]
         if indices[-1] == 0:
             return str_coefficients[0]
         vars_str = ", ".join([str(v) for v in str_coefficients[: 1 + indices[-1]]])
@@ -102,12 +124,6 @@ class BinaryExpansion(MapElement, DefaultSerializable):
 
     def evaluate(self) -> Optional[ExtElement]:
         return self._constant if (self._bool_max_value[-1] == 0) else None
-
-    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
-        coefs = [(c if isinstance(c, int) else var_dict.get(c, c)) for c in self.coefficients]
-        if self.coefficients == coefs:
-            return self
-        return BinaryExpansion(coefs)
 
     def split_constant(self) -> Tuple[Optional["BinaryExpansion"], MapElementConstant]:
         constant_part = MapElementConstant(self._constant)
@@ -117,7 +133,7 @@ class BinaryExpansion(MapElement, DefaultSerializable):
         if self._bool_max_value[-1] == 0:
             return None, constant_part
 
-        coefs = [0 if isinstance(c, int) else c for c in self.coefficients]
+        coefs = [0 if c.evaluate() is not None else c for c in self.coefficients]
         return BinaryExpansion(coefs), constant_part
 
     def __eq__(self, other):
