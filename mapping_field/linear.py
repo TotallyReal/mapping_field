@@ -7,7 +7,7 @@ from mapping_field.conditions import FalseCondition, TrueCondition
 from mapping_field.log_utils.tree_loggers import TreeLogger, green
 from mapping_field.mapping_field import (
     ExtElement, FuncDict, MapElement, MapElementConstant, Var, VarDict, get_var_values,
-    params_to_maps,
+    params_to_maps, CompositeElement,
 )
 from mapping_field.processors import ProcessFailureReason
 from mapping_field.ranged_condition import RangeCondition, Ranged, IntervalRange, InRange
@@ -16,7 +16,7 @@ from mapping_field.serializable import DefaultSerializable
 logger = TreeLogger(__name__)
 
 
-class Linear(MapElement, DefaultSerializable, Ranged):
+class Linear(CompositeElement, DefaultSerializable, Ranged):
 
     @staticmethod
     def of(elem: MapElement):
@@ -36,10 +36,17 @@ class Linear(MapElement, DefaultSerializable, Ranged):
         return Linear(1, elem, 0)
 
     def __init__(self, a: float, elem: MapElement, b: float):
-        super().__init__(elem.vars)
+        super().__init__(operands=[elem])
         self.a = a
         self.b = b
-        self.elem = elem
+
+    @property
+    def elem(self) -> MapElement:
+        return self.operands[0]
+
+    @elem.setter
+    def elem(self, value: MapElement):
+        self.operands[0] = value
 
     def to_string(self, vars_to_str: Dict[Var, str]):
         a_str = f"{str(self.a)}*" if self.a != 1 else ""
@@ -136,9 +143,7 @@ class Linear(MapElement, DefaultSerializable, Ranged):
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
         if self.a == 0:
             return MapElementConstant(self.b)
-
-        elem = self.elem._simplify2(var_dict)
-        return None if elem is None else Linear(self.a, elem, self.b)
+        return None
 
     def _transform_linear(element: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(element, Linear)
