@@ -2,7 +2,7 @@ import operator
 
 from typing import Dict, List, Optional, Tuple, Union
 
-from mapping_field.arithmetics import Mult
+from mapping_field.arithmetics import _Mult
 from mapping_field.conditions import FalseCondition, TrueCondition, UnionCondition
 from mapping_field.field import ExtElement
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red, yellow
@@ -258,8 +258,10 @@ class ConditionalFunction(MapElement, Ranged):
 
         return ConditionalFunction(regions) if is_simpler else None
 
-    def mult_condition_by_element(var_dict: VarDict) -> Optional[MapElement]:
-        a, b = [var_dict.get(v, v) for v in var_dict]
+    @staticmethod
+    def mult_condition_by_element(element: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+        assert isinstance(element, _Mult)
+        a, b = element.operands
         a_is_cond = a.has_promise(IsCondition)
         b_is_cond = b.has_promise(IsCondition)
         if b_is_cond:
@@ -350,7 +352,7 @@ class ConditionalFunction(MapElement, Ranged):
     # </editor-fold>
 
 
-Mult.register_simplifier(ConditionalFunction.mult_condition_by_element)
+_Mult.register_class_simplifier(ConditionalFunction.mult_condition_by_element)
 RangeCondition.register_class_simplifier(ConditionalFunction.new_assignment_simplify)
 ConditionalFunction.register_class_simplifier(ConditionalFunction._bool_var_simplifier)
 

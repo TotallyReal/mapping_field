@@ -2,7 +2,7 @@ import math
 
 from typing import Dict, Optional, Union
 
-from mapping_field.arithmetics import Add, BinaryCombination, Sub, _as_combination
+from mapping_field.arithmetics import BinaryCombination, _as_combination, _Add, _Sub
 from mapping_field.conditions import FalseCondition, TrueCondition
 from mapping_field.log_utils.tree_loggers import TreeLogger, green
 from mapping_field.mapping_field import (
@@ -185,11 +185,11 @@ Linear.register_class_simplifier(Linear._transform_linear)
 BinaryCombination.register_class_simplifier(Linear._binary_combination_linearization)
 
 
-def _extract_scalar_signed_addition(var_dict: VarDict, sign: int = 1) -> Optional[MapElement]:
+def _extract_scalar_signed_addition(element: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    assert isinstance(element, (_Add, _Sub))
+    sign = 1 if isinstance(element, _Add) else -1
 
-    add_vars = get_var_values((Add if sign == 1 else Sub).vars, var_dict)
-    if add_vars is None:
-        return None
+    add_vars = element.operands
 
     linear_var1 = Linear.of(add_vars[0])
     linear_var2 = sign * Linear.of(add_vars[1])
@@ -204,13 +204,6 @@ def _extract_scalar_signed_addition(var_dict: VarDict, sign: int = 1) -> Optiona
     return None
 
 
-def extract_scalar_addition(var_dict: VarDict) -> Optional[MapElement]:
-    return _extract_scalar_signed_addition(var_dict=var_dict, sign=1)
 
-
-def extract_scalar_subtraction(var_dict: VarDict) -> Optional[MapElement]:
-    return _extract_scalar_signed_addition(var_dict=var_dict, sign=-1)
-
-
-Add.register_simplifier(extract_scalar_addition)
-Sub.register_simplifier(extract_scalar_subtraction)
+_Add.register_class_simplifier(_extract_scalar_signed_addition)
+_Sub.register_class_simplifier(_extract_scalar_signed_addition)

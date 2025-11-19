@@ -4,7 +4,7 @@ from abc import abstractmethod
 
 from typing import Dict, Optional, Tuple, Union
 
-from mapping_field.arithmetics import Add, Mult, Sub, _as_combination
+from mapping_field.arithmetics import _as_combination, _Add, _Sub, _Mult
 from mapping_field.conditions import (
     BinaryCondition, Condition, FalseCondition, IntersectionCondition, TrueCondition,
     UnionCondition,
@@ -339,14 +339,10 @@ class InRange(OutputValidator[IntervalRange]):
     def _arithmetic_op_range_simplifier(
         elem: MapElement, var_dict: VarDict
     ) -> Optional[Union[MapElement, ProcessFailureReason]]:
-        assert isinstance(elem, CompositionFunction)
-        if elem.function is Add:
-            op = operator.add
-        elif elem.function is Sub:
-            op = operator.sub
-        else:
-            return ProcessFailureReason("Function is not Add or Sub", trivial=True)
-        elem1, elem2 = elem.entries
+        assert isinstance(elem, (_Add, _Sub))
+        op = operator.add if isinstance(elem, _Add) else operator.sub
+
+        elem1, elem2 = elem.operands
         f_range1 = InRange.get_range_of(elem1)
         f_range2 = InRange.get_range_of(elem2)
         if f_range1 is None or f_range2 is None:
@@ -369,13 +365,12 @@ class InRange(OutputValidator[IntervalRange]):
 def _arithmetic_op_integral_simplifier(
     elem: MapElement, var_dict: VarDict
 ) -> Optional[Union[MapElement, ProcessFailureReason]]:
-    assert isinstance(elem, CompositionFunction)
+    assert isinstance(elem, (_Add, _Sub, _Mult))
+
     if elem.promises.has_promise(IsIntegral) is not None:
         return ProcessFailureReason("Already know if the function is integral", trivial=True)
-    if elem.function not in (Add, Sub, Mult):
-        return ProcessFailureReason("Function is not Add\\Sub\\Mult", trivial=True)
 
-    elem1, elem2 = elem.entries
+    elem1, elem2 = elem.operands
     if elem1.has_promise(IsIntegral) and elem2.has_promise(IsIntegral):
         elem.promises.add_promise(IsIntegral)
         simplify_logger.log(f'Adding {green("IsIntegral")} promise to {green(elem)}')
@@ -383,8 +378,11 @@ def _arithmetic_op_integral_simplifier(
     return None
 
 
-CompositionFunction.register_class_simplifier(InRange._arithmetic_op_range_simplifier)
-CompositionFunction.register_class_simplifier(_arithmetic_op_integral_simplifier)
+_Add.register_class_simplifier(InRange._arithmetic_op_range_simplifier)
+_Sub.register_class_simplifier(InRange._arithmetic_op_range_simplifier)
+_Add.register_class_simplifier(_arithmetic_op_integral_simplifier)
+_Sub.register_class_simplifier(_arithmetic_op_integral_simplifier)
+_Mult.register_class_simplifier(_arithmetic_op_integral_simplifier)
 
 # <editor-fold desc=" --------------- RangeCondition ---------------">
 
@@ -582,19 +580,18 @@ class RangeCondition(Condition, MapElementProcessor):
     def _in_range_arithmetic_simplification(ranged_cond: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(ranged_cond, RangeCondition)
         elem = ranged_cond.function
-        if not isinstance(elem, CompositionFunction):
+        if not isinstance(elem, (_Add, _Sub)):
             return ProcessFailureReason('Must be a composition with Add or Sub', trivial=True)
-        if elem.function is Add:
+        if isinstance(elem, _Add):
             op = operator.add
             op1 = operator.sub
             op2 = operator.sub
-        elif elem.function is Sub:
+        else:
             op = operator.sub
             op1 = operator.add
             op2 = lambda e1, e2: e2 - e1
-        else:
-            return ProcessFailureReason('Only works for addition or subtraction', trivial=True)
-        elem1, elem2 = elem.entries
+
+        elem1, elem2 = elem.operands
         total_range = ranged_cond.range
         f_range1 = InRange.get_range_of(elem1) or IntervalRange.all()
         f_range2 = InRange.get_range_of(elem2) or IntervalRange.all()
@@ -746,15 +743,19 @@ def two_bool_vars_simplifier(elem: MapElement, var_dict: VarDict) -> Optional[Un
 
     return None
 
-def mult_binary_assignment_by_numbers(var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
-    entries = [var_dict.get(v,v) for v in Mult.vars]
-    value0 = entries[0].evaluate()
-    value1 = entries[1].evaluate()
+def mult_binary_assignment_by_numbers(element: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
+    """
+    change multiplications of (x << 1) * c into c * x for boolean variables x.
+    """
+    assert isinstance(element, _Mult)
+    operands = element.operands
+    value0 = operands[0].evaluate()
+    value1 = operands[1].evaluate()
     if (value0 is None) + (value1 is None) != 1:
         return ProcessFailureReason("Exactly one of the factors must by a constant value", trivial=True)
 
     value = value0 or value1
-    elem = entries[1] if value1 is None else entries[0]
+    elem = operands[1] if value1 is None else operands[0]
     if isinstance(elem, RangeCondition) and isinstance(elem.function, BoolVar):
         if elem.range.is_point == 1 and value != 1:
             return value * elem.function
@@ -762,4 +763,4 @@ def mult_binary_assignment_by_numbers(var_dict: VarDict) -> Optional[Union[MapEl
 
 MapElement._simplifier.register_processor(two_bool_vars_simplifier)
 
-Mult.register_simplifier(mult_binary_assignment_by_numbers)
+_Mult.register_class_simplifier(mult_binary_assignment_by_numbers)

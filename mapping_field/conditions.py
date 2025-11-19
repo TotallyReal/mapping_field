@@ -135,6 +135,8 @@ class _ListCondition(CompositeElement, DefaultSerializable):
     trivials = [TrueCondition, FalseCondition]
     join_delims = ["&", "|"]
 
+    auto_promises = [IsCondition]
+
     def __init_subclass__(cls, op_type: int, **kwargs):
         super().__init_subclass__(**kwargs)
         cls.type = op_type

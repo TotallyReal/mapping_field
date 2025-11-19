@@ -327,7 +327,7 @@ def test_ranged_condition_as_input():
     func = (x + y) + z
     condition = (x << 1) & (y << 2) & (z << 3) & (a << 4) & (b < 10)
     assigned = func(condition=condition, simplify=False)
-    assert str(assigned) == "((1+2)+3)"
+    assert str(assigned) == "(3+(1+2))"
     assert assigned.simplify2() == 6
 
 

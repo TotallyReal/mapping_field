@@ -234,11 +234,7 @@ class MapElement:
         The 'variables' are the ordered list used when calling the function, as in f(a_1,...,a_n).
         """
         self.name = name or self.__class__.__name__
-        var_names = set(v.name for v in variables)
-        if len(variables) > len(var_names):
-            raise Exception(f"Function must have distinct variables: {variables}")
-        self.vars = variables
-        self.num_vars = len(variables)
+        self._set_variables(variables)
         self._simplified_version = self if simplified else None
         self.promises = OutputPromises() if promises is None else promises
 
@@ -254,6 +250,21 @@ class MapElement:
             raise Exception(f"New variables order {variables} have to be on the function's variables {self.vars}")
 
         self.vars = variables
+
+    def _set_variables(self, variables: List["Var"]):
+        """
+        Should be called when copying this function, and want to reset it (in case you cannot go through the
+        standard __init__ function).
+        """
+        var_names = set(v.name for v in variables)
+        if len(variables) > len(var_names):
+            raise Exception(f"Function must have distinct variables: {variables}")
+        self.vars = variables
+        self.num_vars = len(variables)
+        self._simplified_version = None         # When trying to reset this element from the outside
+        self._in_simplification_process = False
+        self.promises = OutputPromises()
+
 
     def has_promise(self, promise: OutputValidator) -> Optional[bool]:
         value = self.promises.has_promise(promise)
@@ -413,7 +424,7 @@ class MapElement:
         if len(var_dict) == 0:
             if self._simplified_version is not None:
                 return self._simplified_version if self._simplified_version is not self else None
-            if getattr(self, "_in_simplification_process", False):
+            if self._in_simplification_process:
                 simplify_logger.log(f'{red("!!!")} looped back to simplify {red(self)}')
                 return None
             started_process_here = True
@@ -709,6 +720,8 @@ class CompositeElement(MapElement):
     'operands' variable.
     """
 
+    auto_promises: List[OutputValidator] = []
+
     def __init_subclass__(cls, **kwargs):
         # TODO: Simplifier mechanism should be able to see super classes, then we can register this only once.
         cls.register_class_simplifier(CompositeElement._entries_simplifier)
@@ -718,14 +731,16 @@ class CompositeElement(MapElement):
 
         self.operands = operands
         super().__init__(variables=Var.extract_variables(operands), name=name, simplified=simplified)
+        for promise in self.__class__.auto_promises:
+            self.promises.add_promise(promise)
 
     def copy_with_operands(self, operands: List[MapElement]) -> MapElement:
         copy_version = copy.copy(self)
         # TODO: Note that this also copies the output promises in a shallow copy
         copy_version.operands = operands
-        # TODO: I don't like that the variables are set here. They should be set in MapElement.
-        copy_version.vars = Var.extract_variables(operands)
-        copy_version._simplified_version = None
+        copy_version._set_variables(Var.extract_variables(operands))
+        for promise in self.__class__.auto_promises:
+            copy_version.promises.add_promise(promise)
         return copy_version
 
     def to_string(self, vars_to_str: Dict["Var", str]):
@@ -759,6 +774,11 @@ class CompositeElement(MapElement):
             return None
         simplified_entries = [simp_entry or entry for simp_entry, entry in zip(simplified_entries, elem.operands)]
         return elem.copy_with_operands(operands=simplified_entries)
+
+    def get_entries(self, as_function: Union[Type['MapElement'], List[Type['MapElement']]]) -> Optional[List['MapElement']]:
+        if isinstance(self, as_function):
+            return self.operands
+        return None
 
 
 

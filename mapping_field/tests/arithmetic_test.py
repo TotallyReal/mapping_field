@@ -2,9 +2,12 @@ from typing import Optional, Tuple
 
 import pytest
 
-from mapping_field.arithmetics import _as_combination
-from mapping_field.mapping_field import Func, MapElement, Var, VarDict
+from mapping_field.arithmetics import _as_combination, _as_scalar_mult
+from mapping_field.log_utils.tree_loggers import TreeLogger
+from mapping_field.mapping_field import Func, MapElement, Var, VarDict, MapElementConstant
 from mapping_field.tests.utils import DummyMap
+
+simplify_logger = TreeLogger(__name__)
 
 
 class ImprovedDummyMap(MapElement):
@@ -17,16 +20,18 @@ class ImprovedDummyMap(MapElement):
             return len(self.value) == 1 and self.value[0] == other.value
         return isinstance(other, ImprovedDummyMap) and set(self.value) == set(other.value)
 
-    def _simplify_caller_function2(
-        self, function: MapElement, position: int, var_dict: VarDict
-    ) -> Optional[MapElement]:
-        elem2 = var_dict[function.vars[1 - position]]
-        if function in (MapElement.addition, MapElement.multiplication):
-            if isinstance(elem2, DummyMap):
-                return ImprovedDummyMap(self.value + (elem2.value,))
-            if isinstance(elem2, ImprovedDummyMap):
-                return ImprovedDummyMap(self.value + elem2.value)
+    def _op(self, elem2: MapElement) -> Optional[MapElement]:
+        if isinstance(elem2, DummyMap):
+            return ImprovedDummyMap(self.value + (elem2.value,))
+        if isinstance(elem2, ImprovedDummyMap):
+            return ImprovedDummyMap(self.value + elem2.value)
         return None
+
+    def add(self, elem2: MapElement) -> Optional[MapElement]:
+        return self._op(elem2)
+
+    def mul(self, elem2: MapElement) -> Optional[MapElement]:
+        return self._op(elem2)
 
 
 def test_arithmetic_premade_methods():
@@ -166,7 +171,7 @@ def test_multiplication_rules():
     g = Func("g")(z)
     h = Func("h")(y, z)
 
-    assert str(((-x) / y) / (g * (-h) / (x * (-f)))) == "(-( ((f(x,y)*x)*x)/((g(z)*h(y,z))*y) ))"
+    assert str(((-x) / y) / (g * (-h) / (x * (-f)))) == "(-( (x*(x*f(x,y)))/(y*(g(z)*h(y,z))) ))"
 
 
 # ----------------- assignment -----------------
@@ -188,6 +193,26 @@ def test_simplification_after_assignment():
 
 # ----------------- combination -----------------
 
+
+def test_as_scalar_mult():
+    dummy0 = DummyMap(0)
+    dummy1 = DummyMap(1)
+
+    coef, elem = _as_scalar_mult(MapElementConstant.zero)
+    assert coef == 0
+
+    coef, elem = _as_scalar_mult(MapElementConstant.one)
+    assert (coef, elem) == (1, MapElementConstant.one)
+
+    coef, elem = _as_scalar_mult(MapElementConstant(5))
+    assert (coef, elem) == (5, MapElementConstant.one)
+
+    coef, elem = _as_scalar_mult(5*dummy0)
+    assert (coef, elem) == (5, dummy0)
+
+    dummy_product = dummy0 * dummy1
+    coef, elem = _as_scalar_mult(dummy_product)
+    assert (coef, elem) == (1, dummy_product)
 
 def test_as_combination_trivial():
     dummy0 = DummyMap(0)
