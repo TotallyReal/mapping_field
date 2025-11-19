@@ -742,10 +742,14 @@ class CompositeElement(MapElement):
         """
         Apply the map with the given values of the standard and function variables
         """
-        if set(var_dict.keys()).isdisjoint(set(self.vars)):
+        if len(func_dict) == 0 and set(var_dict.keys()).isdisjoint(set(self.vars)):
             return self
 
-        return self.copy_with_operands(operands=[entry._call_with_dict(var_dict, func_dict) for entry in self.operands])
+        new_operands = [entry._call_with_dict(var_dict, func_dict) for entry in self.operands]
+        if all(new_op is op for new_op,op in zip(new_operands, self.operands)):
+            return self
+
+        return self.copy_with_operands(operands=new_operands)
 
     @staticmethod
     def _entries_simplifier(elem: 'CompositeElement', var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
@@ -1164,6 +1168,36 @@ class MapElementFromFunction(MapElement):
         if entries is None:
             return None
         values = [entry.evaluate() for entry in entries]
+        if any(value is None for value in values):
+            return None
+
+        result = self.function(*values)
+        return MapElementConstant(result)
+
+
+class CompositeElementFromFunction(CompositeElement):
+
+    def __init__(
+            self, name: str, function: Callable[[List[ExtElement]], ExtElement],
+            operands: Optional[List[MapElement]] = None, simplified: bool = False):
+        """
+        A map defined by a callable python function.
+        The number of parameters to this function is the number of standard variables for this MapElement,
+        and with the same order.
+        """
+        self.function = function
+        self.num_parameters = len(inspect.signature(function).parameters)
+        assert self.num_parameters > 0
+        if operands is None:
+            operands = [Var(f"X_{name}_{i}") for i in range(self.num_parameters)]
+        else:
+            assert len(operands) == self.num_parameters
+        super().__init__(operands=operands, name=name, simplified=simplified)
+
+    # Override when needed
+    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+
+        values = [operand.evaluate() for operand in self.operands]
         if any(value is None for value in values):
             return None
 

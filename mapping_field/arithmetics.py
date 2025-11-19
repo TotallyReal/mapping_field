@@ -3,7 +3,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.mapping_field import (
     CompositionFunction, ExtElement, MapElement, MapElementConstant, MapElementFromFunction, Var,
-    VarDict, convert_to_map,
+    VarDict, convert_to_map, CompositeElementFromFunction,
 )
 from mapping_field.processors import ProcessFailureReason
 from mapping_field.serializable import DefaultSerializable
@@ -65,37 +65,42 @@ class _ArithmeticMapFromFunction(MapElementFromFunction, DefaultSerializable):
 # <editor-fold desc=" ------------------- Negation ------------------- ">
 
 
-class _Negative(_ArithmeticMapFromFunction):
+class _Negative(CompositeElementFromFunction):
 
-    def __init__(self):
-        super().__init__("Neg", lambda a: -a)
-        self.register_simplifier(_Negative._to_negation_simplifier)
+    def __init__(self, operand: Optional[MapElement] = None):
+        operands = [operand] if operand is not None else None
+        super().__init__(operands=operands, name="Neg", function=lambda a: -a)
+
+    @property
+    def operand(self) -> MapElement:
+        return self.operands[0]
+
+    @operand.setter
+    def operand(self, value: MapElement):
+        self.operands[0] = value
 
     def to_string(self, vars_to_str: Dict[Var, str]):
-        return f"(-{vars_to_str.get(self.vars[0])})"
+        return f"(-{self.operand.to_string(vars_to_str)})"
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
-        entries = [var_dict.get(v, v) for v in self.vars]
 
-        if not isinstance(entries[0], CompositionFunction):
-            return super()._simplify_with_var_values2(var_dict)
-        function = entries[0].function
-        comp_entries = entries[0].entries
-        if function == Neg:
-            return comp_entries[0]
-        if function == Sub:
+        operand = self.operand
+        if isinstance(operand, _Negative):
+            return operand.operand
+        if isinstance(operand, CompositionFunction) and operand.function is Sub:
+            comp_entries = operand.entries
             return Sub(comp_entries[1], comp_entries[0])
 
         return super()._simplify_with_var_values2(var_dict)
 
     @staticmethod
-    def _to_negation_simplifier(var_dict: VarDict) -> Optional[MapElement]:
-        entries = [var_dict[v] for v in Neg.vars]
-        return entries[0].neg()
+    def _to_negation_simplifier(neg_func: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+        assert isinstance(neg_func, _Negative)
+        return neg_func.operand.neg()
 
 Neg = _Negative()
 MapElement.negation = Neg
-
+_Negative.register_class_simplifier(_Negative._to_negation_simplifier)
 
 # </editor-fold>
 
@@ -295,8 +300,10 @@ MapElement.division = Div
 # Arithmetic decompositions
 
 def as_neg(map_elem: MapElement) -> Tuple[int, MapElement]:
-    entries = map_elem.get_entries(_Negative)
-    return (-1, entries[0]) if entries is not None else (1, map_elem)
+    if isinstance(map_elem, _Negative):
+        return -1, map_elem.operand
+
+    return 1, map_elem
 
 def _as_scalar_mult(map_elem: MapElement) -> Tuple[int, MapElement]:
     value = map_elem.evaluate()
@@ -323,14 +330,14 @@ def _as_combination(map_elem: MapElement) -> Tuple[int, MapElement, int, MapElem
     if isinstance(map_elem, MapElementConstant):
         return map_elem.evaluate(), MapElementConstant.one, 0, MapElementConstant.zero
 
+    if isinstance(map_elem, _Negative):
+        c0, elem0, c1, elem1 = _as_combination(map_elem.operand)
+        return -c0, elem0, -c1, elem1
+
     if not isinstance(map_elem, CompositionFunction):
         return 1, map_elem, 0, MapElementConstant.zero
 
     function = map_elem.function
-
-    if function is Neg:
-        c0, elem0, c1, elem1 = _as_combination(map_elem.entries[0])
-        return -c0, elem0, -c1, elem1
 
     if function is Sub:
         c0, elem0 = _as_scalar_mult(map_elem.entries[0])
@@ -354,19 +361,15 @@ def _as_rational(map_elem: MapElement) -> (int, MapElement, MapElement):
     """
     :return: sign, numerator, denominator
     """
-    if not isinstance(map_elem, CompositionFunction):
-        return 1, map_elem, MapElementConstant.one
-
     sign = 1
+    if isinstance(map_elem, _Negative):
+        sign = -1
+        map_elem = map_elem.operand
+
+    if not isinstance(map_elem, CompositionFunction):
+        return sign, map_elem, MapElementConstant.one
 
     comp_map: CompositionFunction = map_elem
-    if comp_map.function == Neg:
-        sign = -1
-        map_elem = comp_map.entries[0]
-        if not isinstance(map_elem, CompositionFunction):
-            return sign, map_elem, MapElementConstant.one
-
-        comp_map: CompositionFunction = map_elem
 
     if comp_map.function == Div:
         return sign, comp_map.entries[0], comp_map.entries[1]

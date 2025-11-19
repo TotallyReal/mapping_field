@@ -198,12 +198,12 @@ def test_simplification():
     ])
     cond_func = cond_func.simplify2()
 
-    simplified = ConditionalFunction([
+    simplified_version = ConditionalFunction([
         (dummy_cond[0] | dummy_cond[2], dummy_func[0]),
         (dummy_cond[1], dummy_func[1]),
     ])
 
-    assert cond_func == simplified
+    assert cond_func == simplified_version
 
     # Combine regions with assignments
     x = Var("x")
