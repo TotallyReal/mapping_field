@@ -108,6 +108,9 @@ class ProcessorCollection(Generic[Elem]):
         if element in self._process_stage:
             del self._process_stage[element]
 
+    def set_final_version(self, element: Elem, final_version_element: Elem):
+        self.final_version[element] = final_version_element
+
     def register_processor(self, processor: Processor) -> None:
         self.processors.append(processor)
 

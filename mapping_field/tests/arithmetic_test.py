@@ -2,7 +2,7 @@ from typing import Optional, Tuple
 
 import pytest
 
-from mapping_field.arithmetics import _as_combination, _as_scalar_mult
+from mapping_field.arithmetics import AssociativeAddition, _as_combination, _as_scalar_mult
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.mapping_field import Func, MapElement, MapElementConstant, Var
 from mapping_field.tests.utils import DummyMap
@@ -262,3 +262,33 @@ def test_as_combination_full():
 
     a, elem_a, b, elem_b = _as_combination(3 * dummy0 + 4 * dummy1)
     assert (a, elem_a, b, elem_b) == (3, dummy0, 4, dummy1)
+
+
+# ----------------- associative addition -----------------
+
+def test_associative_addition_creation():
+    dummy0, dummy1 = DummyMap(0), DummyMap(1)
+
+    elem1 = AssociativeAddition([1,2,3,4,5])
+
+    assert str(elem1) == "(1 + 2 + 3 + 4 + 5)"
+
+    elem2 = AssociativeAddition([1,2,3,4,AssociativeAddition([1,2,3,4,5])])
+
+    assert str(elem2) == "(1 + 2 + 3 + 4 + 1 + 2 + 3 + 4 + 5)"
+
+    elem2 = elem2.simplify2()
+
+    assert elem2 == 25
+
+    elem3 = AssociativeAddition([dummy0, dummy1, -dummy0])
+
+    assert str(elem3) == "(DummyMap(0) + DummyMap(1) + (-DummyMap(0)))"
+
+    elem3 = elem3.simplify2()
+
+    assert elem3 is dummy1
+
+    elem4 = AssociativeAddition([dummy1, dummy0])
+
+    assert str(elem4) == "(DummyMap(1) + DummyMap(0))"

@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional, Tuple, Union
 
+from mapping_field.associative import AssociativeListFunction, _sorted_commutative_simplifier
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.mapping_field import (
     CompositeElementFromFunction, MapElement, MapElementConstant, Var,
@@ -120,6 +121,47 @@ class _Add(CompositeElementFromFunction):
 Add = _Add()
 MapElement.addition = Add
 _Add.register_class_simplifier(_Add._to_add_simplifier)
+
+class AssociativeAddition(AssociativeListFunction):
+
+    trivial_element = MapElementConstant.zero
+    op_symbol = "+"
+
+    @staticmethod
+    def _numbers_add_simplifier(add_func: MapElement) -> Optional[Union[ProcessFailureReason, MapElement]]:
+        assert isinstance(add_func, AssociativeAddition)
+        values = [op.evaluate() for op in add_func.operands]
+        if all(value is not None for value in values):
+            return MapElementConstant(sum(values, 0))
+        return ProcessFailureReason('Not all operands are constant', trivial = True)
+
+    @staticmethod
+    def _additive_negation_simplifier(add_func: MapElement) -> Optional[Union[ProcessFailureReason, MapElement]]:
+        # Can also implement via _Negative.add(...)
+        assert isinstance(add_func, AssociativeAddition)
+        if len(add_func.operands) != 2:
+            return ProcessFailureReason("Only applicable to 2 operands", trivial = True)
+        operands = add_func.operands
+
+        sign0, map0 = as_neg(operands[0])
+        sign1, map1 = as_neg(operands[1])
+        if sign0 == 1 and sign1 == -1 and map0 == map1:
+            return MapElementConstant.zero
+
+        return ProcessFailureReason('Elements did not cancel each other', trivial = True)
+
+    @staticmethod
+    def _to_add_simplifier(add_func: MapElement) -> Optional[Union[ProcessFailureReason, MapElement]]:
+        assert isinstance(add_func, AssociativeAddition)
+        if len(add_func.operands) != 2:
+            return ProcessFailureReason("Only applicable to 2 operands", trivial = True)
+        return (add_func.operands[0].add(add_func.operands[1]) or
+                add_func.operands[1].add(add_func.operands[0]))
+
+AssociativeAddition.register_class_simplifier(AssociativeAddition._numbers_add_simplifier)
+AssociativeAddition.register_class_simplifier(AssociativeAddition._additive_negation_simplifier)
+AssociativeAddition.register_class_simplifier(AssociativeAddition._to_add_simplifier)
+AssociativeAddition.register_class_simplifier(_sorted_commutative_simplifier)
 
 # </editor-fold>
 
