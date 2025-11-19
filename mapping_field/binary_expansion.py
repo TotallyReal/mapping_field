@@ -566,7 +566,8 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
         return Linear(1, elem, constant.evaluate())
 
     @staticmethod
-    def transform_range(range_cond: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def transform_range(range_cond: MapElement) -> Optional[MapElement]:
         """
         Simplify an interval RangedCondition over a binary expansion.
         """
@@ -640,7 +641,8 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
             )
 
     @staticmethod
-    def _union_with_range_over_binary_expansion(union_elem: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _union_with_range_over_binary_expansion(union_elem: MapElement) -> Optional[MapElement]:
         """
         If one of the factors in a union operation is a RangedCondition over a BinaryExpansion, try to write the union
         as another RangedCondition over the same BinaryExpansion.
@@ -669,8 +671,9 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
     #       After the big refactorzation, delete one of them.
 
     @staticmethod
+    @param_forgetful_function
     def _binary_combination_to_expansion_simplifier(
-        bin_comb: MapElement, var_dict: VarDict
+        bin_comb: MapElement
     ) -> Optional[Union[MapElement, ProcessFailureReason]]:
         """
         Try to simplify a binary linear combination into a binary expansion

@@ -509,7 +509,8 @@ class _ListCondition(CompositeElement, DefaultSerializable):
         return None
 
 
-def _binary_simplify(elem: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+@param_forgetful_function
+def _binary_simplify(elem: MapElement) -> Optional[MapElement]:
     assert isinstance(elem, _ListCondition)
     if len(elem.conditions) != 2:
         return None
@@ -550,7 +551,8 @@ class IntersectionCondition(_ListCondition, MapElementProcessor, op_type=_ListCo
         return func
 
     @staticmethod
-    def _binary_and_simplify(intersection_cond: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _binary_and_simplify(intersection_cond: MapElement) -> Optional[MapElement]:
         assert isinstance(intersection_cond, IntersectionCondition)
         if len(intersection_cond.conditions) != 2:
             return None

@@ -95,7 +95,8 @@ class _Negative(CompositeElementFromFunction):
         return super()._simplify_with_var_values2(None)
 
     @staticmethod
-    def _to_negation_simplifier(neg_func: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _to_negation_simplifier(neg_func: MapElement) -> Optional[MapElement]:
         assert isinstance(neg_func, _Negative)
         return neg_func.operand.neg()
 
@@ -143,7 +144,8 @@ class _Add(CompositeElementFromFunction):
         return f"({self.operands[0]}+{self.operands[1]})"
 
     @staticmethod
-    def _to_add_simplifier(add_func: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _to_add_simplifier(add_func: MapElement) -> Optional[MapElement]:
         assert isinstance(add_func, _Add)
         return (add_func.operands[0].add(add_func.operands[1]) or
                 add_func.operands[1].add(add_func.operands[0]))
@@ -194,7 +196,8 @@ class _Sub(CompositeElementFromFunction):
         return f"({self.operands[0]}-{self.operands[1]})"
 
     @staticmethod
-    def _to_sub_simplifier(sub_func: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _to_sub_simplifier(sub_func: MapElement) -> Optional[MapElement]:
         assert isinstance(sub_func, _Sub)
         return (sub_func.operands[0].sub(sub_func.operands[1]) or
                 sub_func.operands[1].rsub(sub_func.operands[0]))
@@ -249,7 +252,8 @@ class _Mult(CompositeElementFromFunction):
         return f"({self.operands[0]}*{self.operands[1]})"
 
     @staticmethod
-    def _to_mult_simplifier(mul_func: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _to_mult_simplifier(mul_func: MapElement) -> Optional[MapElement]:
         assert isinstance(mul_func, _Mult)
         return (mul_func.operands[0].mul(mul_func.operands[1]) or
                 mul_func.operands[1].mul(mul_func.operands[0]))
@@ -294,7 +298,8 @@ class _Div(CompositeElementFromFunction):
         return f"( {self.operands[0]}/{self.operands[1]} )"
 
     @staticmethod
-    def _to_div_simplifier(div_func: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _to_div_simplifier(div_func: MapElement) -> Optional[MapElement]:
         assert isinstance(div_func, _Div)
         return (div_func.operands[0].div(div_func.operands[1]) or
                 div_func.operands[1].rdiv(div_func.operands[0]))
@@ -408,9 +413,8 @@ class BinaryCombination(MapElement):
 
 
 # TODO: add tests
-def _binary_combination_simplifier(
-    function: MapElement, var_dict: VarDict
-) -> Optional[Union[MapElement, ProcessFailureReason]]:
+@param_forgetful_function
+def _binary_combination_simplifier(function: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
     assert isinstance(function, (_Add, _Sub))
     c1, elem1, c2, elem2 = _as_combination(function)
     if c2 == 0:
@@ -425,9 +429,8 @@ def _binary_combination_simplifier(
 _Add.register_class_simplifier(_binary_combination_simplifier)
 _Sub.register_class_simplifier(_binary_combination_simplifier)
 
-def _binary_commutative_simplifier(
-    function: MapElement, var_dict: VarDict
-) -> Optional[Union[MapElement, ProcessFailureReason]]:
+@param_forgetful_function
+def _binary_commutative_simplifier(function: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
     assert isinstance(function, (_Add, _Mult))
     operands = function.operands
     # Comparison:

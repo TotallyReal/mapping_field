@@ -270,7 +270,8 @@ class ConditionalFunction(CompositeElement, Ranged):
         return ConditionalFunction(regions) if is_simpler else None
 
     @staticmethod
-    def mult_condition_by_element(element: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def mult_condition_by_element(element: MapElement) -> Optional[MapElement]:
         assert isinstance(element, _Mult)
         a, b = element.operands
         a_is_cond = a.has_promise(IsCondition)
@@ -287,7 +288,8 @@ class ConditionalFunction(CompositeElement, Ranged):
         return ConditionalFunction([(a, b), (~a, MapElementConstant.zero)])
 
     @staticmethod
-    def new_assignment_simplify(ranged_cond: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def new_assignment_simplify(ranged_cond: MapElement) -> Optional[MapElement]:
         assert isinstance(ranged_cond, RangeCondition)
         cond_function = ranged_cond.function
         if not isinstance(cond_function, ConditionalFunction):
@@ -297,8 +299,9 @@ class ConditionalFunction(CompositeElement, Ranged):
         return UnionCondition([condition & RangeCondition(func, f_range) for condition, func in cond_function.regions])
 
     @staticmethod
+    @param_forgetful_function
     def _bool_var_simplifier(
-        map_elem: MapElement, var_dict: VarDict
+        map_elem: MapElement
     ) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(map_elem, ConditionalFunction)
 

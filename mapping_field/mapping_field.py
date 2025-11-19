@@ -768,9 +768,10 @@ class CompositeElement(MapElement):
         return self.copy_with_operands(operands=new_operands)
 
     @staticmethod
-    def _entries_simplifier(elem: 'CompositeElement', var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
+    @param_forgetful_function
+    def _entries_simplifier(elem: 'CompositeElement') -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(elem, CompositeElement)
-        simplified_entries = [entry._simplify2(var_dict) for entry in elem.operands]
+        simplified_entries = [entry._simplify2(None) for entry in elem.operands]
         if all(entry is None for entry in simplified_entries):
             return None
         simplified_entries = [simp_entry or entry for simp_entry, entry in zip(simplified_entries, elem.operands)]

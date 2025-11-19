@@ -2,7 +2,8 @@ from typing import Optional
 
 from mapping_field.conditions import TrueCondition, FalseCondition, BinaryCondition
 from mapping_field.log_utils.tree_loggers import TreeLogger, blue
-from mapping_field.mapping_field import MapElement, VarDict
+from mapping_field.mapping_field import MapElement, VarDict, CompositeElement
+from mapping_field.processors import param_forgetful_function
 from mapping_field.promises import IsCondition
 from mapping_field.ranged_condition import BoolVar, IntervalRange, RangeCondition
 
@@ -50,14 +51,15 @@ def test_two_var_simplifier():
         functions.append((x << value_x) & (y << value_y))
         functions.append((x << value_x) | (y << value_y))
 
-    class TwoVar(MapElement):
+    class TwoVar(CompositeElement):
         def __init__(self, function):
-            super().__init__(variables=[x, y])
+            super().__init__(operands=[x, y])
             self.promises.add_promise(IsCondition)
             self.function = function
 
-        def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
-            output_value = self.function(var_dict).simplify2()
+        @param_forgetful_function
+        def _simplify_with_var_values2(self) -> Optional[MapElement]:
+            output_value = self.function({x:self.operands[0], y:self.operands[1]}).simplify2()
             if isinstance(output_value, BinaryCondition):
                 return output_value
             return None

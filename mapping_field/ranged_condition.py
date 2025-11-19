@@ -336,8 +336,9 @@ class InRange(OutputValidator[IntervalRange]):
         return self.range.contains(f_range)
 
     @staticmethod
+    @param_forgetful_function
     def _arithmetic_op_range_simplifier(
-        elem: MapElement, var_dict: VarDict
+        elem: MapElement
     ) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(elem, (_Add, _Sub))
         op = operator.add if isinstance(elem, _Add) else operator.sub
@@ -362,8 +363,9 @@ class InRange(OutputValidator[IntervalRange]):
         return elem
 
 
+@param_forgetful_function
 def _arithmetic_op_integral_simplifier(
-    elem: MapElement, var_dict: VarDict
+    elem: MapElement
 ) -> Optional[Union[MapElement, ProcessFailureReason]]:
     assert isinstance(elem, (_Add, _Sub, _Mult))
 
@@ -494,7 +496,8 @@ class RangeCondition(CompositeElement, MapElementProcessor):
         return None
 
     @staticmethod
-    def _evaluated_simplifier(element: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _evaluated_simplifier(element: MapElement) -> Optional[MapElement]:
         assert isinstance(element, RangeCondition)
         value = element.function.evaluate()
         if value is None:
@@ -502,7 +505,8 @@ class RangeCondition(CompositeElement, MapElementProcessor):
         return TrueCondition if element.range.contains(value) else FalseCondition
 
     @staticmethod
-    def _condition_in_range_simplifier(element: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
+    @param_forgetful_function
+    def _condition_in_range_simplifier(element: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
         # TODO: add tests.
         #       I don't like this step too much. If I start with (x << 1) for bool var, it will become just x.
         #       However, if I now try to set x = 1, instead of getting TrueCondition, I will get 1. And while they are
@@ -519,8 +523,9 @@ class RangeCondition(CompositeElement, MapElementProcessor):
         return None
 
     @staticmethod
+    @param_forgetful_function
     def _ranged_promise_simplifier(
-        range_cond: MapElement, var_dict: VarDict
+        range_cond: MapElement
     ) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(range_cond, RangeCondition)
 
@@ -546,8 +551,9 @@ class RangeCondition(CompositeElement, MapElementProcessor):
         return None
 
     @staticmethod
+    @param_forgetful_function
     def _integral_simplifier(
-        range_cond: MapElement, var_dict: VarDict
+        range_cond: MapElement
     ) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(range_cond, RangeCondition)
         if range_cond.function.has_promise(IsIntegral):
@@ -558,8 +564,9 @@ class RangeCondition(CompositeElement, MapElementProcessor):
         return ProcessFailureReason("Function is not Integral", trivial=True)
 
     @staticmethod
+    @param_forgetful_function
     def _linear_combination_simplifier(
-        element: MapElement, var_dict: VarDict
+        element: MapElement
     ) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(element, RangeCondition)
         c1, elem1, c2, elem2 = _as_combination(element.function)
@@ -582,7 +589,8 @@ class RangeCondition(CompositeElement, MapElementProcessor):
         return RangeCondition(elem1, f_range)
 
     @staticmethod
-    def _in_range_arithmetic_simplification(ranged_cond: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
+    @param_forgetful_function
+    def _in_range_arithmetic_simplification(ranged_cond: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(ranged_cond, RangeCondition)
         elem = ranged_cond.function
         if isinstance(elem, _Add):
@@ -746,7 +754,8 @@ def two_bool_vars_simplifier(elem: MapElement, var_dict: VarDict) -> Optional[Un
 
     return None
 
-def mult_binary_assignment_by_numbers(element: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
+@param_forgetful_function
+def mult_binary_assignment_by_numbers(element: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
     """
     change multiplications of (x << 1) * c into c * x for boolean variables x.
     """

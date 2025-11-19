@@ -146,7 +146,9 @@ class Linear(CompositeElement, DefaultSerializable, Ranged):
             return MapElementConstant(self.b)
         return None
 
-    def _transform_linear(element: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
+    @staticmethod
+    @param_forgetful_function
+    def _transform_linear(element: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(element, Linear)
         if isinstance(element.elem, Linear):
             a, b = element.a, element.b
@@ -154,12 +156,14 @@ class Linear(CompositeElement, DefaultSerializable, Ranged):
             return Linear(int(a * a_), element.elem.elem, int(a * b_ + b))
         return ProcessFailureReason("Inner element is not Linear", trivial=True)
 
-    def _evaluate_simplifier(self, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _evaluate_simplifier(self) -> Optional[MapElement]:
         value = self.evaluate()
         return MapElementConstant(value) if value is not None else None
 
     @staticmethod
-    def _transform_range(element: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _transform_range(element: MapElement) -> Optional[MapElement]:
         """
         If the range is over a Linear function, move to a range over the argument of this linear function.
         """
@@ -174,7 +178,8 @@ class Linear(CompositeElement, DefaultSerializable, Ranged):
         return RangeCondition(function.elem, (element.range - function.b) / function.a)
 
     @staticmethod
-    def _binary_combination_linearization(element: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _binary_combination_linearization(element: MapElement) -> Optional[MapElement]:
         assert isinstance(element, BinaryCombination)
         elem1 = element.c1 * Linear.of(element.elem1)
         elem2 = element.c2 * Linear.of(element.elem2)
@@ -191,7 +196,8 @@ Linear.register_class_simplifier(Linear._transform_linear)
 BinaryCombination.register_class_simplifier(Linear._binary_combination_linearization)
 
 
-def _extract_scalar_signed_addition(element: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+@param_forgetful_function
+def _extract_scalar_signed_addition(element: MapElement) -> Optional[MapElement]:
     assert isinstance(element, (_Add, _Sub))
     sign = 1 if isinstance(element, _Add) else -1
 
