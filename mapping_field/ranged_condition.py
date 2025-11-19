@@ -12,7 +12,7 @@ from mapping_field.conditions import (
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
 from mapping_field.mapping_field import (
     CompositionFunction, FuncDict, MapElement, MapElementConstant, MapElementProcessor,
-    OutputPromises, OutputValidator, Var, VarDict, always_validate_promises,
+    OutputPromises, OutputValidator, Var, VarDict, always_validate_promises, CompositeElement,
 )
 from mapping_field.processors import ProcessFailureReason
 from mapping_field.promises import IsCondition, IsIntegral
@@ -387,13 +387,21 @@ _Mult.register_class_simplifier(_arithmetic_op_integral_simplifier)
 # <editor-fold desc=" --------------- RangeCondition ---------------">
 
 
-class RangeCondition(Condition, MapElementProcessor):
+class RangeCondition(CompositeElement, MapElementProcessor):
+
+    auto_promises = [IsCondition]
 
     def __init__(self, function: MapElement, f_range: Union[IntervalRange, Tuple[float, float]]):
-        super().__init__(function.vars)
-        self.function = function
+        super().__init__(operands=[function])
         self.range = f_range if isinstance(f_range, IntervalRange) else IntervalRange(*f_range)
-        self.promises.add_promise(IsCondition)
+
+    @property
+    def function(self) -> MapElement:
+        return self.operands[0]
+
+    @function.setter
+    def function(self, value: MapElement):
+        self.operands[0] = value
 
     def to_string(self, vars_to_str: Dict[Var, str]):
         return self.range.str_middle(self.function.to_string(vars_to_str))
@@ -482,10 +490,6 @@ class RangeCondition(Condition, MapElementProcessor):
             return FalseCondition
         if self.range.is_all:
             return TrueCondition
-
-        simplified_function = self.function._simplify2(var_dict)
-        if simplified_function is not None:
-            return RangeCondition(simplified_function, self.range)
         return None
 
     @staticmethod
@@ -580,17 +584,16 @@ class RangeCondition(Condition, MapElementProcessor):
     def _in_range_arithmetic_simplification(ranged_cond: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(ranged_cond, RangeCondition)
         elem = ranged_cond.function
-        if not isinstance(elem, (_Add, _Sub)):
-            return ProcessFailureReason('Must be a composition with Add or Sub', trivial=True)
         if isinstance(elem, _Add):
             op = operator.add
             op1 = operator.sub
             op2 = operator.sub
-        else:
+        elif isinstance(elem, _Sub):
             op = operator.sub
             op1 = operator.add
             op2 = lambda e1, e2: e2 - e1
-
+        else:
+            return ProcessFailureReason('Only works for Addition and Subtraction', trivial=True)
         elem1, elem2 = elem.operands
         total_range = ranged_cond.range
         f_range1 = InRange.get_range_of(elem1) or IntervalRange.all()
@@ -667,7 +670,6 @@ class BoolVar(Var):
         self.promises.add_promise(IsIntegral)
         self.promises.add_promise(InRange(IntervalRange[0, 1]))
         self.promises.add_promise(IsCondition)
-
 
 
 def two_bool_vars_simplifier(elem: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
