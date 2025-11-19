@@ -105,6 +105,10 @@ def params_to_maps(f):
 
 ClassSimplifier = Processor["MapElement"]  # ('MapElement') -> Optional['MapElement']
 
+def class_simplifier(method) -> Callable:
+    method._is_simplifier = True
+    return method
+
 
 class OutputValidator(MultiValidator["MapElement", Context], Generic[Context]):
     def __init__(self, name: Optional[str] = None, context: Optional[Context] = None):
@@ -210,6 +214,11 @@ class MapElement:
         if processor is not None:
             processor.__name__ = f"{cls.__name__}_simplify_with_var_values"
             MapElement._simplifier.register_class_processor(cls, processor)
+
+        # auto-register methods decorated with @class_simplifier
+        for attr in cls.__dict__.values():
+            if callable(attr) and getattr(attr, "_is_simplifier", False):
+                cls.register_class_simplifier(attr)
 
     def __init__(self, variables: List['Var'], name: Optional[str] = None, promises: Optional[OutputPromises] = None,
                  simplified: bool = False):

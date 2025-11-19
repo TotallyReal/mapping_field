@@ -6,7 +6,8 @@ from mapping_field.arithmetics import BinaryCombination, _Add, _as_combination, 
 from mapping_field.conditions import FalseCondition, TrueCondition
 from mapping_field.log_utils.tree_loggers import TreeLogger, green
 from mapping_field.mapping_field import (
-    CompositeElement, ExtElement, MapElement, MapElementConstant, Var, params_to_maps,
+    CompositeElement, ExtElement, MapElement, MapElementConstant, Var, class_simplifier,
+    params_to_maps,
 )
 from mapping_field.ranged_condition import InRange, IntervalRange, RangeCondition, Ranged
 from mapping_field.utils.processors import ProcessFailureReason
@@ -138,6 +139,7 @@ class Linear(CompositeElement, DefaultSerializable, Ranged):
             return MapElementConstant(self.b)
         return None
 
+    @class_simplifier
     @staticmethod
     def _transform_linear(element: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(element, Linear)
@@ -147,6 +149,8 @@ class Linear(CompositeElement, DefaultSerializable, Ranged):
             return Linear(int(a * a_), element.elem.elem, int(a * b_ + b))
         return ProcessFailureReason("Inner element is not Linear", trivial=True)
 
+    @class_simplifier
+    @staticmethod
     def _evaluate_simplifier(self) -> Optional[MapElement]:
         value = self.evaluate()
         return MapElementConstant(value) if value is not None else None
@@ -179,8 +183,6 @@ class Linear(CompositeElement, DefaultSerializable, Ranged):
 
 
 RangeCondition.register_class_simplifier(Linear._transform_range)
-Linear.register_class_simplifier(Linear._evaluate_simplifier)
-Linear.register_class_simplifier(Linear._transform_linear)
 BinaryCombination.register_class_simplifier(Linear._binary_combination_linearization)
 
 
@@ -201,7 +203,6 @@ def _extract_scalar_signed_addition(element: MapElement) -> Optional[MapElement]
         return ((linear_var1.a * linear_var1.elem) + (linear_var2.a * linear_var2.elem)) + b
 
     return None
-
 
 
 _Add.register_class_simplifier(_extract_scalar_signed_addition)

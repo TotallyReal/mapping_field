@@ -11,7 +11,7 @@ from mapping_field.conditions import (
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
 from mapping_field.mapping_field import (
     CompositeElement, FuncDict, MapElement, MapElementConstant, MapElementProcessor, OutputPromises,
-    OutputValidator, Var, VarDict,
+    OutputValidator, Var, VarDict, class_simplifier,
 )
 from mapping_field.promises import IsCondition, IsIntegral
 from mapping_field.utils.processors import ProcessFailureReason
@@ -491,6 +491,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
             return TrueCondition
         return None
 
+    @class_simplifier
     @staticmethod
     def _evaluated_simplifier(element: MapElement) -> Optional[MapElement]:
         assert isinstance(element, RangeCondition)
@@ -499,6 +500,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
             return None
         return TrueCondition if element.range.contains(value) else FalseCondition
 
+    @class_simplifier
     @staticmethod
     def _condition_in_range_simplifier(element: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
         # TODO: add tests.
@@ -516,6 +518,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
             return ~element.function
         return None
 
+    @class_simplifier
     @staticmethod
     def _ranged_promise_simplifier(
         range_cond: MapElement
@@ -546,6 +549,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
         return None
 
+    @class_simplifier
     @staticmethod
     def _integral_simplifier(
         range_cond: MapElement
@@ -558,6 +562,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
         return ProcessFailureReason("Function is not Integral", trivial=True)
 
+    @class_simplifier
     @staticmethod
     def _linear_combination_simplifier(
         element: MapElement
@@ -582,6 +587,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
         return RangeCondition(elem1, f_range)
 
+    @class_simplifier
     @staticmethod
     def _in_range_arithmetic_simplification(ranged_cond: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(ranged_cond, RangeCondition)
@@ -616,14 +622,6 @@ class RangeCondition(CompositeElement, MapElementProcessor):
         return ProcessFailureReason(f'The ranges {f_range1_updated} and {f_range2_updated} on the factors are not enough to imply the original range', trivial=False)
 
     # </editor-fold>
-
-
-RangeCondition.register_class_simplifier(RangeCondition._evaluated_simplifier)
-RangeCondition.register_class_simplifier(RangeCondition._condition_in_range_simplifier)
-RangeCondition.register_class_simplifier(RangeCondition._ranged_promise_simplifier)
-RangeCondition.register_class_simplifier(RangeCondition._integral_simplifier)
-RangeCondition.register_class_simplifier(RangeCondition._linear_combination_simplifier)
-RangeCondition.register_class_simplifier(RangeCondition._in_range_arithmetic_simplification)
 
 
 def _ranged(

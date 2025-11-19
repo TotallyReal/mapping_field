@@ -4,6 +4,7 @@ from mapping_field.associative import AssociativeListFunction, _sorted_commutati
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.mapping_field import (
     CompositeElement, CompositeElementFromFunction, MapElement, MapElementConstant, Var,
+    class_simplifier,
 )
 from mapping_field.utils.processors import ProcessFailureReason
 
@@ -65,6 +66,7 @@ class _Negative(CompositeElementFromFunction):
 
         return super()._simplify_with_var_values2()
 
+    @class_simplifier
     @staticmethod
     def _to_negation_simplifier(neg_func: MapElement) -> Optional[MapElement]:
         assert isinstance(neg_func, _Negative)
@@ -72,7 +74,6 @@ class _Negative(CompositeElementFromFunction):
 
 Neg = _Negative()
 MapElement.negation = Neg
-_Negative.register_class_simplifier(_Negative._to_negation_simplifier)
 
 # </editor-fold>
 
@@ -127,6 +128,7 @@ class AssociativeAddition(AssociativeListFunction):
     trivial_element = MapElementConstant.zero
     op_symbol = "+"
 
+    @class_simplifier
     @staticmethod
     def _numbers_add_simplifier(add_func: MapElement) -> Optional[Union[ProcessFailureReason, MapElement]]:
         assert isinstance(add_func, AssociativeAddition)
@@ -135,6 +137,7 @@ class AssociativeAddition(AssociativeListFunction):
             return MapElementConstant(sum(values, 0))
         return ProcessFailureReason('Not all operands are constant', trivial = True)
 
+    @class_simplifier
     @staticmethod
     def _binary_simplifier(add_func: MapElement) -> Optional[Union[ProcessFailureReason, MapElement]]:
         """
@@ -161,9 +164,7 @@ class AssociativeAddition(AssociativeListFunction):
 Add = AssociativeAddition([Var(f"X_Add_1"), Var(f"X_Add_2")])
 MapElement.addition = Add
 
-AssociativeAddition.register_class_simplifier(AssociativeAddition._numbers_add_simplifier)
 AssociativeAddition.register_class_simplifier(_sorted_commutative_simplifier)
-AssociativeAddition.register_class_simplifier(AssociativeAddition._binary_simplifier)
 
 class _Add(CompositeElement):
     """
@@ -175,6 +176,7 @@ class _Add(CompositeElement):
         super().__init__(operands=operands, name="_Add")
         self._binary_special = binary_special
 
+    @class_simplifier
     @staticmethod
     def _additive_negation_simplifier(add_func: MapElement) -> Optional[Union[ProcessFailureReason, MapElement]]:
         # Can also implement via _Negative.add(...)
@@ -193,14 +195,13 @@ class _Add(CompositeElement):
 
         return ProcessFailureReason('Elements did not cancel each other', trivial = True)
 
+    @class_simplifier
     @staticmethod
     def _to_add_simplifier(add_func: MapElement) -> Optional[Union[ProcessFailureReason, MapElement]]:
         assert isinstance(add_func, _Add)
         return (add_func.operands[0].add(add_func.operands[1]) or
                 add_func.operands[1].add(add_func.operands[0]))
 
-_Add.register_class_simplifier(_Add._additive_negation_simplifier)
-_Add.register_class_simplifier(_Add._to_add_simplifier)
 
 # </editor-fold>
 
@@ -242,6 +243,7 @@ class _Sub(CompositeElementFromFunction):
     def to_string(self, vars_to_str: Dict[Var, str]):
         return f"({self.operands[0]}-{self.operands[1]})"
 
+    @class_simplifier
     @staticmethod
     def _to_sub_simplifier(sub_func: MapElement) -> Optional[MapElement]:
         assert isinstance(sub_func, _Sub)
@@ -250,7 +252,6 @@ class _Sub(CompositeElementFromFunction):
 
 Sub = _Sub()
 MapElement.subtraction = Sub
-_Sub.register_class_simplifier(_Sub._to_sub_simplifier)
 
 # </editor-fold>
 
@@ -296,6 +297,7 @@ class _Mult(CompositeElementFromFunction):
     def to_string(self, vars_to_str: Dict[Var, str]):
         return f"({self.operands[0]}*{self.operands[1]})"
 
+    @class_simplifier
     @staticmethod
     def _to_mult_simplifier(mul_func: MapElement) -> Optional[MapElement]:
         assert isinstance(mul_func, _Mult)
@@ -304,7 +306,6 @@ class _Mult(CompositeElementFromFunction):
 
 Mult = _Mult()
 MapElement.multiplication = Mult
-_Mult.register_class_simplifier(_Mult._to_mult_simplifier)
 
 # </editor-fold>
 
@@ -340,6 +341,7 @@ class _Div(CompositeElementFromFunction):
     def to_string(self, vars_to_str: Dict[Var, str]):
         return f"( {self.operands[0]}/{self.operands[1]} )"
 
+    @class_simplifier
     @staticmethod
     def _to_div_simplifier(div_func: MapElement) -> Optional[MapElement]:
         assert isinstance(div_func, _Div)
@@ -348,7 +350,6 @@ class _Div(CompositeElementFromFunction):
 
 Div = _Div()
 MapElement.division = Div
-_Div.register_class_simplifier(_Div._to_div_simplifier)
 
 # </editor-fold>
 

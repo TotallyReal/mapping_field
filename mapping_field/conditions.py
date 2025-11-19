@@ -4,9 +4,9 @@ from typing import Dict, List, Optional, Tuple, Type, cast
 
 from mapping_field.associative import AssociativeListFunction
 from mapping_field.field import ExtElement
-from mapping_field.log_utils.tree_loggers import TreeLogger, green, red, yellow
+from mapping_field.log_utils.tree_loggers import TreeLogger, yellow
 from mapping_field.mapping_field import (
-    CompositeElement, CompositeElementFromFunction, MapElement, MapElementProcessor, Var,
+    CompositeElementFromFunction, MapElement, MapElementProcessor, Var, class_simplifier,
 )
 from mapping_field.promises import IsCondition
 from mapping_field.utils.serializable import DefaultSerializable
@@ -100,6 +100,7 @@ class _NotCondition(CompositeElementFromFunction):
 
         return super()._simplify_with_var_values2()
 
+    @class_simplifier
     @staticmethod
     def _to_inversion_simplifier(inversion_func: MapElement) -> Optional[MapElement]:
         assert isinstance(inversion_func, _NotCondition)
@@ -107,7 +108,6 @@ class _NotCondition(CompositeElementFromFunction):
 
 NotCondition = _NotCondition()
 MapElement.inversion = NotCondition
-_NotCondition.register_class_simplifier(_NotCondition._to_inversion_simplifier)
 
 
 def _as_inversion(condition: MapElement) -> Tuple[bool, MapElement]:
@@ -532,6 +532,7 @@ class IntersectionCondition(_ListCondition, MapElementProcessor, op_type=_ListCo
                 func = condition.process_function(func, simplify=simplify)
         return func
 
+    @class_simplifier
     @staticmethod
     def _binary_and_simplify(intersection_cond: MapElement) -> Optional[MapElement]:
         assert isinstance(intersection_cond, IntersectionCondition)
@@ -555,7 +556,6 @@ class IntersectionCondition(_ListCondition, MapElementProcessor, op_type=_ListCo
 
 
 IntersectionCondition.register_class_simplifier(_binary_simplify)
-IntersectionCondition.register_class_simplifier(IntersectionCondition._binary_and_simplify)
 
 MapElement.intersection = lambda cond1, cond2: IntersectionCondition([cond1, cond2]).simplify2()
 
