@@ -6,9 +6,9 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import List, Optional, Union
 
-from colorama import Back, Fore, Style, init
+from colorama import Fore, Style
 
-from mapping_field.serializable import DefaultSerializable
+from mapping_field.utils.serializable import DefaultSerializable
 
 
 def red(x) -> str:

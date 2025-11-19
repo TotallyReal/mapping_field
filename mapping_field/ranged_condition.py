@@ -13,8 +13,8 @@ from mapping_field.mapping_field import (
     CompositeElement, FuncDict, MapElement, MapElementConstant, MapElementProcessor, OutputPromises,
     OutputValidator, Var, VarDict, always_validate_promises,
 )
-from mapping_field.processors import ProcessFailureReason
 from mapping_field.promises import IsCondition, IsIntegral
+from mapping_field.utils.processors import ProcessFailureReason
 
 simplify_logger = TreeLogger(__name__)
 

@@ -8,9 +8,9 @@ from mapping_field.log_utils.tree_loggers import TreeLogger, green
 from mapping_field.mapping_field import (
     CompositeElement, ExtElement, MapElement, MapElementConstant, Var, params_to_maps,
 )
-from mapping_field.processors import ProcessFailureReason
 from mapping_field.ranged_condition import InRange, IntervalRange, RangeCondition, Ranged
-from mapping_field.serializable import DefaultSerializable
+from mapping_field.utils.processors import ProcessFailureReason
+from mapping_field.utils.serializable import DefaultSerializable
 
 logger = TreeLogger(__name__)
 

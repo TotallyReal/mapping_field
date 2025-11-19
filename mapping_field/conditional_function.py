@@ -10,9 +10,9 @@ from mapping_field.mapping_field import (
     CompositeElement, MapElement, MapElementConstant, MapElementProcessor, OutputValidator, Var,
     convert_to_map, params_to_maps,
 )
-from mapping_field.processors import ProcessFailureReason
 from mapping_field.promises import IsCondition, IsIntegral
 from mapping_field.ranged_condition import InRange, IntervalRange, RangeCondition, Ranged
+from mapping_field.utils.processors import ProcessFailureReason
 
 simplify_logger = TreeLogger(__name__)
 

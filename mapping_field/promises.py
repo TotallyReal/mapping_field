@@ -1,7 +1,7 @@
 from typing import Optional
 
 from mapping_field.mapping_field import MapElement, OutputValidator, Var, always_validate_promises
-from mapping_field.serializable import DefaultSerializable
+from mapping_field.utils.serializable import DefaultSerializable
 
 IsCondition = OutputValidator("Condition")
 

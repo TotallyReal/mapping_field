@@ -10,9 +10,9 @@ from typing import (
 
 from mapping_field.field import ExtElement, FieldElement
 from mapping_field.log_utils.tree_loggers import TreeLogger
-from mapping_field.processors import ProcessFailureReason, Processor, ProcessorCollection
-from mapping_field.serializable import DefaultSerializable
-from mapping_field.validators import Context, MultiValidator
+from mapping_field.utils.processors import ProcessFailureReason, Processor, ProcessorCollection
+from mapping_field.utils.serializable import DefaultSerializable
+from mapping_field.utils.validators import Context, MultiValidator
 
 simplify_logger = TreeLogger(__name__)
 

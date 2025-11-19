@@ -8,7 +8,7 @@ from textual.widgets import Static
 from mapping_field.global_config import PROJECT_ROOT, file_path_to_module
 from mapping_field.log_utils.terminal_launcher import ensure_real_terminal
 from mapping_field.log_utils.tree_loggers import TreeContext
-from mapping_field.serializable import Serializable
+from mapping_field.utils.serializable import Serializable
 
 # Launch real terminal if needed
 ensure_real_terminal()

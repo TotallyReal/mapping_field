@@ -1,10 +1,10 @@
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.mapping_field import (
     CompositeElementFromFunction, MapElement, MapElementConstant, Var,
 )
-from mapping_field.processors import ProcessFailureReason
+from mapping_field.utils.processors import ProcessFailureReason
 
 simplify_logger = TreeLogger(__name__)
 

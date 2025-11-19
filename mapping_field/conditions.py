@@ -9,7 +9,7 @@ from mapping_field.mapping_field import (
     always_validate_promises,
 )
 from mapping_field.promises import IsCondition
-from mapping_field.serializable import DefaultSerializable
+from mapping_field.utils.serializable import DefaultSerializable
 
 simplify_logger = TreeLogger(__name__)
 
