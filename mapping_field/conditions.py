@@ -127,6 +127,8 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
 
     AND = 0
     OR = 1
+    left_bracket  = "["
+    right_bracket = "]"
 
     list_classes = [cast(Type["_ListCondition"], None), cast(Type["_ListCondition"], None)]
     op_types = [operator.and_, operator.or_]
@@ -143,7 +145,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
         _ListCondition.list_classes[op_type] = cls
 
         cls.op_type = cls.op_types[op_type]
-        cls.join_delim = cls.join_delims[op_type]
+        cls.op_symbol = cls.join_delims[op_type]
         cls.one_condition = cls.trivials[op_type]
         cls.trivial_element = cls.trivials[op_type]
         cls.zero_condition = cls.trivials[1 - op_type]
@@ -180,18 +182,6 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
     @conditions.setter
     def conditions(self, value: List[MapElement]):
         self.operands = value
-
-    def to_string(self, vars_to_str: Dict[Var, str]):
-        op_symbol = self.__class__.join_delim
-        if hasattr(self, "_binary_flag"):
-            op_symbol = op_symbol * 2
-        op_symbol = f" {op_symbol} "
-        temp = [condition.to_string(vars_to_str) for condition in self.conditions]
-        if not all(isinstance(t, str) for t in temp):
-            for cond in self.conditions:
-                cond.to_string(vars_to_str)
-        conditions_rep = op_symbol.join(condition.to_string(vars_to_str) for condition in self.conditions)
-        return f"[{conditions_rep}]"
 
     def serialization_name_conversion(self):
         return {"simplified": self._simplify_with_var_values2}

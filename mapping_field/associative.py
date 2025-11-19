@@ -13,6 +13,8 @@ class AssociativeListFunction(CompositeElement):
     trivial_element = None      # x @ trivial = x
     final_element   = None      # x @ final   = final
     op_symbol       = "@"
+    left_bracket    = "("
+    right_bracket   = ")"
 
     @classmethod
     def unpack_list(cls, elements: List[MapElement]) -> List[MapElement]:
@@ -37,12 +39,13 @@ class AssociativeListFunction(CompositeElement):
         self._binary_special = False
 
     def to_string(self, vars_to_str: Dict[Var, str]):
-        op_symbol = self.__class__.op_symbol
+        cls = self.__class__
+        op_symbol = cls.op_symbol
         if self._binary_special:
             op_symbol = op_symbol * 2
         op_symbol = f" {op_symbol} "
         operands_str = op_symbol.join(operand.to_string(vars_to_str) for operand in self.operands)
-        return f"({operands_str})"
+        return f"{cls.left_bracket}{operands_str}{cls.right_bracket}"
 
     def _simplify_with_var_values2(self) -> Optional[MapElement]:
         if self._binary_special:
