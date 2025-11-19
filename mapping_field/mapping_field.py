@@ -418,11 +418,6 @@ class MapElement:
         """
         return ProcessFailureReason("Trivial empty implementation", trivial=True)
 
-    def _simplify_caller_function2(
-        self, function: "MapElement", position: int, var_dict: VarDict
-    ) -> Optional["MapElement"]:
-        return None
-
     @classmethod
     def register_class_simplifier(cls, simplifier: ClassSimplifier):
         MapElement._simplifier.register_class_processor(cls, simplifier)
