@@ -6,7 +6,6 @@ from mapping_field.mapping_field import (
     CompositionFunction, Func, MapElement, MapElementConstant, MapElementFromFunction, NamedFunc,
     Var, CompositeElementFromFunction, CompositeElement,
 )
-from mapping_field.processors import param_forgetful_function
 from mapping_field.tests.utils import DummyMap
 
 # ----------------- var tests -----------------
@@ -124,12 +123,10 @@ class DummyMapWithVar(CompositeElement):
         return isinstance(other, DummyMap) and other.value == self.value
 
     # Override when needed
-    @param_forgetful_function
     def _simplify_with_var_values2(self) -> Optional[MapElement]:
         return MapElementConstant.zero if (self.operands[0] == 0) else None
 
     @staticmethod
-    @param_forgetful_function
     def _dummy_operand_simplifier(self) -> Optional[MapElement]:
         operand = self.operands[0]
         if hasattr(operand, "_dummy_operand_op"):
@@ -252,7 +249,6 @@ def test_double_simplification():
             super().__init__()
             self.simplified_counter = 0
 
-        @param_forgetful_function
         def _simplify_with_var_values2(self) -> Optional[MapElement]:
             self.simplified_counter += 1
             return MapElementConstant(5)

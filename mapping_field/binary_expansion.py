@@ -9,7 +9,7 @@ from mapping_field.log_utils.tree_loggers import TreeLogger, red
 from mapping_field.mapping_field import (
     ExtElement, MapElement, MapElementConstant, Var, VarDict, CompositeElement, convert_to_map,
 )
-from mapping_field.processors import ProcessFailureReason, param_forgetful_function
+from mapping_field.processors import ProcessFailureReason
 from mapping_field.promises import IsCondition, IsIntegral
 from mapping_field.ranged_condition import BoolVar, InRange, IntervalRange, RangeCondition
 from mapping_field.serializable import DefaultSerializable
@@ -555,7 +555,6 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
 
     # <editor-fold desc=" ------------------------ Simplifiers ------------------------ ">
 
-    @param_forgetful_function
     def _simplify_with_var_values2(self) -> Optional[MapElement]:
         elem, constant = self.split_constant()
         if constant == 0:
@@ -566,7 +565,6 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
         return Linear(1, elem, constant.evaluate())
 
     @staticmethod
-    @param_forgetful_function
     def transform_range(range_cond: MapElement) -> Optional[MapElement]:
         """
         Simplify an interval RangedCondition over a binary expansion.
@@ -641,7 +639,6 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
             )
 
     @staticmethod
-    @param_forgetful_function
     def _union_with_range_over_binary_expansion(union_elem: MapElement) -> Optional[MapElement]:
         """
         If one of the factors in a union operation is a RangedCondition over a BinaryExpansion, try to write the union
@@ -671,7 +668,6 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
     #       After the big refactorzation, delete one of them.
 
     @staticmethod
-    @param_forgetful_function
     def _binary_combination_to_expansion_simplifier(
         bin_comb: MapElement
     ) -> Optional[Union[MapElement, ProcessFailureReason]]:

@@ -11,7 +11,7 @@ from typing import (
 from mapping_field.field import ExtElement, FieldElement
 from mapping_field.log_utils.tree_loggers import TreeAction, TreeLogger, cyan, green, magenta, red
 from mapping_field.processors import (
-    ParamProcessor, ProcessFailureReason, Processor, ProcessorCollection, param_forgetful_function,
+    ProcessFailureReason, Processor, ProcessorCollection,
 )
 from mapping_field.serializable import DefaultSerializable
 from mapping_field.validators import Context, MultiValidator
@@ -105,9 +105,7 @@ def params_to_maps(f):
 # 4. If not, check is y0 knows how to simplify H (y0.special_simplification(H, position=1, x0)).
 # 5. If no simplification was found, save as generic (Composition) H(x0, y0).
 
-# TODO: find how to switch the order
-ElemSimplifier = ParamProcessor[VarDict, "MapElement"]  # (VarDict)               -> Optional['MapElement']
-ClassSimplifier = Processor["MapElement", VarDict]  # ('MapElement', VarDict) -> Optional['MapElement']
+ClassSimplifier = Processor["MapElement"]  # ('MapElement') -> Optional['MapElement']
 
 
 class OutputValidator(MultiValidator["MapElement", Context], Generic[Context]):
@@ -412,7 +410,7 @@ class MapElement:
     def simplify2(self) -> "MapElement":
         return self._simplify2() or self
 
-    _simplifier = ProcessorCollection["MapElement", VarDict]()
+    _simplifier = ProcessorCollection["MapElement"]()
 
     def _simplify2(self, var_dict: Optional[VarDict] = None) -> Optional["MapElement"]:
         if var_dict is None:
@@ -430,7 +428,7 @@ class MapElement:
             started_process_here = True
             self._in_simplification_process = True
 
-        simplified_version = MapElement._simplifier.full_process(self, var_dict)
+        simplified_version = MapElement._simplifier.full_process(self)
         if started_process_here:
             self._in_simplification_process = False
 
@@ -450,7 +448,6 @@ class MapElement:
         return self._simplified_version is self
 
     # Override when needed
-    @param_forgetful_function
     def _simplify_with_var_values2(self) -> Optional[Union["MapElement", ProcessFailureReason]]:
         """
         --------------- Override when needed ---------------
@@ -474,9 +471,6 @@ class MapElement:
     @classmethod
     def register_class_simplifier(cls, simplifier: ClassSimplifier):
         MapElement._simplifier.register_class_processor(cls, simplifier)
-
-    def register_simplifier(self, simplifier: ElemSimplifier):
-        MapElement._simplifier.register_elem_processor(self, simplifier)
 
     # </editor-fold>
 
@@ -768,7 +762,6 @@ class CompositeElement(MapElement):
         return self.copy_with_operands(operands=new_operands)
 
     @staticmethod
-    @param_forgetful_function
     def _entries_simplifier(elem: 'CompositeElement') -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(elem, CompositeElement)
         simplified_entries = [entry._simplify2(None) for entry in elem.operands]
@@ -873,7 +866,6 @@ class Var(MapElement, DefaultSerializable):
     def __hash__(self):
         return hash(("Var", self.name))
 
-    @param_forgetful_function
     def _simplify_with_var_values2(self) -> Optional[Union[MapElement, ProcessFailureReason]]:
         return None
 
@@ -1215,7 +1207,6 @@ class CompositeElementFromFunction(CompositeElement):
         super().__init__(operands=operands, name=name, simplified=simplified)
 
     # Override when needed
-    @param_forgetful_function
     def _simplify_with_var_values2(self) -> Optional[MapElement]:
 
         values = [operand.evaluate() for operand in self.operands]

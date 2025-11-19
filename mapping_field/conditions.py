@@ -9,7 +9,6 @@ from mapping_field.mapping_field import (
     CompositionFunction, MapElement, MapElementProcessor, Var, VarDict, always_validate_promises,
     CompositeElement, CompositeElementFromFunction,
 )
-from mapping_field.processors import param_forgetful_function
 from mapping_field.promises import IsCondition
 from mapping_field.serializable import DefaultSerializable
 
@@ -92,7 +91,6 @@ class _NotCondition(CompositeElementFromFunction):
     def to_string(self, vars_to_str: Dict[Var, str]):
         return f"~({self.operand.to_string(vars_to_str)})"
 
-    @param_forgetful_function
     def _simplify_with_var_values2(self) -> Optional[MapElement]:
         operand = self.operand
 
@@ -103,10 +101,9 @@ class _NotCondition(CompositeElementFromFunction):
 
         # TODO: simplify formulas like ~(a and ~b) -> ~a or b, which have fewer "not"s ?
 
-        return super()._simplify_with_var_values2(None)
+        return super()._simplify_with_var_values2()
 
     @staticmethod
-    @param_forgetful_function
     def _to_inversion_simplifier(inversion_func: MapElement) -> Optional[MapElement]:
         assert isinstance(inversion_func, _NotCondition)
         return inversion_func.operand.invert()
@@ -437,7 +434,6 @@ class _ListCondition(CompositeElement, DefaultSerializable):
             new_cls_condition = cls(prod_0_conditions)
             return rev_cls([new_cls_condition, sp_condition])
 
-    @param_forgetful_function
     def _simplify_with_var_values2(self) -> Optional[MapElement]:
         if hasattr(self, "_binary_flag"):
             simplify_logger.log("Has binary flag - avoid simplifying here.")
@@ -509,7 +505,6 @@ class _ListCondition(CompositeElement, DefaultSerializable):
         return None
 
 
-@param_forgetful_function
 def _binary_simplify(elem: MapElement) -> Optional[MapElement]:
     assert isinstance(elem, _ListCondition)
     if len(elem.conditions) != 2:
@@ -551,7 +546,6 @@ class IntersectionCondition(_ListCondition, MapElementProcessor, op_type=_ListCo
         return func
 
     @staticmethod
-    @param_forgetful_function
     def _binary_and_simplify(intersection_cond: MapElement) -> Optional[MapElement]:
         assert isinstance(intersection_cond, IntersectionCondition)
         if len(intersection_cond.conditions) != 2:

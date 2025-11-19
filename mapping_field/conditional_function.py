@@ -10,7 +10,7 @@ from mapping_field.mapping_field import (
     FuncDict, MapElement, MapElementConstant, MapElementProcessor, OutputValidator, Var, VarDict,
     convert_to_map, params_to_maps, CompositeElement,
 )
-from mapping_field.processors import ProcessFailureReason, param_forgetful_function
+from mapping_field.processors import ProcessFailureReason
 from mapping_field.promises import IsCondition, IsIntegral
 from mapping_field.ranged_condition import BoolVar, InRange, RangeCondition, Ranged, IntervalRange
 
@@ -65,7 +65,6 @@ class SingleRegion(CompositeElement, Ranged):
         yield self.condition
         yield self.function
 
-    @param_forgetful_function
     def _simplify_with_var_values2(self) -> Optional[MapElement]:
         if not isinstance(self.condition, MapElementProcessor):
             return None
@@ -204,7 +203,6 @@ class ConditionalFunction(CompositeElement, Ranged):
 
     # <editor-fold desc=" ------------------------ Simplifiers and Validators ------------------------ ">
 
-    @param_forgetful_function
     def _simplify_with_var_values2(self) -> Optional[MapElement]:
         # TODO: combine this simplification with the _ListCondition simplification for a general simplification of
         #       a commutative associative binary function.
@@ -270,7 +268,6 @@ class ConditionalFunction(CompositeElement, Ranged):
         return ConditionalFunction(regions) if is_simpler else None
 
     @staticmethod
-    @param_forgetful_function
     def mult_condition_by_element(element: MapElement) -> Optional[MapElement]:
         assert isinstance(element, _Mult)
         a, b = element.operands
@@ -288,7 +285,6 @@ class ConditionalFunction(CompositeElement, Ranged):
         return ConditionalFunction([(a, b), (~a, MapElementConstant.zero)])
 
     @staticmethod
-    @param_forgetful_function
     def new_assignment_simplify(ranged_cond: MapElement) -> Optional[MapElement]:
         assert isinstance(ranged_cond, RangeCondition)
         cond_function = ranged_cond.function
@@ -299,7 +295,6 @@ class ConditionalFunction(CompositeElement, Ranged):
         return UnionCondition([condition & RangeCondition(func, f_range) for condition, func in cond_function.regions])
 
     @staticmethod
-    @param_forgetful_function
     def _bool_var_simplifier(
         map_elem: MapElement
     ) -> Optional[Union[MapElement, ProcessFailureReason]]:

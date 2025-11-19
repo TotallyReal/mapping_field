@@ -14,7 +14,7 @@ from mapping_field.mapping_field import (
     CompositionFunction, FuncDict, MapElement, MapElementConstant, MapElementProcessor,
     OutputPromises, OutputValidator, Var, VarDict, always_validate_promises, CompositeElement,
 )
-from mapping_field.processors import ProcessFailureReason, param_forgetful_function
+from mapping_field.processors import ProcessFailureReason
 from mapping_field.promises import IsCondition, IsIntegral
 
 simplify_logger = TreeLogger(__name__)
@@ -336,7 +336,6 @@ class InRange(OutputValidator[IntervalRange]):
         return self.range.contains(f_range)
 
     @staticmethod
-    @param_forgetful_function
     def _arithmetic_op_range_simplifier(
         elem: MapElement
     ) -> Optional[Union[MapElement, ProcessFailureReason]]:
@@ -363,7 +362,6 @@ class InRange(OutputValidator[IntervalRange]):
         return elem
 
 
-@param_forgetful_function
 def _arithmetic_op_integral_simplifier(
     elem: MapElement
 ) -> Optional[Union[MapElement, ProcessFailureReason]]:
@@ -487,7 +485,6 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
     # <editor-fold desc=" ======= Simplifiers ======= ">
 
-    @param_forgetful_function
     def _simplify_with_var_values2(self) -> Optional[MapElement]:
         if self.range.is_empty:
             return FalseCondition
@@ -496,7 +493,6 @@ class RangeCondition(CompositeElement, MapElementProcessor):
         return None
 
     @staticmethod
-    @param_forgetful_function
     def _evaluated_simplifier(element: MapElement) -> Optional[MapElement]:
         assert isinstance(element, RangeCondition)
         value = element.function.evaluate()
@@ -505,7 +501,6 @@ class RangeCondition(CompositeElement, MapElementProcessor):
         return TrueCondition if element.range.contains(value) else FalseCondition
 
     @staticmethod
-    @param_forgetful_function
     def _condition_in_range_simplifier(element: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
         # TODO: add tests.
         #       I don't like this step too much. If I start with (x << 1) for bool var, it will become just x.
@@ -523,7 +518,6 @@ class RangeCondition(CompositeElement, MapElementProcessor):
         return None
 
     @staticmethod
-    @param_forgetful_function
     def _ranged_promise_simplifier(
         range_cond: MapElement
     ) -> Optional[Union[MapElement, ProcessFailureReason]]:
@@ -551,7 +545,6 @@ class RangeCondition(CompositeElement, MapElementProcessor):
         return None
 
     @staticmethod
-    @param_forgetful_function
     def _integral_simplifier(
         range_cond: MapElement
     ) -> Optional[Union[MapElement, ProcessFailureReason]]:
@@ -564,7 +557,6 @@ class RangeCondition(CompositeElement, MapElementProcessor):
         return ProcessFailureReason("Function is not Integral", trivial=True)
 
     @staticmethod
-    @param_forgetful_function
     def _linear_combination_simplifier(
         element: MapElement
     ) -> Optional[Union[MapElement, ProcessFailureReason]]:
@@ -589,7 +581,6 @@ class RangeCondition(CompositeElement, MapElementProcessor):
         return RangeCondition(elem1, f_range)
 
     @staticmethod
-    @param_forgetful_function
     def _in_range_arithmetic_simplification(ranged_cond: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(ranged_cond, RangeCondition)
         elem = ranged_cond.function
@@ -680,7 +671,6 @@ class BoolVar(Var):
         self.promises.add_promise(InRange(IntervalRange[0, 1]))
         self.promises.add_promise(IsCondition)
 
-@param_forgetful_function
 def two_bool_vars_simplifier(elem: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
     # TODO: make sure that I don't call has_promise for an element that I am trying to simplify, since it might
     #       call simplify inside it, and then we ar off to the infinite loop races.
@@ -754,7 +744,6 @@ def two_bool_vars_simplifier(elem: MapElement) -> Optional[Union[MapElement, Pro
 
     return None
 
-@param_forgetful_function
 def mult_binary_assignment_by_numbers(element: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
     """
     change multiplications of (x << 1) * c into c * x for boolean variables x.
