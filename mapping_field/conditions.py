@@ -7,7 +7,7 @@ from mapping_field.field import ExtElement
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red, yellow
 from mapping_field.mapping_field import (
     CompositionFunction, MapElement, MapElementProcessor, Var, VarDict, always_validate_promises,
-    CompositeElement,
+    CompositeElement, CompositeElementFromFunction,
 )
 from mapping_field.promises import IsCondition
 from mapping_field.serializable import DefaultSerializable
@@ -68,55 +68,57 @@ FalseCondition = BinaryCondition(False)
 
 
 @always_validate_promises
-class _NotCondition(Condition, _ArithmeticMapFromFunction):
+class _NotCondition(CompositeElementFromFunction):
 
-    def __init__(self):
-        super().__init__("Not", lambda a: 1 - a)
-        self.promises.add_promise(IsCondition)
+    auto_promises = [IsCondition]
+
+    def __init__(self, operand: Optional[MapElement] = None):
+        operands = [operand] if operand is not None else None
+        super().__init__(operands=operands, name="Not", function=lambda a: 1 - a)
+
         for v in self.vars:
             # TODO: Maybe switch directly to BoolVars?
             v.promises.add_promise(IsCondition)
 
+    @property
+    def operand(self) -> MapElement:
+        return self.operands[0]
+
+    @operand.setter
+    def operand(self, value: MapElement):
+        self.operands[0] = value
+
     def to_string(self, vars_to_str: Dict[Var, str]):
-        entries = [vars_to_str.get(v, v) for v in self.vars]
-        return f"~({entries[0]})"
+        return f"~({self.operand.to_string(vars_to_str)})"
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
-        entries = [var_dict.get(v, v) for v in self.vars]
+        operand = self.operand
 
-        if isinstance(entries[0], BinaryCondition):
-            return entries[0].invert()
+        if isinstance(operand, BinaryCondition):
+            return operand.invert()
+        if isinstance(operand, _NotCondition):
+            return operand.operand
 
-        if not isinstance(entries[0], CompositionFunction):
-            return super()._simplify_with_var_values2(var_dict)
-        function = entries[0].function
-        comp_entries = entries[0].entries
-        if function == NotCondition:
-            return comp_entries[0]
-        # TODO: simplify formulas like ~(a and ~b) -> ~a or b, which have fewer "not"s.
+        # TODO: simplify formulas like ~(a and ~b) -> ~a or b, which have fewer "not"s ?
 
         return super()._simplify_with_var_values2(var_dict)
 
-    def simplify(self):
-        raise NotImplementedError("Delete this function")
-
     @staticmethod
-    def _to_inversion_simplifier(var_dict: VarDict) -> Optional[MapElement]:
-        entries = [var_dict[v] for v in NotCondition.vars]
-        return entries[0].invert()
+    def _to_inversion_simplifier(inversion_func: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+        assert isinstance(inversion_func, _NotCondition)
+        return inversion_func.operand.invert()
 
 NotCondition = _NotCondition()
-NotCondition.register_simplifier(NotCondition._to_inversion_simplifier)
-
 MapElement.inversion = NotCondition
+_NotCondition.register_class_simplifier(_NotCondition._to_inversion_simplifier)
 
 
 def _as_inversion(condition: MapElement) -> Tuple[bool, MapElement]:
     """
     return (has inversion, of elem)
     """
-    if isinstance(condition, CompositionFunction) and condition.function == NotCondition:
-        return True, condition.entries[0]
+    if isinstance(condition, _NotCondition):
+        return True, condition.operand
     return False, condition
 
 
