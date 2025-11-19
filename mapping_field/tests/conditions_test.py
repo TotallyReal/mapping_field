@@ -96,29 +96,29 @@ def test_post_generation_independence_not():
 def test_post_generation_independence_and():
     x, y, z = BoolVar("x"), BoolVar("y"), BoolVar("z")
     func = x & y
-    assert str(func) == "[x & y]"
+    assert str(func) == "[y & x]"
 
     # Calling the function
     assigned_func = func({x: z})
 
     assert assigned_func != func
-    assert str(assigned_func) == "[z & y]"
+    assert str(assigned_func) == "[y & z]"
     # Some indication that func is frozen
-    assert str(func) == "[x & y]"
+    assert str(func) == "[y & x]"
 
 
 def test_post_generation_independence_or():
     x, y, z = BoolVar("x"), BoolVar("y"), BoolVar("z")
     func = x | y
-    assert str(func) == "[x | y]"
+    assert str(func) == "[y | x]"
 
     # Calling the function
     assigned_func = func({x: z})
 
     assert assigned_func != func
-    assert str(assigned_func) == "[z | y]"
+    assert str(assigned_func) == "[y | z]"
     # Some indication that func is frozen
-    assert str(func) == "[x | y]"
+    assert str(func) == "[y | x]"
 
 
 #       ╭─────────────────────────────────────────────────╮

@@ -7,6 +7,7 @@ from mapping_field.field import ExtElement
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red, yellow
 from mapping_field.mapping_field import (
     CompositionFunction, MapElement, MapElementProcessor, Var, VarDict, always_validate_promises,
+    CompositeElement,
 )
 from mapping_field.promises import IsCondition
 from mapping_field.serializable import DefaultSerializable
@@ -122,7 +123,7 @@ def _as_inversion(condition: MapElement) -> Tuple[bool, MapElement]:
 # </editor-fold>
 
 
-class _ListCondition(Condition, DefaultSerializable):
+class _ListCondition(CompositeElement, DefaultSerializable):
     # For intersection \ union of conditions
 
     AND = 0
@@ -147,34 +148,48 @@ class _ListCondition(Condition, DefaultSerializable):
         setattr(cls, cls.method_names[op_type], cls.op)
         setattr(cls, cls.method_names[1 - op_type], cls.rev_op)
 
-    def __init__(self, conditions: List[MapElement], simplified: bool = False):
+    @classmethod
+    def _unpack_list(cls, elements: List[MapElement]) -> List[MapElement]:
+        elements = elements.copy()
+        all_elements = []
+
+        while len(elements)>0:
+            element = elements.pop()
+            if isinstance(element, cls):
+                elements.extend(element.operands)
+                continue
+            all_elements.append(element)
+        return all_elements
+
+    def __init__(self, operands: List[MapElement], simplified: bool = False):
         super().__init__(
-            list(set(sum([condition.vars for condition in conditions],[]))),
+            operands=self.__class__._unpack_list(operands),
             simplified=simplified
         )
-        self.promises.add_promise(IsCondition)
-        for condition in conditions:
-            assert condition.has_promise(IsCondition)
-        self.conditions: List[MapElement] = []
 
-        conditions = conditions.copy()
-        cls = self.__class__
-        index = 0
-        while index < len(conditions):
-            condition = conditions[index]
-            index += 1
-            if isinstance(condition, cls):
-                conditions.extend(condition.conditions)
-                continue
-            self.conditions.append(condition)
+        self.promises.add_promise(IsCondition)
+        for operand in operands:
+            assert operand.has_promise(IsCondition)
+
+    @property
+    def conditions(self) -> List[MapElement]:
+        return self.operands
+
+    @conditions.setter
+    def conditions(self, value: List[MapElement]):
+        self.operands = value
 
     def to_string(self, vars_to_str: Dict[Var, str]):
-        entries = [vars_to_str.get(v, v) for v in self.vars]
-        delim = self.__class__.join_delim
+        op_symbol = self.__class__.join_delim
         if hasattr(self, "_binary_flag"):
-            delim = delim * 2
-        delim = f" {delim} "
-        conditions_rep = delim.join(condition.to_string(vars_to_str) for condition in self.conditions)
+            op_symbol = op_symbol * 2
+        op_symbol = f" {op_symbol} "
+        temp = [condition.to_string(vars_to_str) for condition in self.conditions]
+        if not all(isinstance(t, str) for t in temp):
+            for cond in self.conditions:
+                cond.to_string(vars_to_str)
+            print('here')
+        conditions_rep = op_symbol.join(condition.to_string(vars_to_str) for condition in self.conditions)
         return f"[{conditions_rep}]"
 
     def serialization_name_conversion(self):
