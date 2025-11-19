@@ -172,6 +172,11 @@ class ProcessorCollection(Generic[Elem]):
             # TODO:
             #   Should I add a mechanism that prevent running the same process that made the change in the
             #   last loop?
+            if elem in self.final_version:
+                result = self.final_version[elem]
+                was_processed = (result is not original_elem)
+                elem = result
+                break
             result = self.one_step_process(elem)
             if result is None:
                 break

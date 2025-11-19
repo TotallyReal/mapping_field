@@ -265,3 +265,32 @@ def test_double_simplification():
     assert dummy != 5
     assert dummy.simplify2() == 5
     assert dummy.simplified_counter == 1  # did not go up to 2
+
+
+def test_double_simplification_assignment():
+
+    class SimplifiedDummyMap(DummyMap):
+        def __init__(self):
+            super().__init__()
+            self.simplified_counter = 0
+
+        def _simplify_with_var_values2(self) -> Optional[MapElement]:
+            self.simplified_counter += 1
+            return None
+
+    dummy = SimplifiedDummyMap()
+
+    assert dummy.simplified_counter == 0
+
+    dummy.simplify2()
+
+    assert dummy.simplified_counter == 1
+
+    function = MapElement.multiplication(MapElementConstant.one, dummy, simplify = False)
+    function.simplify2()
+
+    # The simplification process here is :
+    #   1 * dummy   ->   dummy  ->   simplified
+    # Since dummy was encountered in the middle, in previous versions in caused it to be simplified again.
+    # Adding this test here to make sure it doesn't happen again
+    assert dummy.simplified_counter == 1
