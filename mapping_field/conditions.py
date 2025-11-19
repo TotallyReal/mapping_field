@@ -2,6 +2,7 @@ import operator
 
 from typing import Dict, List, Optional, Tuple, Type, cast
 
+from mapping_field.associative import AssociativeListFunction
 from mapping_field.field import ExtElement
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red, yellow
 from mapping_field.mapping_field import (
@@ -121,7 +122,7 @@ def _as_inversion(condition: MapElement) -> Tuple[bool, MapElement]:
 # </editor-fold>
 
 
-class _ListCondition(CompositeElement, DefaultSerializable):
+class _ListCondition(AssociativeListFunction, DefaultSerializable):
     # For intersection \ union of conditions
 
     AND = 0
@@ -144,7 +145,9 @@ class _ListCondition(CompositeElement, DefaultSerializable):
         cls.op_type = cls.op_types[op_type]
         cls.join_delim = cls.join_delims[op_type]
         cls.one_condition = cls.trivials[op_type]
+        cls.trivial_element = cls.trivials[op_type]
         cls.zero_condition = cls.trivials[1 - op_type]
+        cls.final_element = cls.trivials[1 - op_type]
         setattr(cls, cls.method_names[op_type], cls.op)
         setattr(cls, cls.method_names[1 - op_type], cls.rev_op)
 
@@ -167,7 +170,6 @@ class _ListCondition(CompositeElement, DefaultSerializable):
             simplified=simplified
         )
 
-        self.promises.add_promise(IsCondition)
         for operand in operands:
             assert operand.has_promise(IsCondition)
 
@@ -188,7 +190,6 @@ class _ListCondition(CompositeElement, DefaultSerializable):
         if not all(isinstance(t, str) for t in temp):
             for cond in self.conditions:
                 cond.to_string(vars_to_str)
-            print('here')
         conditions_rep = op_symbol.join(condition.to_string(vars_to_str) for condition in self.conditions)
         return f"[{conditions_rep}]"
 
@@ -430,75 +431,75 @@ class _ListCondition(CompositeElement, DefaultSerializable):
             new_cls_condition = cls(prod_0_conditions)
             return rev_cls([new_cls_condition, sp_condition])
 
-    def _simplify_with_var_values2(self) -> Optional[MapElement]:
-        if hasattr(self, "_binary_flag"):
-            simplify_logger.log("Has binary flag - avoid simplifying here.")
-            return None
-        if MapElement._simplifier.final_version.get(self, None) is self:
-            return None
-
-        cls = self.__class__
-
-        final_conditions = []
-        conditions = self.conditions.copy()
-
-        is_whole_simpler = False
-
-        for condition in conditions:
-
-            simplified_condition = condition._simplify2()
-            if simplified_condition is not None:
-                is_whole_simpler = True
-            condition = simplified_condition or condition
-
-            if condition is cls.zero_condition:
-                return cls.zero_condition
-
-            if condition is cls.one_condition:
-                is_whole_simpler = True
-                continue
-
-            if isinstance(condition, cls):
-                # unpack list condition of the same type
-                is_whole_simpler = True
-                conditions.extend(condition.conditions)
-                continue
-
-            # Check if this new condition intersects in a special way with an existing condition.
-            # Each time this loop repeats itself, the conditions array's size must decrease by 1, so it cannot
-            # continue forever.
-            for existing_condition in final_conditions:
-                simplify_logger.log(
-                    f"Trying to combine {red(condition)} {self.__class__.join_delim} with existing {red(existing_condition)}",
-                )
-                # prod_cond = AndCondition(existing_condition, condition, simplify=False)._simplify2()
-                # prod_cond = cls._op_between(existing_condition, condition)
-                binary_op = cls([existing_condition, condition])
-                binary_op._binary_flag = True
-                prod_cond = binary_op._simplify2()
-
-                if prod_cond is not None:
-                    simplify_logger.log(
-                        f"Combined: {red(condition)} {cls.join_delim} {red(existing_condition)}  =>  {green(prod_cond)}",
-                    )
-                    is_whole_simpler = True
-                    final_conditions = [cond for cond in final_conditions if (cond is not existing_condition)]
-                    conditions.append(prod_cond)
-                    break
-            else:
-                # new condition cannot be intersected in a special way
-                final_conditions.append(condition)
-
-        if len(final_conditions) == 0:
-            return self.__class__.one_condition
-
-        if len(final_conditions) == 1:
-            return final_conditions[0]
-
-        if is_whole_simpler:
-            return cls(final_conditions, simplified=True)
-
-        return None
+    # def _simplify_with_var_values2(self) -> Optional[MapElement]:
+    #     if hasattr(self, "_binary_flag"):
+    #         simplify_logger.log("Has binary flag - avoid simplifying here.")
+    #         return None
+    #     if MapElement._simplifier.final_version.get(self, None) is self:
+    #         return None
+    #
+    #     cls = self.__class__
+    #
+    #     final_conditions = []
+    #     conditions = self.conditions.copy()
+    #
+    #     is_whole_simpler = False
+    #
+    #     for condition in conditions:
+    #
+    #         simplified_condition = condition._simplify2()
+    #         if simplified_condition is not None:
+    #             is_whole_simpler = True
+    #         condition = simplified_condition or condition
+    #
+    #         if condition is cls.zero_condition:
+    #             return cls.zero_condition
+    #
+    #         if condition is cls.one_condition:
+    #             is_whole_simpler = True
+    #             continue
+    #
+    #         if isinstance(condition, cls):
+    #             # unpack list condition of the same type
+    #             is_whole_simpler = True
+    #             conditions.extend(condition.conditions)
+    #             continue
+    #
+    #         # Check if this new condition intersects in a special way with an existing condition.
+    #         # Each time this loop repeats itself, the conditions array's size must decrease by 1, so it cannot
+    #         # continue forever.
+    #         for existing_condition in final_conditions:
+    #             simplify_logger.log(
+    #                 f"Trying to combine {red(condition)} {self.__class__.join_delim} with existing {red(existing_condition)}",
+    #             )
+    #             # prod_cond = AndCondition(existing_condition, condition, simplify=False)._simplify2()
+    #             # prod_cond = cls._op_between(existing_condition, condition)
+    #             binary_op = cls([existing_condition, condition])
+    #             binary_op._binary_flag = True
+    #             prod_cond = binary_op._simplify2()
+    #
+    #             if prod_cond is not None:
+    #                 simplify_logger.log(
+    #                     f"Combined: {red(condition)} {cls.join_delim} {red(existing_condition)}  =>  {green(prod_cond)}",
+    #                 )
+    #                 is_whole_simpler = True
+    #                 final_conditions = [cond for cond in final_conditions if (cond is not existing_condition)]
+    #                 conditions.append(prod_cond)
+    #                 break
+    #         else:
+    #             # new condition cannot be intersected in a special way
+    #             final_conditions.append(condition)
+    #
+    #     if len(final_conditions) == 0:
+    #         return self.__class__.one_condition
+    #
+    #     if len(final_conditions) == 1:
+    #         return final_conditions[0]
+    #
+    #     if is_whole_simpler:
+    #         return cls(final_conditions, simplified=True)
+    #
+    #     return None
 
 
 def _binary_simplify(elem: MapElement) -> Optional[MapElement]:

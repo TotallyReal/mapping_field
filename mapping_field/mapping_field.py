@@ -219,6 +219,9 @@ class MapElement:
         self.name = name or self.__class__.__name__
         self._set_variables(variables)
         self.promises = OutputPromises() if promises is None else promises
+        if simplified:
+            self._simplifier.set_final_version(self, self)
+
 
     def set_var_order(self, variables: List["Var"]):
         """
