@@ -19,6 +19,23 @@ simplify_logger = TreeLogger(__name__)
 
 class SingleRegion(CompositeElement, Ranged):
 
+    @classmethod
+    def of(cls, element):
+        if isinstance(element, SingleRegion):
+            return element
+        if isinstance(element, tuple) and len(element)==2:
+            condition = convert_to_map(element[0])
+            function = convert_to_map(element[1])
+            if (
+                    isinstance(function, MapElement) and
+                    isinstance(condition, MapElement) and
+                    condition.has_promise(IsCondition)
+            ):
+                return SingleRegion(condition, function)
+
+        return None
+
+
     def __init__(self, condition: MapElement, function: MapElement):
         assert condition.has_promise(IsCondition)
         # TODO: Transfer promises from the function to this SingleRegion?
@@ -64,7 +81,7 @@ class SingleRegion(CompositeElement, Ranged):
         return SingleRegion(self.condition, function)
 
 
-class ConditionalFunction(MapElement, Ranged):
+class ConditionalFunction(CompositeElement, Ranged):
     """
     A conditional function of the form:
        1_(cond_1) * f_1 + 1_(cond_2) * f_2 + ... + 1_(cond_n) * f_n
@@ -78,17 +95,20 @@ class ConditionalFunction(MapElement, Ranged):
         return ConditionalFunction([(TrueCondition, map)])
 
     def __init__(self, regions: List[Union[Tuple[MapElement, MapElement], SingleRegion]]):
-        for condition, _ in regions:
-            assert condition.has_promise(IsCondition)
-        self.regions = []
-        for region in regions:
-            if isinstance(region, SingleRegion):
-                self.regions.append(region)
-            else:
-                self.regions.append(SingleRegion(region[0], convert_to_map(region[1])))
-        variables = sum([region.vars for region in self.regions], [])
+        true_regions = [SingleRegion.of(region) for region in regions]
+        assert None not in true_regions, f'Could not convert the regions {regions} into SingleRegions.'
 
-        super().__init__(list(set(variables)))
+        super().__init__(operands=true_regions)
+
+    @property
+    def regions(self) -> List[SingleRegion]:
+        return self.operands
+
+    @regions.setter
+    def regions(self, value: List[MapElement]):
+        assert all(isinstance(region, SingleRegion) for region in value)
+        self.operands = value
+
 
     def to_string(self, vars_to_str: Dict[Var, str]):
         # TODO: fix this printing function
@@ -181,13 +201,6 @@ class ConditionalFunction(MapElement, Ranged):
 
     # </editor-fold>
 
-    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
-        if len(var_dict) == 0 and len(func_dict) == 0:
-            return self
-
-        regions = [region._call_with_dict(var_dict, func_dict) for region in self.regions]
-        return ConditionalFunction(regions)
-
     # <editor-fold desc=" ------------------------ Simplifiers and Validators ------------------------ ">
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
@@ -239,8 +252,9 @@ class ConditionalFunction(MapElement, Ranged):
                     simplify_logger.log(f"They are combinable under the function {green(comb_elem)}")
                     is_simpler = True
                     condition_union = prev_region.condition | region.condition
-                    condition_union = condition_union.simplify2()
-                    regions[i] = SingleRegion(condition_union, comb_elem)
+                    combined_region = SingleRegion(condition=condition_union, function=comb_elem)
+                    combined_region = combined_region.simplify2()
+                    regions[i] = combined_region
                     break
             else:
                 regions.append(region)
