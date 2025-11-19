@@ -4,7 +4,7 @@ import operator
 from abc import abstractmethod
 from typing import Dict, Optional, Tuple, Union
 
-from mapping_field.arithmetics import _Add, _as_combination, _Mult, _Sub
+from mapping_field.arithmetics import AssociativeAddition, _Add, _as_combination, _Mult, _Sub
 from mapping_field.conditions import (
     BinaryCondition, FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
 )
@@ -339,7 +339,7 @@ class InRange(OutputValidator[IntervalRange]):
         elem: MapElement
     ) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(elem, (_Add, _Sub))
-        op = operator.add if isinstance(elem, _Add) else operator.sub
+        op = operator.sub if isinstance(elem, _Sub) else operator.add
 
         elem1, elem2 = elem.operands
         f_range1 = InRange.get_range_of(elem1)
@@ -360,7 +360,7 @@ class InRange(OutputValidator[IntervalRange]):
             elem.promises = promises
         return elem
 
-
+# TODO: move to another module
 def _arithmetic_op_integral_simplifier(
     elem: MapElement
 ) -> Optional[Union[MapElement, ProcessFailureReason]]:
@@ -520,6 +520,9 @@ class RangeCondition(CompositeElement, MapElementProcessor):
     def _ranged_promise_simplifier(
         range_cond: MapElement
     ) -> Optional[Union[MapElement, ProcessFailureReason]]:
+        """
+        Consolidate ranges on a function
+        """
         assert isinstance(range_cond, RangeCondition)
 
         function = range_cond.function
@@ -583,7 +586,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
     def _in_range_arithmetic_simplification(ranged_cond: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(ranged_cond, RangeCondition)
         elem = ranged_cond.function
-        if isinstance(elem, _Add):
+        if isinstance(elem, AssociativeAddition) and len(elem.operands) == 2:
             op = operator.add
             op1 = operator.sub
             op2 = operator.sub

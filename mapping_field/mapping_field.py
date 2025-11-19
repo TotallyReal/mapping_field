@@ -222,6 +222,10 @@ class MapElement:
         if simplified:
             self._simplifier.set_final_version(self, self)
 
+    # def copy(self) -> "MapElement":
+    #     copied_version = copy.copy(self)
+    #     copied_version.promises = self.promises.copy()
+    #     return copied_version
 
     def set_var_order(self, variables: List["Var"]):
         """

@@ -329,7 +329,7 @@ def test_ranged_condition_as_input():
     func = (x + y) + z
     condition = (x << 1) & (y << 2) & (z << 3) & (a << 4) & (b < 10)
     assigned = func(condition=condition, simplify=False)
-    assert str(assigned) == "(3+(1+2))"
+    assert str(assigned) == "(1 + 2 + 3)"
     assert assigned.simplify2() == 6
 
 
@@ -337,6 +337,18 @@ def test_range_of_constant():
     c = MapElementConstant(5)
 
     assert InRange.get_range_of(c) == IntervalRange.of_point(5)
+
+def test_sum_of_two_conditions():
+    dummy0, dummy1 = DummyMap(0), DummyMap(1)
+
+    dummy0.promises.add_promise(InRange(IntervalRange[0,1]))
+    dummy1.promises.add_promise(InRange(IntervalRange[0,1]))
+
+    cond1 = (dummy0 + dummy1) << 2
+    cond1 = cond1.simplify2()
+    cond2 = (dummy0 << 1) & (dummy1 << 1)
+
+    assert cond1 == cond2
 
 def test_sum_of_conditions():
     n = 2

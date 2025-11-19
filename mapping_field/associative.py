@@ -1,3 +1,4 @@
+from collections import deque
 from typing import Dict, List, Optional, Union
 
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
@@ -21,7 +22,12 @@ class AssociativeListFunction(CompositeElement):
         while len(elements) > 0:
             element = convert_to_map(elements.pop(0))
             if isinstance(element, cls):
-                elements.extend(element.operands)
+                for promise in element.promises.output_promises():
+                    if promise not in cls.auto_promises:
+                        all_elements.append(element)
+                        break
+                else:
+                    elements.extend(element.operands)
                 continue
             all_elements.append(element)
         return all_elements
@@ -46,11 +52,12 @@ class AssociativeListFunction(CompositeElement):
         cls = self.__class__
 
         final_operands = []
-        operands = self.operands.copy()
+        queue = deque(self.operands)
 
         is_whole_simpler = False
 
-        for operand in operands:
+        while queue:
+            operand = queue.popleft()
 
             simplified_condition = operand._simplify2()
             if simplified_condition is not None:
@@ -65,10 +72,14 @@ class AssociativeListFunction(CompositeElement):
                 continue
 
             if isinstance(operand, cls):
-                # unpack list operand of the same type
-                is_whole_simpler = True
-                operands.extend(operand.operands)
-                continue
+                for promise in operand.promises.output_promises():
+                    if promise not in cls.auto_promises:
+                        break
+                else:
+                    # unpack list operand of the same type
+                    is_whole_simpler = True
+                    queue.extendleft(reversed(operand.operands))
+                    continue
 
             # Check if this new operand intersects in a special way with an existing operand.
             # Each time this loop repeats itself, the operands array's size must decrease by 1, so it cannot
@@ -78,6 +89,8 @@ class AssociativeListFunction(CompositeElement):
                     f"Trying to combine {red(operand)} with existing {red(existing_operand)}",
                 )
                 binary_op = cls([existing_operand, operand])
+                if len(final_operands) == 1 and len(queue) == 0:
+                    binary_op.promises = self.promises.copy()
                 binary_op._binary_special = True    # This will not loop back to be simplified here
                 simplified_binary_op = binary_op._simplify2()
 
@@ -87,7 +100,7 @@ class AssociativeListFunction(CompositeElement):
                     )
                     is_whole_simpler = True
                     final_operands.pop(existing_idx)
-                    operands.append(simplified_binary_op)
+                    queue.appendleft(simplified_binary_op)
                     break
             else:
                 # new operand cannot be combined in a special way

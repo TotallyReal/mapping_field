@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from mapping_field.associative import AssociativeListFunction, _sorted_commutative_simplifier
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.mapping_field import (
-    CompositeElementFromFunction, MapElement, MapElementConstant, Var,
+    CompositeElement, CompositeElementFromFunction, MapElement, MapElementConstant, Var,
 )
 from mapping_field.utils.processors import ProcessFailureReason
 
@@ -79,48 +79,48 @@ _Negative.register_class_simplifier(_Negative._to_negation_simplifier)
 
 # <editor-fold desc=" ------------------- Addition ------------------- ">
 
-class _Add(CompositeElementFromFunction):
-
-    def __init__(self, operands: Optional[List[MapElement]] = None) -> None:
-        assert operands is None or len(operands) == 2
-        super().__init__(operands=operands, name="Add", function=lambda a, b: a + b)
-
-    def _simplify_with_var_values2(self) -> Optional[MapElement]:
-        operands = self.operands
-
-        if operands[0].evaluate() == 0:
-            return operands[1]
-        if operands[1].evaluate() == 0:
-            return operands[0]
-
-        sign0, map0 = as_neg(operands[0])
-        sign1, map1 = as_neg(operands[1])
-        if sign0 == -1 and sign1 == -1:
-            return (-(map0 + map1)).simplify2()
-
-        if sign0 == 1 and sign1 == -1:
-            # Remark: I would like to return map0 - map1, however, if any MapElement subclass defines
-            #         __sub__(self, other) as self + (-other), where (-other) uses the default Neg function,
-            #         this will cause an infinite loop.
-            return Sub(map0, map1).simplify2()
-        if sign0 == -1 and sign1 == 1:
-            return Sub(map1, map0).simplify2()
-
-        # sign0 == sign1 == 1
-        return super()._simplify_with_var_values2()
-
-    def to_string(self, vars_to_str: Dict[Var, str]):
-        return f"({self.operands[0]}+{self.operands[1]})"
-
-    @staticmethod
-    def _to_add_simplifier(add_func: MapElement) -> Optional[MapElement]:
-        assert isinstance(add_func, _Add)
-        return (add_func.operands[0].add(add_func.operands[1]) or
-                add_func.operands[1].add(add_func.operands[0]))
-
-Add = _Add()
-MapElement.addition = Add
-_Add.register_class_simplifier(_Add._to_add_simplifier)
+# class _Add(CompositeElementFromFunction):
+#
+#     def __init__(self, operands: Optional[List[MapElement]] = None) -> None:
+#         assert operands is None or len(operands) == 2
+#         super().__init__(operands=operands, name="Add", function=lambda a, b: a + b)
+#
+#     def _simplify_with_var_values2(self) -> Optional[MapElement]:
+#         operands = self.operands
+#
+#         if operands[0].evaluate() == 0:
+#             return operands[1]
+#         if operands[1].evaluate() == 0:
+#             return operands[0]
+#
+#         sign0, map0 = as_neg(operands[0])
+#         sign1, map1 = as_neg(operands[1])
+#         if sign0 == -1 and sign1 == -1:
+#             return (-(map0 + map1)).simplify2()
+#
+#         if sign0 == 1 and sign1 == -1:
+#             # Remark: I would like to return map0 - map1, however, if any MapElement subclass defines
+#             #         __sub__(self, other) as self + (-other), where (-other) uses the default Neg function,
+#             #         this will cause an infinite loop.
+#             return Sub(map0, map1).simplify2()
+#         if sign0 == -1 and sign1 == 1:
+#             return Sub(map1, map0).simplify2()
+#
+#         # sign0 == sign1 == 1
+#         return super()._simplify_with_var_values2()
+#
+#     def to_string(self, vars_to_str: Dict[Var, str]):
+#         return f"({self.operands[0]}+{self.operands[1]})"
+#
+#     @staticmethod
+#     def _to_add_simplifier(add_func: MapElement) -> Optional[MapElement]:
+#         assert isinstance(add_func, _Add)
+#         return (add_func.operands[0].add(add_func.operands[1]) or
+#                 add_func.operands[1].add(add_func.operands[0]))
+#
+# Add = _Add()
+# MapElement.addition = Add
+# _Add.register_class_simplifier(_Add._to_add_simplifier)
 
 class AssociativeAddition(AssociativeListFunction):
 
@@ -136,32 +136,71 @@ class AssociativeAddition(AssociativeListFunction):
         return ProcessFailureReason('Not all operands are constant', trivial = True)
 
     @staticmethod
-    def _additive_negation_simplifier(add_func: MapElement) -> Optional[Union[ProcessFailureReason, MapElement]]:
-        # Can also implement via _Negative.add(...)
+    def _binary_simplifier(add_func: MapElement) -> Optional[Union[ProcessFailureReason, MapElement]]:
+        """
+        Generate a special binary function for simplification purposes.
+        """
         assert isinstance(add_func, AssociativeAddition)
         if len(add_func.operands) != 2:
             return ProcessFailureReason("Only applicable to 2 operands", trivial = True)
+
+        binary = _Add(operands=add_func.operands, binary_special=add_func._binary_special)
+        binary.promises = add_func.promises.copy()
+        binary = binary._simplify2()
+
+        if binary is None:
+            return None
+        if not isinstance(binary, _Add):
+            return binary
+
+        result = AssociativeAddition(operands=binary.operands)
+        result.promises = binary.promises.copy()
+
+        return result
+
+Add = AssociativeAddition([Var(f"X_Add_1"), Var(f"X_Add_2")])
+MapElement.addition = Add
+
+AssociativeAddition.register_class_simplifier(AssociativeAddition._numbers_add_simplifier)
+AssociativeAddition.register_class_simplifier(_sorted_commutative_simplifier)
+AssociativeAddition.register_class_simplifier(AssociativeAddition._binary_simplifier)
+
+class _Add(CompositeElement):
+    """
+    Only used for simplification purposes, and only generated by AssociativeAddition. Once the simplification
+    is done, it is transformed back to an AssociativeAddition object.
+    """
+    def __init__(self, operands: List[MapElement], binary_special: bool):
+        assert len(operands) == 2
+        super().__init__(operands=operands, name="_Add")
+        self._binary_special = binary_special
+
+    @staticmethod
+    def _additive_negation_simplifier(add_func: MapElement) -> Optional[Union[ProcessFailureReason, MapElement]]:
+        # Can also implement via _Negative.add(...)
+        assert isinstance(add_func, _Add)
         operands = add_func.operands
 
         sign0, map0 = as_neg(operands[0])
         sign1, map1 = as_neg(operands[1])
-        if sign0 == 1 and sign1 == -1 and map0 == map1:
-            return MapElementConstant.zero
+        if sign0 != sign1:
+            if map0 == map1:
+                return MapElementConstant.zero
+            if not add_func._binary_special:
+                return Sub(map0, map1) if sign0 == 1 else Sub(map1, map0)
+        if sign0 == sign1 == -1 and not add_func._binary_special:
+            return -Add(map0, map1)
 
         return ProcessFailureReason('Elements did not cancel each other', trivial = True)
 
     @staticmethod
     def _to_add_simplifier(add_func: MapElement) -> Optional[Union[ProcessFailureReason, MapElement]]:
-        assert isinstance(add_func, AssociativeAddition)
-        if len(add_func.operands) != 2:
-            return ProcessFailureReason("Only applicable to 2 operands", trivial = True)
+        assert isinstance(add_func, _Add)
         return (add_func.operands[0].add(add_func.operands[1]) or
                 add_func.operands[1].add(add_func.operands[0]))
 
-AssociativeAddition.register_class_simplifier(AssociativeAddition._numbers_add_simplifier)
-AssociativeAddition.register_class_simplifier(AssociativeAddition._additive_negation_simplifier)
-AssociativeAddition.register_class_simplifier(AssociativeAddition._to_add_simplifier)
-AssociativeAddition.register_class_simplifier(_sorted_commutative_simplifier)
+_Add.register_class_simplifier(_Add._additive_negation_simplifier)
+_Add.register_class_simplifier(_Add._to_add_simplifier)
 
 # </editor-fold>
 
@@ -352,6 +391,19 @@ def _as_combination(map_elem: MapElement) -> Tuple[int, MapElement, int, MapElem
     if isinstance(map_elem, _Negative):
         c0, elem0, c1, elem1 = _as_combination(map_elem.operand)
         return -c0, elem0, -c1, elem1
+
+    if isinstance(map_elem, AssociativeAddition):
+        num_operands = len(map_elem.operands)
+        if num_operands == 0:
+            return 0, MapElementConstant.one, 0, MapElementConstant.zero
+        if num_operands == 1:
+            return _as_combination(map_elem.operands[0])
+        if num_operands == 2:
+            c0, elem0 = _as_scalar_mult(map_elem.operands[0])
+            c1, elem1 = _as_scalar_mult(map_elem.operands[1])
+            if c0 == 0 or elem0 is MapElementConstant.one:
+                return c1, elem1, c0, elem0
+            return c0, elem0, c1, elem1
 
     if isinstance(map_elem, _Add):
         c0, elem0 = _as_scalar_mult(map_elem.operands[0])
