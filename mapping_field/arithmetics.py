@@ -2,7 +2,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.mapping_field import (
-    CompositionFunction, ExtElement, MapElement, MapElementConstant, MapElementFromFunction, Var,
+    ExtElement, MapElement, MapElementConstant, MapElementFromFunction, Var,
     VarDict, convert_to_map, CompositeElementFromFunction,
 )
 from mapping_field.processors import ProcessFailureReason
@@ -50,16 +50,6 @@ class _ArithmeticMapFromFunction(MapElementFromFunction, DefaultSerializable):
             return
         super().__init__(name, function, simplified=True)
         self._initialized = True
-
-    @classmethod
-    def try_get_entries(cls, elem: MapElement) -> Optional[Tuple[MapElement, MapElement]]:
-        if not isinstance(elem, CompositionFunction):
-            return None
-
-        if elem.function is not cls._instance:
-            return None
-
-        return tuple(elem.entries)
 
 
 # <editor-fold desc=" ------------------- Negation ------------------- ">

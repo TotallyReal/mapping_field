@@ -11,7 +11,7 @@ from mapping_field.conditions import (
 )
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
 from mapping_field.mapping_field import (
-    CompositionFunction, FuncDict, MapElement, MapElementConstant, MapElementProcessor,
+    FuncDict, MapElement, MapElementConstant, MapElementProcessor,
     OutputPromises, OutputValidator, Var, VarDict, always_validate_promises, CompositeElement,
 )
 from mapping_field.processors import ProcessFailureReason

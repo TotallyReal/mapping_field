@@ -3,7 +3,7 @@ from typing import Optional
 import pytest
 
 from mapping_field.mapping_field import (
-    CompositionFunction, Func, MapElement, MapElementConstant, MapElementFromFunction, NamedFunc,
+    Func, MapElement, MapElementConstant, MapElementFromFunction, NamedFunc,
     Var, CompositeElementFromFunction, CompositeElement,
 )
 from mapping_field.tests.utils import DummyMap
@@ -80,18 +80,18 @@ def test_named_function_generation():
 # ----------------- composition test -----------------
 
 
-def test_composition_top_function():
-    x = Var("x")
-    f = Func("f")(x)
-    g = Func("g")(x)
-    h = Func("h")(x)
-
-    comp_function: CompositionFunction = f(g(h))
-    assert comp_function.function == f
-
-    fg = f(g)
-    comp_function: CompositionFunction = fg(h)
-    assert comp_function.function == f
+# def test_composition_top_function():
+#     x = Var("x")
+#     f = Func("f")(x)
+#     g = Func("g")(x)
+#     h = Func("h")(x)
+#
+#     comp_function: CompositionFunction = f(g(h))
+#     assert comp_function.function == f
+#
+#     fg = f(g)
+#     comp_function: CompositionFunction = fg(h)
+#     assert comp_function.function == f
 
 
 # def test_assignment_using_composition():

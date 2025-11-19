@@ -382,7 +382,8 @@ class MapElement:
         entries = get_var_values(self.vars, var_dict)
         if entries is None:
             return self
-        return CompositionFunction(self, entries)
+        raise NotImplementedError('Wait until I rewrite the CompositionFunction class')
+        # return CompositionFunction(self, entries)
 
     def evaluate(self) -> Optional[ExtElement]:
         """
@@ -1015,107 +1016,107 @@ class Func:
 #   part of the other classes makes the code complicated. For example, _call_with_dict should be almost unified for
 #   all function types, and not as it is right now. It will give us a canonical way to scan the computation tree
 #   and only apply the dict where needed.
-class CompositionFunction(MapElement, DefaultSerializable):
-
-    def __init__(self, function: MapElement, entries: List[MapElement]):
-        """
-        The composition of the given function with the entries of that function.
-        The number of entries should be the number of standard variables of the function, and in
-        the same order.
-        """
-        seen = set()
-        variables = []
-
-        for entry in entries:
-            variables += [v for v in entry.vars if v not in seen]
-            seen.update(entry.vars)
-
-        super().__init__(variables)
-        if isinstance(function, CompositionFunction):
-            top_function = function.function
-            var_dict = {var: entry for var, entry in zip(function.vars, entries)}
-            top_entries = [entry._call_with_dict(var_dict, {}) for entry in function.entries]
-            self.function = top_function
-            self.entries = top_entries
-        else:
-            self.function = function
-            self.entries = entries
-
-        self.promises = function.promises.copy()
-
-    def to_string(self, vars_to_str: Dict[Var, str]):
-        # Compute the str representation for each entry, by supplying it the str
-        # representations of its variables
-        entries_to_str = {
-            v: entry.to_string(vars_to_str)
-            for v, entry in zip(self.function.vars, self.entries)}
-        return self.function.to_string(entries_to_str)
-
-    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
-        if len(var_dict) == 0 and len(func_dict) == 0:
-            return self
-        eval_function = self.function._call_with_dict({}, func_dict)
-        eval_entries = [entry._call_with_dict(var_dict, func_dict) for entry in self.entries]
-        if (eval_function is self.function) and all([e1 is e2 for e1, e2 in zip(self.entries, eval_entries)]):
-            return self
-
-        return CompositionFunction(function=eval_function, entries=eval_entries)
-
-    # TODO: When simplifying arithmetic function, e.g. a + b, after simplifying both a and b,
-    #       we should check if it has a new type of arithmetic function that we can call.
-
-    # Override when needed
-    def _simplify_with_var_values2(self, var_dict: Optional[VarDict] = None) -> Optional[MapElement]:
-        simplify_logger.log("Simplifying just the function")
-        function: MapElement = self.function._simplify2()
-        simplify_logger.log("Simplifying just the entries")
-        simplified_entries = [entry._simplify2(var_dict) for entry in self.entries]
-
-        is_simpler = (function is not None) | any([entry is not None for entry in simplified_entries])
-        function = function or self.function
-        simplified_entries = [simp_entry or entry for simp_entry, entry in zip(simplified_entries, self.entries)]
-
-        # IMPORTANT! Use the self.function.vars and not the function.vars, as it might change (both as a set,
-        # and the order)
-        if self.function.vars != function.vars:
-            simplify_logger.log(f'{red("WARNING")}: vars have changed from {self.function.vars} to {function.vars}')
-        simplified_entries_dict = {v: entry for v, entry in zip(self.function.vars, simplified_entries)}
-        simplify_logger.log("Simplifying function with entries")
-        result = function._simplify2(simplified_entries_dict)
-        if result is not None:
-            return result
-
-        # TODO: consider moving it into a simplifier processor, since it is mainly used for arithmetics
-        simplify_logger.log("Simplifying via positional entries")
-        for position, v in enumerate(function.vars):
-            pos_entry = simplified_entries_dict[v]
-            log_title = f"Pos: [{cyan(pos_entry.__class__.__name__)}] {red(v)} <== {red(pos_entry)}"
-            simplify_logger.log(log_title, TreeAction.GO_DOWN)
-            result = pos_entry._simplify_caller_function2(function, position, simplified_entries_dict)
-
-            if result is not None:
-                simplify_logger.set_context_title(f"{log_title} => {green(result)}")
-                simplify_logger.log(f"Pos {green(result)}", TreeAction.GO_UP)
-                return result
-            simplify_logger.set_context_title(f'{log_title} = {magenta("& & &")}')
-            simplify_logger.log(f'Pos {magenta("& & &")}', TreeAction.GO_UP)
-
-        if is_simpler:
-            return CompositionFunction(function, simplified_entries)
-
-        return None
-
-    def get_entries(self, as_function: Union[Type['MapElement'], List[Type['MapElement']]]) -> Optional[List['MapElement']]:
-        if isinstance(self.function, as_function):
-            return self.entries
-        return None
-
-    def __eq__(self, other):
-        if isinstance(other, CompositionFunction):
-            if self.function == other.function and self.entries == other.entries:
-                return True
-
-        return super().__eq__(other)
+# class CompositionFunction(MapElement, DefaultSerializable):
+#
+#     def __init__(self, function: MapElement, entries: List[MapElement]):
+#         """
+#         The composition of the given function with the entries of that function.
+#         The number of entries should be the number of standard variables of the function, and in
+#         the same order.
+#         """
+#         seen = set()
+#         variables = []
+#
+#         for entry in entries:
+#             variables += [v for v in entry.vars if v not in seen]
+#             seen.update(entry.vars)
+#
+#         super().__init__(variables)
+#         if isinstance(function, CompositionFunction):
+#             top_function = function.function
+#             var_dict = {var: entry for var, entry in zip(function.vars, entries)}
+#             top_entries = [entry._call_with_dict(var_dict, {}) for entry in function.entries]
+#             self.function = top_function
+#             self.entries = top_entries
+#         else:
+#             self.function = function
+#             self.entries = entries
+#
+#         self.promises = function.promises.copy()
+#
+#     def to_string(self, vars_to_str: Dict[Var, str]):
+#         # Compute the str representation for each entry, by supplying it the str
+#         # representations of its variables
+#         entries_to_str = {
+#             v: entry.to_string(vars_to_str)
+#             for v, entry in zip(self.function.vars, self.entries)}
+#         return self.function.to_string(entries_to_str)
+#
+#     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
+#         if len(var_dict) == 0 and len(func_dict) == 0:
+#             return self
+#         eval_function = self.function._call_with_dict({}, func_dict)
+#         eval_entries = [entry._call_with_dict(var_dict, func_dict) for entry in self.entries]
+#         if (eval_function is self.function) and all([e1 is e2 for e1, e2 in zip(self.entries, eval_entries)]):
+#             return self
+#
+#         return CompositionFunction(function=eval_function, entries=eval_entries)
+#
+#     # TODO: When simplifying arithmetic function, e.g. a + b, after simplifying both a and b,
+#     #       we should check if it has a new type of arithmetic function that we can call.
+#
+#     # Override when needed
+#     def _simplify_with_var_values2(self, var_dict: Optional[VarDict] = None) -> Optional[MapElement]:
+#         simplify_logger.log("Simplifying just the function")
+#         function: MapElement = self.function._simplify2()
+#         simplify_logger.log("Simplifying just the entries")
+#         simplified_entries = [entry._simplify2(var_dict) for entry in self.entries]
+#
+#         is_simpler = (function is not None) | any([entry is not None for entry in simplified_entries])
+#         function = function or self.function
+#         simplified_entries = [simp_entry or entry for simp_entry, entry in zip(simplified_entries, self.entries)]
+#
+#         # IMPORTANT! Use the self.function.vars and not the function.vars, as it might change (both as a set,
+#         # and the order)
+#         if self.function.vars != function.vars:
+#             simplify_logger.log(f'{red("WARNING")}: vars have changed from {self.function.vars} to {function.vars}')
+#         simplified_entries_dict = {v: entry for v, entry in zip(self.function.vars, simplified_entries)}
+#         simplify_logger.log("Simplifying function with entries")
+#         result = function._simplify2(simplified_entries_dict)
+#         if result is not None:
+#             return result
+#
+#         # TODO: consider moving it into a simplifier processor, since it is mainly used for arithmetics
+#         simplify_logger.log("Simplifying via positional entries")
+#         for position, v in enumerate(function.vars):
+#             pos_entry = simplified_entries_dict[v]
+#             log_title = f"Pos: [{cyan(pos_entry.__class__.__name__)}] {red(v)} <== {red(pos_entry)}"
+#             simplify_logger.log(log_title, TreeAction.GO_DOWN)
+#             result = pos_entry._simplify_caller_function2(function, position, simplified_entries_dict)
+#
+#             if result is not None:
+#                 simplify_logger.set_context_title(f"{log_title} => {green(result)}")
+#                 simplify_logger.log(f"Pos {green(result)}", TreeAction.GO_UP)
+#                 return result
+#             simplify_logger.set_context_title(f'{log_title} = {magenta("& & &")}')
+#             simplify_logger.log(f'Pos {magenta("& & &")}', TreeAction.GO_UP)
+#
+#         if is_simpler:
+#             return CompositionFunction(function, simplified_entries)
+#
+#         return None
+#
+#     def get_entries(self, as_function: Union[Type['MapElement'], List[Type['MapElement']]]) -> Optional[List['MapElement']]:
+#         if isinstance(self.function, as_function):
+#             return self.entries
+#         return None
+#
+#     def __eq__(self, other):
+#         if isinstance(other, CompositionFunction):
+#             if self.function == other.function and self.entries == other.entries:
+#                 return True
+#
+#         return super().__eq__(other)
 
 
 class MapElementConstant(MapElement, DefaultSerializable):
