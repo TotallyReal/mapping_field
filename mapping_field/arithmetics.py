@@ -2,11 +2,9 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.mapping_field import (
-    CompositeElementFromFunction, ExtElement, MapElement, MapElementConstant,
-    MapElementFromFunction, Var,
+    CompositeElementFromFunction, MapElement, MapElementConstant, Var,
 )
 from mapping_field.processors import ProcessFailureReason
-from mapping_field.serializable import DefaultSerializable
 
 simplify_logger = TreeLogger(__name__)
 
@@ -33,23 +31,6 @@ When simplifying map with arithmetics I use the following rules:
 """
 
 # --------------------- MapElements for arithmetic operator ---------------------
-
-
-class _ArithmeticMapFromFunction(MapElementFromFunction, DefaultSerializable):
-    # Create a singleton for each arithmetic function
-
-    _instance = None
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(_ArithmeticMapFromFunction, cls).__new__(cls)
-        return cls._instance
-
-    def __init__(self, name: str, function: Callable[[List[ExtElement]], ExtElement]):
-        if hasattr(self, "_initialized"):
-            return
-        super().__init__(name, function, simplified=True)
-        self._initialized = True
 
 
 # <editor-fold desc=" ------------------- Negation ------------------- ">

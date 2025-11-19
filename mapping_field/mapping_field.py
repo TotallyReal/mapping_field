@@ -1122,38 +1122,6 @@ MapElementConstant.zero = MapElementConstant(0)
 MapElementConstant.one = MapElementConstant(1)
 
 
-class MapElementFromFunction(MapElement):
-
-    def __init__(self, name: str, function: Callable[[List[ExtElement]], ExtElement], simplified: bool = False):
-        """
-        A map defined by a callable python function.
-        The number of parameters to this function is the number of standard variables for this MapElement,
-        and with the same order.
-        """
-        self.function = function
-        self.num_parameters = len(inspect.signature(function).parameters)
-        variables = [Var(f"X_{name}_{i}") for i in range(self.num_parameters)]
-        # TODO: Maybe use the names of the variables of the original function
-        super().__init__(variables, name, simplified=simplified)
-
-    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
-        eval_entries = get_var_values(self.vars, var_dict)
-
-        return self if eval_entries is None else CompositionFunction(function=self, entries=eval_entries)
-
-    # Override when needed
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
-        entries = get_var_values(self.vars, var_dict)
-        if entries is None:
-            return None
-        values = [entry.evaluate() for entry in entries]
-        if any(value is None for value in values):
-            return None
-
-        result = self.function(*values)
-        return MapElementConstant(result)
-
-
 class CompositeElementFromFunction(CompositeElement):
 
     def __init__(
