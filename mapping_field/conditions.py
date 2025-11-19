@@ -6,7 +6,6 @@ from mapping_field.field import ExtElement
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red, yellow
 from mapping_field.mapping_field import (
     CompositeElement, CompositeElementFromFunction, MapElement, MapElementProcessor, Var,
-    always_validate_promises,
 )
 from mapping_field.promises import IsCondition
 from mapping_field.utils.serializable import DefaultSerializable
@@ -14,7 +13,6 @@ from mapping_field.utils.serializable import DefaultSerializable
 simplify_logger = TreeLogger(__name__)
 
 
-@always_validate_promises
 class Condition(MapElement):
     pass
 
@@ -66,7 +64,6 @@ FalseCondition = BinaryCondition(False)
 # <editor-fold desc=" ----------------------- Not Condition ----------------------- ">
 
 
-@always_validate_promises
 class _NotCondition(CompositeElementFromFunction):
 
     auto_promises = [IsCondition]

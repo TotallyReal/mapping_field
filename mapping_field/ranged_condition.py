@@ -11,7 +11,7 @@ from mapping_field.conditions import (
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
 from mapping_field.mapping_field import (
     CompositeElement, FuncDict, MapElement, MapElementConstant, MapElementProcessor, OutputPromises,
-    OutputValidator, Var, VarDict, always_validate_promises,
+    OutputValidator, Var, VarDict,
 )
 from mapping_field.promises import IsCondition, IsIntegral
 from mapping_field.utils.processors import ProcessFailureReason
@@ -655,7 +655,6 @@ MapElement.where = lambda self: WhereFunction(self)
 # </editor-fold>
 
 
-@always_validate_promises
 class BoolVar(Var):
 
     # TODO: change into a method, so no one will use isinstance(v, BoolVar), as this is equivalent to checking

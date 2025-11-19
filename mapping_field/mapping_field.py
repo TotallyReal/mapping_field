@@ -138,19 +138,6 @@ def validate_promises_var_dict(var_dict: VarDict):
 T = TypeVar("T", bound="MapElement")
 
 
-def always_validate_promises(cls: Type[T]) -> Type[T]:
-
-    original_call_method = cls.__call__
-
-    def call_wrapper(self, *args, **kwargs):
-        if "validate_promises" not in kwargs:
-            kwargs["validate_promises"] = True
-        return original_call_method(self, *args, **kwargs)
-
-    cls.__call__ = call_wrapper
-    return cls
-
-
 class OutputPromises:
 
     # TODO: I don't like this mechanism too much. Think if there is a better way

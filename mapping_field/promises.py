@@ -1,6 +1,6 @@
 from typing import Optional
 
-from mapping_field.mapping_field import MapElement, OutputValidator, Var, always_validate_promises
+from mapping_field.mapping_field import MapElement, OutputValidator, Var
 from mapping_field.utils.serializable import DefaultSerializable
 
 IsCondition = OutputValidator("Condition")
@@ -32,7 +32,6 @@ IsIntegral.register_validator(validate_constant_integral)
 IsIntegral.register_validator(condition_is_integral)
 
 
-@always_validate_promises
 class IntVar(Var, DefaultSerializable):
 
     def __new__(cls, var_name: str, *args, **kwargs):
