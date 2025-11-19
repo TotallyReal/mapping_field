@@ -260,42 +260,43 @@ _Mult.register_class_simplifier(_Mult._to_mult_simplifier)
 # <editor-fold desc=" ------------------- Division ------------------- ">
 
 
-class _Div(_ArithmeticMapFromFunction):
+class _Div(CompositeElementFromFunction):
 
-    def __init__(self):
-        super().__init__("Div", lambda a, b: a / b)
-        self.register_simplifier(_Div._to_div_simplifier)
+    def __init__(self, operands: Optional[List[MapElement]] = None) -> None:
+        assert operands is None or len(operands) == 2
+        super().__init__(operands=operands, name="Div", function=lambda a, b: a / b)
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
-        entries = [var_dict.get(v, v) for v in self.vars]
+        operands = self.operands
 
-        if entries[1] == 0:
+        if operands[1] == 0:
             raise Exception("Cannot divide by zero")
-        if entries[1] == 1:
-            return entries[0]
+        if operands[1] == 1:
+            return operands[0]
 
-        if entries[0] == 0:
-            return entries[0]
+        if operands[0] == 0:
+            return operands[0]
 
-        sign0, numerator0, denominator0 = _as_rational(entries[0])
-        sign1, numerator1, denominator1 = _as_rational(entries[1])
-        if entries[0] is numerator0 and entries[1] is numerator1:
+        sign0, numerator0, denominator0 = _as_rational(operands[0])
+        sign1, numerator1, denominator1 = _as_rational(operands[1])
+        if operands[0] is numerator0 and operands[1] is numerator1:
             return super()._simplify_with_var_values2(var_dict)
 
         abs_value = (numerator0 * denominator1) / (denominator0 * numerator1)
         return abs_value if sign0 * sign1 == 1 else -abs_value
 
     def to_string(self, vars_to_str: Dict[Var, str]):
-        entries = [vars_to_str.get(v, v) for v in self.vars]
-        return f"( {entries[0]}/{entries[1]} )"
+        return f"( {self.operands[0]}/{self.operands[1]} )"
 
     @staticmethod
-    def _to_div_simplifier(var_dict: VarDict) -> Optional[MapElement]:
-        entries = [var_dict[v] for v in Div.vars]
-        return entries[0].mul(entries[1]) or entries[1].mul(entries[0])
+    def _to_div_simplifier(div_func: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+        assert isinstance(div_func, _Div)
+        return (div_func.operands[0].div(div_func.operands[1]) or
+                div_func.operands[1].rdiv(div_func.operands[0]))
 
 Div = _Div()
 MapElement.division = Div
+_Div.register_class_simplifier(_Div._to_div_simplifier)
 
 # </editor-fold>
 
@@ -364,13 +365,8 @@ def _as_rational(map_elem: MapElement) -> (int, MapElement, MapElement):
         sign = -1
         map_elem = map_elem.operand
 
-    if not isinstance(map_elem, CompositionFunction):
-        return sign, map_elem, MapElementConstant.one
-
-    comp_map: CompositionFunction = map_elem
-
-    if comp_map.function == Div:
-        return sign, comp_map.entries[0], comp_map.entries[1]
+    if isinstance(map_elem, _Div):
+        return sign, map_elem.operands[0], map_elem.operands[1]
 
     return sign, map_elem, MapElementConstant.one
 
