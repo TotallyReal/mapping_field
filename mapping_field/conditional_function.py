@@ -8,7 +8,7 @@ from mapping_field.field import ExtElement
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red, yellow
 from mapping_field.mapping_field import (
     FuncDict, MapElement, MapElementConstant, MapElementProcessor, OutputValidator, Var, VarDict,
-    convert_to_map, params_to_maps,
+    convert_to_map, params_to_maps, CompositeElement,
 )
 from mapping_field.processors import ProcessFailureReason
 from mapping_field.promises import IsCondition, IsIntegral
@@ -17,56 +17,51 @@ from mapping_field.ranged_condition import BoolVar, InRange, RangeCondition, Ran
 simplify_logger = TreeLogger(__name__)
 
 
-class SingleRegion(MapElement, Ranged):
+class SingleRegion(CompositeElement, Ranged):
 
     def __init__(self, condition: MapElement, function: MapElement):
         assert condition.has_promise(IsCondition)
         # TODO: Transfer promises from the function to this SingleRegion?
-        super().__init__(list(set(condition.vars + function.vars)))
-        self.condition = condition
-        self.function = function
+        super().__init__(operands=[condition, function])
+
+    @property
+    def condition(self) -> MapElement:
+        return self.operands[0]
+
+    @condition.setter
+    def condition(self, value: MapElement):
+        self.operands[0] = value
+
+    @property
+    def function(self) -> MapElement:
+        return self.operands[1]
+
+    @function.setter
+    def function(self, value: MapElement):
+        self.operands[1] = value
 
     def to_string(self, vars_to_str: Dict[Var, str]):
         # TODO: fix this printing function
-        return f" {repr(self.condition)} -> {repr(self.function)} "
-
-    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
-        return SingleRegion(
-            self.condition._call_with_dict(var_dict, func_dict),
-            self.function._call_with_dict(var_dict, func_dict)
-        )
+        return f" {self.condition.to_string(vars_to_str)} -> {self.function.to_string(vars_to_str)} "
 
     def __iter__(self):
         yield self.condition
         yield self.function
 
     def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
-        is_simpler = False
-        simplified_condition = self.condition._simplify2(var_dict)
-        simplified_func = self.function._simplify2(var_dict)
-        if (simplified_condition or simplified_func) is not None:
-            is_simpler = True
-        condition = simplified_condition or self.condition
-        function = simplified_func or self.function
+        if not isinstance(self.condition, MapElementProcessor):
+            return None
 
-        if isinstance(condition, MapElementProcessor):
-            # TODO: Use a process_function process like in map elements instead
-            simplified_func = condition.process_function(function)
-            is_simpler |= (simplified_func is not function)
-            function = simplified_func
+        # TODO: Use a process_function process like in map elements instead
+        function = self.function
+        simplified_func = self.condition.process_function(function)
+        if simplified_func is function:
+            return None
 
-            simplified_func = function._simplify2(var_dict)
-            is_simpler |= (simplified_func is not None)
-            function = simplified_func or function
+        function = simplified_func
+        function = function._simplify2(var_dict) or function
 
-        if is_simpler:
-            return SingleRegion(condition, function)
-        return None
-
-    def get_range(self) -> Optional[IntervalRange]:
-        # TODO: This really calls to a register process, since we might be able to improve the range if we know
-        #       specifically the condition and function.
-        return InRange.get_range_of(self.function)
+        return SingleRegion(self.condition, function)
 
 
 class ConditionalFunction(MapElement, Ranged):
