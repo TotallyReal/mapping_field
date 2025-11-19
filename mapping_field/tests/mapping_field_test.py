@@ -3,8 +3,8 @@ from typing import Optional
 import pytest
 
 from mapping_field.mapping_field import (
-    Func, MapElement, MapElementConstant, MapElementFromFunction, NamedFunc,
-    Var, CompositeElementFromFunction, CompositeElement,
+    CompositeElement, CompositeElementFromFunction, Func, MapElement, MapElementConstant, NamedFunc,
+    Var,
 )
 from mapping_field.tests.utils import DummyMap
 

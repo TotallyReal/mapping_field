@@ -1,18 +1,17 @@
 import math
 import operator
-from abc import abstractmethod
 
+from abc import abstractmethod
 from typing import Dict, Optional, Tuple, Union
 
-from mapping_field.arithmetics import _as_combination, _Add, _Sub, _Mult
+from mapping_field.arithmetics import _Add, _as_combination, _Mult, _Sub
 from mapping_field.conditions import (
-    BinaryCondition, Condition, FalseCondition, IntersectionCondition, TrueCondition,
-    UnionCondition,
+    BinaryCondition, FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
 )
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
 from mapping_field.mapping_field import (
-    FuncDict, MapElement, MapElementConstant, MapElementProcessor,
-    OutputPromises, OutputValidator, Var, VarDict, always_validate_promises, CompositeElement,
+    CompositeElement, FuncDict, MapElement, MapElementConstant, MapElementProcessor, OutputPromises,
+    OutputValidator, Var, VarDict, always_validate_promises,
 )
 from mapping_field.processors import ProcessFailureReason
 from mapping_field.promises import IsCondition, IsIntegral

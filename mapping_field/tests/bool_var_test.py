@@ -1,8 +1,8 @@
 from typing import Optional
 
-from mapping_field.conditions import TrueCondition, FalseCondition, BinaryCondition
+from mapping_field.conditions import BinaryCondition, FalseCondition, TrueCondition
 from mapping_field.log_utils.tree_loggers import TreeLogger, blue
-from mapping_field.mapping_field import MapElement, VarDict, CompositeElement
+from mapping_field.mapping_field import CompositeElement, MapElement
 from mapping_field.promises import IsCondition
 from mapping_field.ranged_condition import BoolVar, IntervalRange, RangeCondition
 

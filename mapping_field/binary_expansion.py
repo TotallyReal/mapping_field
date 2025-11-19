@@ -7,7 +7,7 @@ from mapping_field.conditions import (
 from mapping_field.linear import Linear
 from mapping_field.log_utils.tree_loggers import TreeLogger, red
 from mapping_field.mapping_field import (
-    ExtElement, MapElement, MapElementConstant, Var, VarDict, CompositeElement, convert_to_map,
+    CompositeElement, ExtElement, MapElement, MapElementConstant, Var, convert_to_map,
 )
 from mapping_field.processors import ProcessFailureReason
 from mapping_field.promises import IsCondition, IsIntegral

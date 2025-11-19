@@ -9,10 +9,8 @@ from typing import (
 )
 
 from mapping_field.field import ExtElement, FieldElement
-from mapping_field.log_utils.tree_loggers import TreeAction, TreeLogger, cyan, green, magenta, red
-from mapping_field.processors import (
-    ProcessFailureReason, Processor, ProcessorCollection,
-)
+from mapping_field.log_utils.tree_loggers import TreeLogger
+from mapping_field.processors import ProcessFailureReason, Processor, ProcessorCollection
 from mapping_field.serializable import DefaultSerializable
 from mapping_field.validators import Context, MultiValidator
 

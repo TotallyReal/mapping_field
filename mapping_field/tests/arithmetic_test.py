@@ -4,7 +4,7 @@ import pytest
 
 from mapping_field.arithmetics import _as_combination, _as_scalar_mult
 from mapping_field.log_utils.tree_loggers import TreeLogger
-from mapping_field.mapping_field import Func, MapElement, Var, VarDict, MapElementConstant
+from mapping_field.mapping_field import Func, MapElement, MapElementConstant, Var
 from mapping_field.tests.utils import DummyMap
 
 simplify_logger = TreeLogger(__name__)

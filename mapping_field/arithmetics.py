@@ -2,8 +2,8 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.mapping_field import (
-    ExtElement, MapElement, MapElementConstant, MapElementFromFunction, Var,
-    VarDict, convert_to_map, CompositeElementFromFunction,
+    CompositeElementFromFunction, ExtElement, MapElement, MapElementConstant,
+    MapElementFromFunction, Var,
 )
 from mapping_field.processors import ProcessFailureReason
 from mapping_field.serializable import DefaultSerializable
