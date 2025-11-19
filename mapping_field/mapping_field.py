@@ -380,13 +380,6 @@ class MapElement:
     def is_zero(self) -> bool:
         return self.evaluate() == 0
 
-    def get_entries(self, as_function: Union[Type['MapElement'], List[Type['MapElement']]]) -> Optional[List['MapElement']]:
-        """
-        In case this function is a CompositionFunction where the root is of type as_function, return the entries.
-        Otherwise, return None.
-        """
-        return None
-
     # </editor-fold>
 
     # <editor-fold desc=" ------------------------ Simplify 2 ------------------------">
@@ -719,11 +712,6 @@ class CompositeElement(MapElement):
             return None
         simplified_entries = [simp_entry or entry for simp_entry, entry in zip(simplified_entries, elem.operands)]
         return elem.copy_with_operands(operands=simplified_entries)
-
-    def get_entries(self, as_function: Union[Type['MapElement'], List[Type['MapElement']]]) -> Optional[List['MapElement']]:
-        if isinstance(self, as_function):
-            return self.operands
-        return None
 
 
 

@@ -285,17 +285,19 @@ def _as_scalar_mult(map_elem: MapElement) -> Tuple[int, MapElement]:
     if value is not None:
         return value, MapElementConstant.one
 
-    entries = map_elem.get_entries(_Mult)
-    if entries is not None:
-        a, b = entries
-        a_value = a.evaluate()
-        b_value = b.evaluate()
-        if a_value is not None:
-            if b_value is not None:
-                return a_value * b_value, MapElementConstant.one
-            return a_value, b
+    if not isinstance(map_elem, _Mult):
+        return 1, map_elem
+
+    a, b = map_elem.operands
+    a_value = a.evaluate()
+    b_value = b.evaluate()
+    if a_value is not None:
         if b_value is not None:
-            return b_value, a
+            return a_value * b_value, MapElementConstant.one
+        return a_value, b
+    if b_value is not None:
+        return b_value, a
+
     return 1, map_elem
 
 
