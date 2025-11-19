@@ -27,6 +27,7 @@ class ProcessFailureReason:
     reason: str = ""
     trivial: bool = True
 
+PureProcessor = Callable[[Elem], Optional[Union[Elem, ProcessFailureReason]]]
 
 Processor = Callable[[Elem, Param], Optional[Union[Elem, ProcessFailureReason]]]
 
@@ -128,6 +129,15 @@ class ProcessorCollection(Generic[Elem, Param]):
 def named_forgetful_function(func: ParamProcessor) -> Processor:
     def wrapper(elem: Elem, param: Param) -> Optional[Union[Elem, ProcessFailureReason]]:
         return func(param)
+
+    wrapper.__name__ = func.__name__
+    wrapper.__qualname__ = func.__qualname__
+    return wrapper
+
+
+def param_forgetful_function(func: PureProcessor) -> Processor:
+    def wrapper(elem: Elem, param: Param) -> Optional[Union[Elem, ProcessFailureReason]]:
+        return func(elem)
 
     wrapper.__name__ = func.__name__
     wrapper.__qualname__ = func.__qualname__

@@ -9,7 +9,7 @@ from mapping_field.mapping_field import (
     ExtElement, FuncDict, MapElement, MapElementConstant, Var, VarDict, get_var_values,
     params_to_maps, CompositeElement,
 )
-from mapping_field.processors import ProcessFailureReason
+from mapping_field.processors import ProcessFailureReason, param_forgetful_function
 from mapping_field.ranged_condition import RangeCondition, Ranged, IntervalRange, InRange
 from mapping_field.serializable import DefaultSerializable
 
@@ -140,7 +140,8 @@ class Linear(CompositeElement, DefaultSerializable, Ranged):
 
     # <editor-fold desc=" ------------------------ Simplifiers ------------------------ ">
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _simplify_with_var_values2(self) -> Optional[MapElement]:
         if self.a == 0:
             return MapElementConstant(self.b)
         return None

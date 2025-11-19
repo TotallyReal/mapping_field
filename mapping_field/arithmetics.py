@@ -5,7 +5,7 @@ from mapping_field.mapping_field import (
     CompositionFunction, ExtElement, MapElement, MapElementConstant, MapElementFromFunction, Var,
     VarDict, convert_to_map, CompositeElementFromFunction,
 )
-from mapping_field.processors import ProcessFailureReason
+from mapping_field.processors import ProcessFailureReason, param_forgetful_function
 from mapping_field.serializable import DefaultSerializable
 
 simplify_logger = TreeLogger(__name__)
@@ -82,7 +82,8 @@ class _Negative(CompositeElementFromFunction):
     def to_string(self, vars_to_str: Dict[Var, str]):
         return f"(-{self.operand.to_string(vars_to_str)})"
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _simplify_with_var_values2(self) -> Optional[MapElement]:
 
         operand = self.operand
         if isinstance(operand, _Negative):
@@ -91,7 +92,7 @@ class _Negative(CompositeElementFromFunction):
             sub_operands = operand.operands
             return Sub(sub_operands[1], sub_operands[0])
 
-        return super()._simplify_with_var_values2(var_dict)
+        return super()._simplify_with_var_values2(None)
 
     @staticmethod
     def _to_negation_simplifier(neg_func: MapElement, var_dict: VarDict) -> Optional[MapElement]:
@@ -113,7 +114,8 @@ class _Add(CompositeElementFromFunction):
         assert operands is None or len(operands) == 2
         super().__init__(operands=operands, name="Add", function=lambda a, b: a + b)
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _simplify_with_var_values2(self) -> Optional[MapElement]:
         operands = self.operands
 
         if operands[0].evaluate() == 0:
@@ -135,7 +137,7 @@ class _Add(CompositeElementFromFunction):
             return Sub(map1, map0).simplify2()
 
         # sign0 == sign1 == 1
-        return super()._simplify_with_var_values2(var_dict)
+        return super()._simplify_with_var_values2(None)
 
     def to_string(self, vars_to_str: Dict[Var, str]):
         return f"({self.operands[0]}+{self.operands[1]})"
@@ -161,7 +163,8 @@ class _Sub(CompositeElementFromFunction):
         assert operands is None or len(operands) == 2
         super().__init__(operands=operands, name="Sub", function=lambda a, b: a - b)
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _simplify_with_var_values2(self) -> Optional[MapElement]:
         operands = self.operands
 
         if operands[0].evaluate() == 0:
@@ -185,7 +188,7 @@ class _Sub(CompositeElementFromFunction):
             return (-Add(map1, map0)).simplify2()
 
         # sign0 == sign1 == 1
-        return super()._simplify_with_var_values2(var_dict)
+        return super()._simplify_with_var_values2(None)
 
     def to_string(self, vars_to_str: Dict[Var, str]):
         return f"({self.operands[0]}-{self.operands[1]})"
@@ -212,7 +215,8 @@ class _Mult(CompositeElementFromFunction):
         assert operands is None or len(operands) == 2
         super().__init__(operands=operands, name="Mult", function=lambda a, b: a * b)
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _simplify_with_var_values2(self) -> Optional[MapElement]:
         operands = self.operands
 
         # Multiplication by 0 and 1
@@ -234,7 +238,7 @@ class _Mult(CompositeElementFromFunction):
         sign0, numerator0, denominator0 = _as_rational(operands[0])
         sign1, numerator1, denominator1 = _as_rational(operands[1])
         if operands[0] is numerator0 and operands[1] is numerator1:
-            return super()._simplify_with_var_values2(var_dict)
+            return super()._simplify_with_var_values2(None)
 
         numerator = numerator0 * numerator1
         denominator = denominator0 * denominator1
@@ -266,7 +270,8 @@ class _Div(CompositeElementFromFunction):
         assert operands is None or len(operands) == 2
         super().__init__(operands=operands, name="Div", function=lambda a, b: a / b)
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _simplify_with_var_values2(self) -> Optional[MapElement]:
         operands = self.operands
 
         if operands[1] == 0:
@@ -280,7 +285,7 @@ class _Div(CompositeElementFromFunction):
         sign0, numerator0, denominator0 = _as_rational(operands[0])
         sign1, numerator1, denominator1 = _as_rational(operands[1])
         if operands[0] is numerator0 and operands[1] is numerator1:
-            return super()._simplify_with_var_values2(var_dict)
+            return super()._simplify_with_var_values2(None)
 
         abs_value = (numerator0 * denominator1) / (denominator0 * numerator1)
         return abs_value if sign0 * sign1 == 1 else -abs_value
@@ -386,14 +391,15 @@ class BinaryCombination(MapElement):
     def to_string(self, vars_to_str: Dict[Var, str]):
         return f"Comb[{self.c1}*{self.elem1.to_string(vars_to_str)}+{self.c2}*{self.elem2.to_string(vars_to_str)}]"
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _simplify_with_var_values2(self) -> Optional[MapElement]:
         if self.c1 == 0:
             return self.c2 * self.elem2
         if self.c2 == 0:
             return self.c1 * self.elem1
 
-        elem1 = self.elem1._simplify2(var_dict)
-        elem2 = self.elem2._simplify2(var_dict)
+        elem1 = self.elem1._simplify2(None)
+        elem2 = self.elem2._simplify2(None)
         if elem1 is not None or elem2 is not None:
             elem1 = elem1 or self.elem1
             elem2 = elem2 or self.elem2

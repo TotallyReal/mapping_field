@@ -9,6 +9,7 @@ from mapping_field.mapping_field import (
     CompositionFunction, MapElement, MapElementProcessor, Var, VarDict, always_validate_promises,
     CompositeElement, CompositeElementFromFunction,
 )
+from mapping_field.processors import param_forgetful_function
 from mapping_field.promises import IsCondition
 from mapping_field.serializable import DefaultSerializable
 
@@ -91,7 +92,8 @@ class _NotCondition(CompositeElementFromFunction):
     def to_string(self, vars_to_str: Dict[Var, str]):
         return f"~({self.operand.to_string(vars_to_str)})"
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _simplify_with_var_values2(self) -> Optional[MapElement]:
         operand = self.operand
 
         if isinstance(operand, BinaryCondition):
@@ -101,10 +103,11 @@ class _NotCondition(CompositeElementFromFunction):
 
         # TODO: simplify formulas like ~(a and ~b) -> ~a or b, which have fewer "not"s ?
 
-        return super()._simplify_with_var_values2(var_dict)
+        return super()._simplify_with_var_values2(None)
 
     @staticmethod
-    def _to_inversion_simplifier(inversion_func: MapElement, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _to_inversion_simplifier(inversion_func: MapElement) -> Optional[MapElement]:
         assert isinstance(inversion_func, _NotCondition)
         return inversion_func.operand.invert()
 
@@ -434,13 +437,13 @@ class _ListCondition(CompositeElement, DefaultSerializable):
             new_cls_condition = cls(prod_0_conditions)
             return rev_cls([new_cls_condition, sp_condition])
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
-        if len(var_dict) == 0:
-            if hasattr(self, "_binary_flag"):
-                simplify_logger.log("Has binary flag - avoid simplifying here.")
-                return None
-            if self._simplified_version is self:
-                return None
+    @param_forgetful_function
+    def _simplify_with_var_values2(self) -> Optional[MapElement]:
+        if hasattr(self, "_binary_flag"):
+            simplify_logger.log("Has binary flag - avoid simplifying here.")
+            return None
+        if self._simplified_version is self:
+            return None
 
         cls = self.__class__
 
@@ -451,7 +454,7 @@ class _ListCondition(CompositeElement, DefaultSerializable):
 
         for condition in conditions:
 
-            simplified_condition = condition._simplify2(var_dict)
+            simplified_condition = condition._simplify2(None)
             if simplified_condition is not None:
                 is_whole_simpler = True
             condition = simplified_condition or condition

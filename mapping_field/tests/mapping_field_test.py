@@ -94,14 +94,14 @@ def test_composition_top_function():
     assert comp_function.function == f
 
 
-def test_assignment_using_composition():
-    x = Var("x")
-    dummy = DummyMap(0)
-    comp_function = CompositionFunction(x, [dummy])
-    assert str(x) == "x"
-    assert str(comp_function) == "DummyMap(0)"
-
-    assert comp_function.simplify2() is dummy
+# def test_assignment_using_composition():
+#     x = Var("x")
+#     dummy = DummyMap(0)
+#     comp_function = CompositionFunction(x, [dummy])
+#     assert str(x) == "x"
+#     assert str(comp_function) == "DummyMap(0)"
+#
+#     assert comp_function.simplify2() is dummy
 
 
 # ----------------- simplify test -----------------

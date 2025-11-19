@@ -14,7 +14,7 @@ from mapping_field.mapping_field import (
     CompositionFunction, FuncDict, MapElement, MapElementConstant, MapElementProcessor,
     OutputPromises, OutputValidator, Var, VarDict, always_validate_promises, CompositeElement,
 )
-from mapping_field.processors import ProcessFailureReason
+from mapping_field.processors import ProcessFailureReason, param_forgetful_function
 from mapping_field.promises import IsCondition, IsIntegral
 
 simplify_logger = TreeLogger(__name__)
@@ -485,7 +485,8 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
     # <editor-fold desc=" ======= Simplifiers ======= ">
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _simplify_with_var_values2(self) -> Optional[MapElement]:
         if self.range.is_empty:
             return FalseCondition
         if self.range.is_all:

@@ -11,7 +11,7 @@ from typing import (
 from mapping_field.field import ExtElement, FieldElement
 from mapping_field.log_utils.tree_loggers import TreeAction, TreeLogger, cyan, green, magenta, red
 from mapping_field.processors import (
-    ParamProcessor, ProcessFailureReason, Processor, ProcessorCollection,
+    ParamProcessor, ProcessFailureReason, Processor, ProcessorCollection, param_forgetful_function,
 )
 from mapping_field.serializable import DefaultSerializable
 from mapping_field.validators import Context, MultiValidator
@@ -450,7 +450,8 @@ class MapElement:
         return self._simplified_version is self
 
     # Override when needed
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[Union["MapElement", ProcessFailureReason]]:
+    @param_forgetful_function
+    def _simplify_with_var_values2(self) -> Optional[Union["MapElement", ProcessFailureReason]]:
         """
         --------------- Override when needed ---------------
         Try to simplify the given function, given assignment of variables.
@@ -871,11 +872,9 @@ class Var(MapElement, DefaultSerializable):
     def __hash__(self):
         return hash(("Var", self.name))
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
-        value = var_dict.get(self, None)
-        if value is self or value is None:
-            return ProcessFailureReason(f"The variable {self} did not change", trivial=True)
-        return value
+    @param_forgetful_function
+    def _simplify_with_var_values2(self) -> Optional[Union[MapElement, ProcessFailureReason]]:
+        return None
 
 
 class NamedFunc(MapElement, DefaultSerializable):
@@ -1215,7 +1214,8 @@ class CompositeElementFromFunction(CompositeElement):
         super().__init__(operands=operands, name=name, simplified=simplified)
 
     # Override when needed
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _simplify_with_var_values2(self) -> Optional[MapElement]:
 
         values = [operand.evaluate() for operand in self.operands]
         if any(value is None for value in values):

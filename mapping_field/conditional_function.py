@@ -10,7 +10,7 @@ from mapping_field.mapping_field import (
     FuncDict, MapElement, MapElementConstant, MapElementProcessor, OutputValidator, Var, VarDict,
     convert_to_map, params_to_maps, CompositeElement,
 )
-from mapping_field.processors import ProcessFailureReason
+from mapping_field.processors import ProcessFailureReason, param_forgetful_function
 from mapping_field.promises import IsCondition, IsIntegral
 from mapping_field.ranged_condition import BoolVar, InRange, RangeCondition, Ranged, IntervalRange
 
@@ -65,7 +65,8 @@ class SingleRegion(CompositeElement, Ranged):
         yield self.condition
         yield self.function
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _simplify_with_var_values2(self) -> Optional[MapElement]:
         if not isinstance(self.condition, MapElementProcessor):
             return None
 
@@ -76,7 +77,7 @@ class SingleRegion(CompositeElement, Ranged):
             return None
 
         function = simplified_func
-        function = function._simplify2(var_dict) or function
+        function = function._simplify2(None) or function
 
         return SingleRegion(self.condition, function)
 
@@ -203,7 +204,8 @@ class ConditionalFunction(CompositeElement, Ranged):
 
     # <editor-fold desc=" ------------------------ Simplifiers and Validators ------------------------ ">
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _simplify_with_var_values2(self) -> Optional[MapElement]:
         # TODO: combine this simplification with the _ListCondition simplification for a general simplification of
         #       a commutative associative binary function.
 
@@ -238,7 +240,7 @@ class ConditionalFunction(CompositeElement, Ranged):
         is_simpler = False
         for region in self.regions:
 
-            simplified_region = region._simplify2(var_dict)
+            simplified_region = region._simplify2(None)
             if simplified_region is not None:
                 is_simpler = True
             region = simplified_region or region

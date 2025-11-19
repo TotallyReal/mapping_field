@@ -9,7 +9,7 @@ from mapping_field.log_utils.tree_loggers import TreeLogger, red
 from mapping_field.mapping_field import (
     ExtElement, MapElement, MapElementConstant, Var, VarDict, CompositeElement, convert_to_map,
 )
-from mapping_field.processors import ProcessFailureReason
+from mapping_field.processors import ProcessFailureReason, param_forgetful_function
 from mapping_field.promises import IsCondition, IsIntegral
 from mapping_field.ranged_condition import BoolVar, InRange, IntervalRange, RangeCondition
 from mapping_field.serializable import DefaultSerializable
@@ -555,7 +555,8 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
 
     # <editor-fold desc=" ------------------------ Simplifiers ------------------------ ">
 
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
+    @param_forgetful_function
+    def _simplify_with_var_values2(self) -> Optional[MapElement]:
         elem, constant = self.split_constant()
         if constant == 0:
             return None
