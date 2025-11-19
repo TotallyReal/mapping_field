@@ -3,6 +3,7 @@ import operator
 from typing import Dict, List, Optional, Tuple, Union
 
 from mapping_field.arithmetics import _Mult
+from mapping_field.associative import AssociativeListFunction
 from mapping_field.conditions import FalseCondition, TrueCondition, UnionCondition
 from mapping_field.field import ExtElement
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red, yellow
@@ -80,8 +81,17 @@ class SingleRegion(CompositeElement, Ranged):
 
         return SingleRegion(self.condition, function)
 
+    @staticmethod
+    def _true_condition_simplifier(region: MapElement) -> Optional[Union[ProcessFailureReason, MapElement]]:
+        assert isinstance(region, SingleRegion)
+        if region.condition is TrueCondition:
+            return region.function
+        return ProcessFailureReason("Condition is not always true", trivial=True)
 
-class ConditionalFunction(CompositeElement, Ranged):
+SingleRegion.register_class_simplifier(SingleRegion._true_condition_simplifier)
+
+
+class ConditionalFunction(AssociativeListFunction, Ranged):
     """
     A conditional function of the form:
        1_(cond_1) * f_1 + 1_(cond_2) * f_2 + ... + 1_(cond_n) * f_n
@@ -89,6 +99,10 @@ class ConditionalFunction(CompositeElement, Ranged):
     Working under the assumption that the conditions do not intersect, and cover the whole space, namely
     the form a decomposition of the whole space.
     """
+
+    op_symbol       = ";"
+    left_bracket    = "["
+    right_bracket   = "]"
 
     @staticmethod
     def always(map: MapElement):
@@ -108,12 +122,6 @@ class ConditionalFunction(CompositeElement, Ranged):
     def regions(self, value: List[MapElement]):
         assert all(isinstance(region, SingleRegion) for region in value)
         self.operands = value
-
-
-    def to_string(self, vars_to_str: Dict[Var, str]):
-        # TODO: fix this printing function
-        inner_str = " ; ".join([region.to_string(vars_to_str) for region in self.regions])
-        return f"[{inner_str}]"
 
     #
     #     def pretty_str(self):
@@ -203,69 +211,101 @@ class ConditionalFunction(CompositeElement, Ranged):
 
     # <editor-fold desc=" ------------------------ Simplifiers and Validators ------------------------ ">
 
-    def _simplify_with_var_values2(self) -> Optional[MapElement]:
-        # TODO: combine this simplification with the _ListCondition simplification for a general simplification of
-        #       a commutative associative binary function.
+    @classmethod
+    def is_trivial(cls, element: SingleRegion) -> bool:
+        return element.condition is FalseCondition
 
-        def combinable(
-            condition1: MapElement, elem1: MapElement, condition2: MapElement, elem2: MapElement
-        ) -> Optional[MapElement]:
-            """
-            Look for a single MapFunctions elem such that :
-                elem(condition1) = elem1 ,
-                elem(condition2) = elem2
-            """
-            if elem1 == elem2:
-                return elem1
+    @staticmethod
+    def _binary_conditional_function_simplifier(element: 'ConditionalFunction') -> Optional[Union[ProcessFailureReason,MapElement]]:
+        assert isinstance(element, ConditionalFunction)
+        if len(element.operands) != 2:
+            return ProcessFailureReason('Only applicable to binary conditional functions', trivial=True)
+        (condition1, elem1), (condition2, elem2) = element.operands
+        if elem1 == elem2:
+            return SingleRegion(condition=condition1 | condition2, function=elem1)
 
-            if isinstance(condition1, MapElementProcessor):
-                # TODO: use __call__(condition1) instead?
-                simplify_logger.log(f"Computing {red(elem2)} at {red(condition1)}")
-                processed_elem2 = condition1.process_function(elem2)
-                if processed_elem2 == elem1:
-                    return elem2
+        if isinstance(condition1, MapElementProcessor):
+            # TODO: use __call__(condition1) instead?
+            simplify_logger.log(f"Computing {red(elem2)} at {red(condition1)}")
+            processed_elem2 = condition1.process_function(elem2)
+            if processed_elem2 == elem1:
+                condition_union = condition1 | condition2
+                return SingleRegion(condition=condition_union, function=elem2)
 
-            if isinstance(condition2, MapElementProcessor):
-                # TODO: use __call__(condition1) instead?
-                simplify_logger.log(f"Computing {red(elem1)} at {red(condition2)}")
-                processed_elem1 = condition2.process_function(elem1)
-                if processed_elem1 == elem2:
-                    return elem1
+        if isinstance(condition2, MapElementProcessor):
+            # TODO: use __call__(condition1) instead?
+            simplify_logger.log(f"Computing {red(elem1)} at {red(condition2)}")
+            processed_elem1 = condition2.process_function(elem1)
+            if processed_elem1 == elem2:
+                condition_union = condition1 | condition2
+                return SingleRegion(condition=condition_union, function=elem1)
 
-            return None
+        return None
 
-        regions = []
-        is_simpler = False
-        for region in self.regions:
 
-            simplified_region = region._simplify2()
-            if simplified_region is not None:
-                is_simpler = True
-            region = simplified_region or region
-            if region.condition is FalseCondition:
-                continue
-
-            for i, prev_region in enumerate(regions):
-                simplify_logger.log(f"Trying to combine {red(region)} and {red(prev_region)}.")
-                comb_elem = combinable(prev_region.condition, prev_region.function, region.condition, region.function)
-                if comb_elem is not None:
-                    simplify_logger.log(f"They are combinable under the function {green(comb_elem)}")
-                    is_simpler = True
-                    condition_union = prev_region.condition | region.condition
-                    combined_region = SingleRegion(condition=condition_union, function=comb_elem)
-                    combined_region = combined_region.simplify2()
-                    regions[i] = combined_region
-                    break
-            else:
-                regions.append(region)
-
-        # TODO: The conditions in a conditional function should cover the whole space, so a single region
-        #       must always have a TrueCondition. However, it is not always true that it is easy to check
-        #       that the condition is true. Should I keep this check here or not?
-        if len(regions) == 1:  # and regions[0][0] is TrueCondition:
-            return regions[0].function
-
-        return ConditionalFunction(regions) if is_simpler else None
+    # def _simplify_with_var_values2(self) -> Optional[MapElement]:
+    #     # TODO: combine this simplification with the _ListCondition simplification for a general simplification of
+    #     #       a commutative associative binary function.
+    #
+    #     def combinable(
+    #         condition1: MapElement, elem1: MapElement, condition2: MapElement, elem2: MapElement
+    #     ) -> Optional[MapElement]:
+    #         """
+    #         Look for a single MapFunctions elem such that :
+    #             elem(condition1) = elem1 ,
+    #             elem(condition2) = elem2
+    #         """
+    #         if elem1 == elem2:
+    #             return elem1
+    #
+    #         if isinstance(condition1, MapElementProcessor):
+    #             # TODO: use __call__(condition1) instead?
+    #             simplify_logger.log(f"Computing {red(elem2)} at {red(condition1)}")
+    #             processed_elem2 = condition1.process_function(elem2)
+    #             if processed_elem2 == elem1:
+    #                 return elem2
+    #
+    #         if isinstance(condition2, MapElementProcessor):
+    #             # TODO: use __call__(condition1) instead?
+    #             simplify_logger.log(f"Computing {red(elem1)} at {red(condition2)}")
+    #             processed_elem1 = condition2.process_function(elem1)
+    #             if processed_elem1 == elem2:
+    #                 return elem1
+    #
+    #         return None
+    #
+    #     regions = []
+    #     is_simpler = False
+    #     for region in self.regions:
+    #
+    #         simplified_region = region._simplify2()
+    #         if simplified_region is not None:
+    #             is_simpler = True
+    #         region = simplified_region or region
+    #         if region.condition is FalseCondition:
+    #             continue
+    #
+    #         for i, prev_region in enumerate(regions):
+    #             simplify_logger.log(f"Trying to combine {red(region)} and {red(prev_region)}.")
+    #             comb_elem = combinable(prev_region.condition, prev_region.function, region.condition, region.function)
+    #             if comb_elem is not None:
+    #                 simplify_logger.log(f"They are combinable under the function {green(comb_elem)}")
+    #                 is_simpler = True
+    #                 condition_union = prev_region.condition | region.condition
+    #                 combined_region = SingleRegion(condition=condition_union, function=comb_elem)
+    #                 combined_region = combined_region.simplify2()
+    #                 regions[i] = combined_region
+    #                 break
+    #         else:
+    #             regions.append(region)
+    #
+    #     # TODO: The conditions in a conditional function should cover the whole space, so a single region
+    #     #       must always have a TrueCondition. However, it is not always true that it is easy to check
+    #     #       that the condition is true. Should I keep this check here or not?
+    #     if len(regions) == 1:  # and regions[0][0] is TrueCondition:
+    #         return regions[0].function
+    #
+    #     return ConditionalFunction(regions) if is_simpler else None
 
     @staticmethod
     def mult_condition_by_element(element: MapElement) -> Optional[MapElement]:
@@ -318,6 +358,8 @@ class ConditionalFunction(CompositeElement, Ranged):
                 trivial=False
             )
 
+        if value1 == 0:
+            return value1 + (value2 - value1) * cond2
         return value2 + (value1 - value2) * cond1
 
         # if not (isinstance(cond1, RangeCondition) and isinstance(cond2, RangeCondition)):
@@ -364,6 +406,7 @@ class ConditionalFunction(CompositeElement, Ranged):
 _Mult.register_class_simplifier(ConditionalFunction.mult_condition_by_element)
 RangeCondition.register_class_simplifier(ConditionalFunction.new_assignment_simplify)
 ConditionalFunction.register_class_simplifier(ConditionalFunction._bool_var_simplifier)
+ConditionalFunction.register_class_simplifier(ConditionalFunction._binary_conditional_function_simplifier)
 
 # TODO: Make it work for any validator in the future
 IsIntegral.register_validator(lambda elem: ConditionalFunction.promise_validate_conditional_function(IsIntegral, elem))

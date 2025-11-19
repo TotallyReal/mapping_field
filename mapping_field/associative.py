@@ -17,6 +17,10 @@ class AssociativeListFunction(CompositeElement):
     right_bracket   = ")"
 
     @classmethod
+    def is_trivial(cls, element: MapElement) -> bool:
+        return element is cls.trivial_element
+
+    @classmethod
     def unpack_list(cls, elements: List[MapElement]) -> List[MapElement]:
         elements = elements.copy()
         all_elements = []
