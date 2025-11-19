@@ -63,12 +63,6 @@ class Linear(CompositeElement, DefaultSerializable, Ranged):
             return None
         return self.a * f_range + self.b
 
-    def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
-        elem = self.elem._call_with_dict(var_dict, func_dict)
-        if elem is self.elem:
-            return self
-        return Linear(self.a, self.elem._call_with_dict(var_dict, func_dict), self.b)
-
     # <editor-fold desc=" ------------------------ Arithmetics ------------------------">
 
     def neg(self) -> Optional[MapElement]:
