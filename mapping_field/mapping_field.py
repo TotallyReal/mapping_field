@@ -871,7 +871,7 @@ class Var(MapElement, DefaultSerializable):
         return None
 
 
-class NamedFunc(MapElement, DefaultSerializable):
+class NamedFunc(CompositeElement, DefaultSerializable):
     """
     A named function, which can be assigned later to another function.
 
@@ -925,7 +925,7 @@ class NamedFunc(MapElement, DefaultSerializable):
     def __init__(self, func_name: str, variables: List[Var]):
         if hasattr(self, "initialized"):
             return
-        super().__init__(variables, func_name, simplified=True)
+        super().__init__(operands=variables, name=func_name, simplified=True)
         self.initialized = True
 
     @classmethod
@@ -938,8 +938,7 @@ class NamedFunc(MapElement, DefaultSerializable):
         if func != self:
             return func._call_with_dict(var_dict, {})
 
-        eval_entries = get_var_values(self.vars, var_dict)
-        return self if eval_entries is None else CompositionFunction(function=self, entries=eval_entries)
+        return super()._call_with_dict(var_dict, func_dict)
 
 
 class Func:
