@@ -4,7 +4,7 @@ import pytest
 
 from mapping_field.mapping_field import (
     CompositionFunction, Func, MapElement, MapElementConstant, MapElementFromFunction, NamedFunc,
-    Var, VarDict,
+    Var, CompositeElementFromFunction, CompositeElement,
 )
 from mapping_field.processors import param_forgetful_function
 from mapping_field.tests.utils import DummyMap
@@ -109,23 +109,34 @@ def test_composition_top_function():
 
 
 def test_simplify():
-    addition = MapElementFromFunction(name="Add", function=lambda a, b: a + b)
+    addition = CompositeElementFromFunction(name="Add", function=lambda a, b: a + b)
     assert str(addition(2, 3)) == "5"
     assert str(addition(2, 3, simplify=False)) == "Add(2,3)"
 
 
-class DummyMapWithVar(MapElement):
+class DummyMapWithVar(CompositeElement):
     def __init__(self, value=0):
         self.x = Var("x")
-        super().__init__([self.x], f"DummyMap_{value}")
+        super().__init__(operands=[self.x], name=f"DummyMap_{value}")
         self.value = value
 
     def __eq__(self, other):
         return isinstance(other, DummyMap) and other.value == self.value
 
     # Override when needed
-    def _simplify_with_var_values2(self, var_dict: VarDict) -> Optional[MapElement]:
-        return MapElementConstant.zero if (var_dict.get(self.x, None) == 0) else None
+    @param_forgetful_function
+    def _simplify_with_var_values2(self) -> Optional[MapElement]:
+        return MapElementConstant.zero if (self.operands[0] == 0) else None
+
+    @staticmethod
+    @param_forgetful_function
+    def _dummy_operand_simplifier(self) -> Optional[MapElement]:
+        operand = self.operands[0]
+        if hasattr(operand, "_dummy_operand_op"):
+            return operand._dummy_operand_op(self)
+        return None
+
+DummyMapWithVar.register_class_simplifier(DummyMapWithVar._dummy_operand_simplifier)
 
 
 class SpecialDummyVar(MapElement):
@@ -133,8 +144,8 @@ class SpecialDummyVar(MapElement):
         super().__init__([], f"SpecialDummyVar_{value}")
         self.value = value
 
-    def _simplify_caller_function2(
-        self, function: MapElement, position: int, var_dict: VarDict
+    def _dummy_operand_op(
+        self, function: MapElement
     ) -> Optional[MapElement]:
         if isinstance(function, DummyMapWithVar) and self.value == function.value:
             return MapElementConstant.one

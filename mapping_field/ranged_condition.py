@@ -680,15 +680,15 @@ class BoolVar(Var):
         self.promises.add_promise(InRange(IntervalRange[0, 1]))
         self.promises.add_promise(IsCondition)
 
-
-def two_bool_vars_simplifier(elem: MapElement, var_dict: VarDict) -> Optional[Union[MapElement, ProcessFailureReason]]:
+@param_forgetful_function
+def two_bool_vars_simplifier(elem: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
     # TODO: make sure that I don't call has_promise for an element that I am trying to simplify, since it might
     #       call simplify inside it, and then we ar off to the infinite loop races.
     # if not elem.has_promise(IsCondition):
     if not elem.promises.has_promise(IsCondition):
         return ProcessFailureReason("Not a Condition", trivial=True)
-    if len(var_dict) > 0:
-        return ProcessFailureReason("Only applicable with no var_dict", trivial=True)
+    # if len(var_dict) > 0:
+    #     return ProcessFailureReason("Only applicable with no var_dict", trivial=True)
     if len(elem.vars) > 2 or (not all(isinstance(v, BoolVar) for v in elem.vars)):
         return ProcessFailureReason("Only applicable with at most 2 bool vars", trivial=True)
 
