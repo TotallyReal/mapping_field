@@ -1,7 +1,5 @@
 import math
 
-from typing import Dict, Optional, Union
-
 from mapping_field.arithmetics import BinaryCombination, _Add, _as_combination, _Sub
 from mapping_field.conditions import FalseCondition, TrueCondition
 from mapping_field.log_utils.tree_loggers import TreeLogger, green
@@ -48,7 +46,7 @@ class Linear(CompositeElement, DefaultSerializable, Ranged):
     def elem(self, value: MapElement):
         self.operands[0] = value
 
-    def to_string(self, vars_to_str: Dict[Var, str]):
+    def to_string(self, vars_to_str: dict[Var, str]):
         a_str = f"{str(self.a)}*" if self.a != 1 else ""
         b_str = ""
         if self.b > 0:
@@ -57,7 +55,7 @@ class Linear(CompositeElement, DefaultSerializable, Ranged):
             b_str = f" - {-self.b}"
         return f"Lin[{a_str}{self.elem.to_string(vars_to_str)}{b_str}]"
 
-    def get_range(self) -> Optional[IntervalRange]:
+    def get_range(self) -> IntervalRange | None:
         f_range = InRange.get_range_of(self.elem)
         if f_range is None:
             return None
@@ -65,11 +63,11 @@ class Linear(CompositeElement, DefaultSerializable, Ranged):
 
     # <editor-fold desc=" ------------------------ Arithmetics ------------------------">
 
-    def neg(self) -> Optional[MapElement]:
+    def neg(self) -> MapElement | None:
         return Linear(-self.a, self.elem, -self.b)
 
     # The Linear addition always tries to return a "simplified" Linear map.
-    def add(self, other: MapElement) -> Optional[MapElement]:
+    def add(self, other: MapElement) -> MapElement | None:
         value = other.evaluate() if isinstance(other, MapElement) else other
         if isinstance(value, int):
             return Linear(self.a, self.elem, self.b + value)
@@ -92,25 +90,25 @@ class Linear(CompositeElement, DefaultSerializable, Ranged):
 
         return super().add(other)
 
-    def radd(self, other: MapElement) -> Optional[MapElement]:
+    def radd(self, other: MapElement) -> MapElement | None:
         return self.add(other)
 
-    def sub(self, other: MapElement) -> Optional[MapElement]:
+    def sub(self, other: MapElement) -> MapElement | None:
         return self.add(-other)
 
-    def rsub(self, other: MapElement) -> Optional[MapElement]:
+    def rsub(self, other: MapElement) -> MapElement | None:
         return (-self).add(other)
 
-    def mul(self, other: MapElement) -> Optional[MapElement]:
+    def mul(self, other: MapElement) -> MapElement | None:
         n = other.evaluate()
         if isinstance(n, int):
             return Linear(self.a * n, self.elem, self.b * n)
         return super().mul(other)
 
-    def rmul(self, other: MapElement) -> Optional[MapElement]:
+    def rmul(self, other: MapElement) -> MapElement | None:
         return self.mul(other)
 
-    def div(self, other: MapElement) -> Optional[MapElement]:
+    def div(self, other: MapElement) -> MapElement | None:
         if isinstance(other, MapElementConstant) and isinstance(other.elem, (int, float)):
             other = other.elem
         if isinstance(other, (int, float)):
@@ -119,7 +117,7 @@ class Linear(CompositeElement, DefaultSerializable, Ranged):
 
     # </editor-fold>
 
-    def evaluate(self) -> Optional[ExtElement]:
+    def evaluate(self) -> ExtElement | None:
         if self.a == 0:
             return self.b
 
@@ -134,14 +132,14 @@ class Linear(CompositeElement, DefaultSerializable, Ranged):
 
     # <editor-fold desc=" ------------------------ Simplifiers ------------------------ ">
 
-    def _simplify_with_var_values2(self) -> Optional[MapElement]:
+    def _simplify_with_var_values2(self) -> MapElement | None:
         if self.a == 0:
             return MapElementConstant(self.b)
         return None
 
     @class_simplifier
     @staticmethod
-    def _transform_linear(element: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
+    def _transform_linear(element: MapElement) -> MapElement | ProcessFailureReason | None:
         assert isinstance(element, Linear)
         if isinstance(element.elem, Linear):
             a, b = element.a, element.b
@@ -151,12 +149,12 @@ class Linear(CompositeElement, DefaultSerializable, Ranged):
 
     @class_simplifier
     @staticmethod
-    def _evaluate_simplifier(self) -> Optional[MapElement]:
+    def _evaluate_simplifier(self) -> MapElement | None:
         value = self.evaluate()
         return MapElementConstant(value) if value is not None else None
 
     @staticmethod
-    def _transform_range(element: MapElement) -> Optional[MapElement]:
+    def _transform_range(element: MapElement) -> MapElement | None:
         """
         If the range is over a Linear function, move to a range over the argument of this linear function.
         """
@@ -171,7 +169,7 @@ class Linear(CompositeElement, DefaultSerializable, Ranged):
         return RangeCondition(function.elem, (element.range - function.b) / function.a)
 
     @staticmethod
-    def _binary_combination_linearization(element: MapElement) -> Optional[MapElement]:
+    def _binary_combination_linearization(element: MapElement) -> MapElement | None:
         assert isinstance(element, BinaryCombination)
         elem1 = element.c1 * Linear.of(element.elem1)
         elem2 = element.c2 * Linear.of(element.elem2)
@@ -186,7 +184,7 @@ RangeCondition.register_class_simplifier(Linear._transform_range)
 BinaryCombination.register_class_simplifier(Linear._binary_combination_linearization)
 
 
-def _extract_scalar_signed_addition(element: MapElement) -> Optional[MapElement]:
+def _extract_scalar_signed_addition(element: MapElement) -> MapElement | None:
     assert isinstance(element, (_Add, _Sub))
     sign = 1 if isinstance(element, _Add) else -1
 

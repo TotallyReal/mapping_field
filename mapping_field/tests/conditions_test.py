@@ -1,14 +1,11 @@
 import operator
 
-from typing import List, Type
-
 import pytest
 
 from mapping_field.conditions import (
     FalseCondition, IntersectionCondition, NotCondition, TrueCondition, UnionCondition,
     _ListCondition,
 )
-from mapping_field.mapping_field import Var
 from mapping_field.ranged_condition import BoolVar
 from mapping_field.tests.utils import DummyCondition
 
@@ -144,7 +141,7 @@ def dual_case(request):
 
 
 @pytest.fixture
-def list_class(dual_case) -> Type[_ListCondition]:
+def list_class(dual_case) -> type[_ListCondition]:
     return dual_case[0]
 
 
@@ -184,7 +181,7 @@ def test_union_with_delim():
     assert cond1 == cond2
 
 
-def test_unpack_lists(list_class: Type[_ListCondition]):
+def test_unpack_lists(list_class: type[_ListCondition]):
     """
     Note that unpacking is done in the constructor without any simplification.
     """
@@ -204,7 +201,7 @@ def test_unpack_lists(list_class: Type[_ListCondition]):
     assert isinstance(cond3, list_class) and len(cond3.conditions) == 4
 
 
-def test_equality_list_permutations(list_class: Type[_ListCondition]):
+def test_equality_list_permutations(list_class: type[_ListCondition]):
     dummies = [DummyCondition(i) for i in range(5)]
 
     cond1 = list_class([dummies[0], dummies[1], dummies[2]])
@@ -215,7 +212,7 @@ def test_equality_list_permutations(list_class: Type[_ListCondition]):
 # ------------------ Simplifiers ------------------
 
 
-def test_simplify_trivial_condition(list_class: Type[_ListCondition]):
+def test_simplify_trivial_condition(list_class: type[_ListCondition]):
     dummies = [DummyCondition(type=i) for i in range(5)]
 
     trivial_condition = list_class.trivials[list_class.type]
@@ -226,7 +223,7 @@ def test_simplify_trivial_condition(list_class: Type[_ListCondition]):
     assert cond1 == cond2
 
 
-def test_simplify_final_condition(list_class: Type[_ListCondition]):
+def test_simplify_final_condition(list_class: type[_ListCondition]):
     dummies = [DummyCondition(type=i) for i in range(5)]
 
     trivial_condition = list_class.trivials[list_class.type]
@@ -239,7 +236,7 @@ def test_simplify_final_condition(list_class: Type[_ListCondition]):
     assert cond1 == cond2
 
 
-def test_simplify_repeating_conditions(list_class: Type[_ListCondition]):
+def test_simplify_repeating_conditions(list_class: type[_ListCondition]):
     dummies = [DummyCondition(type=i) for i in range(5)]
 
     cond1 = list_class([dummies[0], dummies[1], dummies[1], dummies[0], dummies[2]])
@@ -248,7 +245,7 @@ def test_simplify_repeating_conditions(list_class: Type[_ListCondition]):
     assert cond1 == cond2
 
 
-def test_simplify_unwrapping(list_class: Type[_ListCondition]):
+def test_simplify_unwrapping(list_class: type[_ListCondition]):
     dummies = [DummyCondition(type=i) for i in range(5)]
 
     cond1 = list_class([dummies[0]])
@@ -257,7 +254,7 @@ def test_simplify_unwrapping(list_class: Type[_ListCondition]):
     assert cond1 == cond2
 
 
-def test_simplify_list_of_lists(list_class: Type[_ListCondition]):
+def test_simplify_list_of_lists(list_class: type[_ListCondition]):
     dummies = [DummyCondition(type=i) for i in range(5)]
 
     cond1 = list_class([
@@ -281,7 +278,7 @@ def test_simplify_list_of_lists(list_class: Type[_ListCondition]):
     assert cond1 == cond2
 
 
-def test_simplify_containment(list_class: Type[_ListCondition]):
+def test_simplify_containment(list_class: type[_ListCondition]):
     # Test cases like   (A & B & C & D) | (A & B) = (A & B)
     #                   (A | B | C | D) & (A | B) = (A | B)
     rev_op = list_class.op_types[1 - list_class.type]
@@ -300,7 +297,7 @@ def test_simplify_containment(list_class: Type[_ListCondition]):
 
 
 def test_proper_containment(
-        list_class: Type[_ListCondition], weak_dummies: List[DummyCondition], strong_dummies: List[DummyCondition],
+        list_class: type[_ListCondition], weak_dummies: list[DummyCondition], strong_dummies: list[DummyCondition],
         rev_bin_op
 ):
     """

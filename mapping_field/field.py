@@ -1,6 +1,6 @@
 import math
 
-from typing import List, Union
+from typing import Union
 
 from mapping_field.math_utils import gcd
 
@@ -119,7 +119,7 @@ class FieldElement:
         return str(self)
 
 
-def batch_pow(x, powers: List[int]):
+def batch_pow(x, powers: list[int]):
     """
     Compute simultanously several powers of the same number x.
     """
@@ -137,7 +137,7 @@ def batch_pow(x, powers: List[int]):
     return results
 
 
-def batch_inv(elements: List[ExtElement]):
+def batch_inv(elements: list[ExtElement]):
     """
     Returns a list of inverses of the given elements.
     """

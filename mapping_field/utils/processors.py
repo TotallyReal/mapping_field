@@ -1,13 +1,11 @@
 import dataclasses
 import weakref
 
-from typing import Callable, Dict, Generic, List, Optional, Type, TypeVar, Union
+from typing import Callable, Generic, TypeVar
 
-from colorama import Back, Fore, Style, init
+from colorama import Back, init
 
-from mapping_field.log_utils.tree_loggers import (
-    TreeAction, TreeLogger, cyan, green, magenta, red, yellow,
-)
+from mapping_field.log_utils.tree_loggers import TreeAction, TreeLogger, cyan, green, magenta, red
 
 init(autoreset=True)
 logger = TreeLogger(__name__)
@@ -40,7 +38,7 @@ class WeakContextDictionary(Generic[K, V]):
         oid = id(obj)
         return self._data[oid]
 
-    def get(self, obj: K, default: Optional[V] = None) -> Optional[V]:
+    def get(self, obj: K, default: V | None = None) -> V | None:
         return self._data.get(id(obj), default)
 
     def __delitem__(self, obj: K) -> None:
@@ -82,7 +80,7 @@ class ProcessFailureReason:
     reason: str = ""
     trivial: bool = True
 
-Processor = Callable[[Elem], Optional[Union[Elem, ProcessFailureReason]]]
+Processor = Callable[[Elem], Elem | ProcessFailureReason | None]
 
 
 class ProcessorCollection(Generic[Elem]):
@@ -97,8 +95,8 @@ class ProcessorCollection(Generic[Elem]):
     """
 
     def __init__(self):
-        self.processors: List[Processor] = []
-        self.class_processors: Dict[type, List[Processor]] = {}
+        self.processors: list[Processor] = []
+        self.class_processors: dict[type, list[Processor]] = {}
         self.final_version = WeakContextDictionary[Elem, Elem]()
         self._process_stage = WeakContextDictionary[Elem, bool]()
 
@@ -115,13 +113,13 @@ class ProcessorCollection(Generic[Elem]):
         self.processors.append(processor)
 
     # TODO: make sure that the class processor corresponds to the given map_elem_class
-    def register_class_processor(self, elem_class: Type[Elem], processor: Processor) -> None:
+    def register_class_processor(self, elem_class: type[Elem], processor: Processor) -> None:
         key = elem_class
         if key not in self.class_processors:
             self.class_processors[key] = []
         self.class_processors[key].append(processor)
 
-    def one_step_process(self, elem: Elem) -> Optional[Elem]:
+    def one_step_process(self, elem: Elem) -> Elem | None:
         """
         Runs all the registered processors, until one of them updates the element, and returns this result.
         If none of them changes the element, returns None.
@@ -152,7 +150,7 @@ class ProcessorCollection(Generic[Elem]):
 
         return None
 
-    def full_process(self, elem: Elem) -> Optional[Elem]:
+    def full_process(self, elem: Elem) -> Elem | None:
         """
         Runs all the registered processes again and again until none of them changes the resulting element, and
         returns it. Returns None if there wasn't any change.

@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional
 
 # TODO: also check rich.panel.Panel
 
@@ -21,7 +20,7 @@ HEAVY  = Box("━", "┃", "┏", "┓", "┗", "┛")
 ROUND  = Box("─", "│", "╭", "╮", "╰", "╯")
 
 
-def draw_box(text: str, box: Box, width: Optional[int] = None, height: Optional[int] = None) -> str:
+def draw_box(text: str, box: Box, width: (int | None) = None, height: (int | None) = None) -> str:
     """
     Draw a text box with the given style and optional size constraints.
     """

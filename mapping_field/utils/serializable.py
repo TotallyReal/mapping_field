@@ -2,7 +2,6 @@ import inspect
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, List, Type
 
 import yaml
 
@@ -38,13 +37,13 @@ class Serializable(ABC):
         #     assert 'from_dict' in cls.__dict__, f'Class {cls} must implement \'from_dict\''
 
     @abstractmethod
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert object to a serializable dictionary."""
         raise Exception(f"Method 'to_dict' is not implemented in {self.__class__}")
 
     @classmethod
     @abstractmethod
-    def from_dict(cls, data: Dict):
+    def from_dict(cls, data: dict):
         """Reconstruct object from a dictionary."""
         raise Exception(f"Method 'from_dict' is not implemented in {cls}")
 
@@ -65,7 +64,7 @@ class Serializable(ABC):
 class DefaultSerializable(Serializable):
 
     _name_conversion = "serialized_fields"
-    _serialized_fields: List[str] = []
+    _serialized_fields: list[str] = []
 
     def __init_subclass__(cls, **kwargs):
         cls._serialized_fields = list(inspect.signature(cls.__init__).parameters)[1:]
@@ -112,7 +111,7 @@ class DefaultSerializable(Serializable):
 
         raise Exception(f"Could not rebuild the element from: {dict_rep}")
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         serialized_dict = dict()
         conversion = self.serialization_name_conversion()
         for field_name in self.__class__._serialized_fields:
@@ -141,7 +140,7 @@ class DefaultSerializable(Serializable):
         return cls(**parameters)
 
     @staticmethod
-    def get_class(dict_rep) -> Type[Serializable]:
+    def get_class(dict_rep) -> type[Serializable]:
         if _type not in dict_rep:
             raise Exception(f"Dictionary representation must have a type.\n{dict_rep}")
         type_name = dict_rep[_type]

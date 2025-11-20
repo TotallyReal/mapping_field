@@ -1,12 +1,10 @@
 import operator
 
-from typing import Dict, List, Optional, Tuple, Union
-
 from mapping_field.arithmetics import _Mult
 from mapping_field.associative import AssociativeListFunction
 from mapping_field.conditions import FalseCondition, TrueCondition, UnionCondition
 from mapping_field.field import ExtElement
-from mapping_field.log_utils.tree_loggers import TreeLogger, green, red, yellow
+from mapping_field.log_utils.tree_loggers import TreeLogger, red, yellow
 from mapping_field.mapping_field import (
     CompositeElement, MapElement, MapElementConstant, MapElementProcessor, OutputValidator, Var,
     convert_to_map, params_to_maps,
@@ -58,7 +56,7 @@ class SingleRegion(CompositeElement, Ranged):
     def function(self, value: MapElement):
         self.operands[1] = value
 
-    def to_string(self, vars_to_str: Dict[Var, str]):
+    def to_string(self, vars_to_str: dict[Var, str]):
         # TODO: fix this printing function
         return f" {self.condition.to_string(vars_to_str)} -> {self.function.to_string(vars_to_str)} "
 
@@ -66,7 +64,7 @@ class SingleRegion(CompositeElement, Ranged):
         yield self.condition
         yield self.function
 
-    def _simplify_with_var_values2(self) -> Optional[MapElement]:
+    def _simplify_with_var_values2(self) -> MapElement | None:
         if not isinstance(self.condition, MapElementProcessor):
             return None
 
@@ -82,7 +80,7 @@ class SingleRegion(CompositeElement, Ranged):
         return SingleRegion(self.condition, function)
 
     @staticmethod
-    def _true_condition_simplifier(region: MapElement) -> Optional[Union[ProcessFailureReason, MapElement]]:
+    def _true_condition_simplifier(region: MapElement) -> ProcessFailureReason | MapElement | None:
         assert isinstance(region, SingleRegion)
         if region.condition is TrueCondition:
             return region.function
@@ -108,18 +106,18 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
     def always(map: MapElement):
         return ConditionalFunction([(TrueCondition, map)])
 
-    def __init__(self, regions: List[Union[Tuple[MapElement, MapElement], SingleRegion]]):
+    def __init__(self, regions: list[tuple[MapElement, MapElement] | SingleRegion]):
         true_regions = [SingleRegion.of(region) for region in regions]
         assert None not in true_regions, f'Could not convert the regions {regions} into SingleRegions.'
 
         super().__init__(operands=true_regions)
 
     @property
-    def regions(self) -> List[SingleRegion]:
+    def regions(self) -> list[SingleRegion]:
         return self.operands
 
     @regions.setter
-    def regions(self, value: List[MapElement]):
+    def regions(self, value: list[MapElement]):
         assert all(isinstance(region, SingleRegion) for region in value)
         self.operands = value
 
@@ -130,7 +128,7 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
     #             for condition, map in self.regions
     #         ])
 
-    def evaluate(self) -> Optional[ExtElement]:
+    def evaluate(self) -> ExtElement | None:
         values = [region.function.evaluate() for region in self.regions]
         if len(values) == 0:
             raise Exception("Conditional Map should not be empty")
@@ -153,7 +151,7 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
 
         return True
 
-    def get_range(self) -> Optional[IntervalRange]:
+    def get_range(self) -> IntervalRange | None:
         interval = IntervalRange.empty()
         for region in self.regions:
             next_interval = InRange.get_range_of(region)
@@ -169,7 +167,7 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
             other = MapElementConstant(other)
         if not isinstance(other, ConditionalFunction):
             other = ConditionalFunction.always(other)
-        regions: List[Tuple[MapElement, MapElement]] = []
+        regions: list[tuple[MapElement, MapElement]] = []
         for cond1, elem1 in self.regions:
             for cond2, elem2 in other.regions:
                 simplify_logger.log(f"check if the regions {red(cond1)}, {red(cond2)} intersect.")
@@ -216,7 +214,7 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
         return element.condition is FalseCondition
 
     @staticmethod
-    def _binary_conditional_function_simplifier(element: 'ConditionalFunction') -> Optional[Union[ProcessFailureReason,MapElement]]:
+    def _binary_conditional_function_simplifier(element: 'ConditionalFunction') -> ProcessFailureReason | MapElement | None:
         assert isinstance(element, ConditionalFunction)
         if len(element.operands) != 2:
             return ProcessFailureReason('Only applicable to binary conditional functions', trivial=True)
@@ -308,7 +306,7 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
     #     return ConditionalFunction(regions) if is_simpler else None
 
     @staticmethod
-    def mult_condition_by_element(element: MapElement) -> Optional[MapElement]:
+    def mult_condition_by_element(element: MapElement) -> MapElement | None:
         assert isinstance(element, _Mult)
         a, b = element.operands
         a_is_cond = a.has_promise(IsCondition)
@@ -325,7 +323,7 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
         return ConditionalFunction([(a, b), (~a, MapElementConstant.zero)])
 
     @staticmethod
-    def new_assignment_simplify(ranged_cond: MapElement) -> Optional[MapElement]:
+    def new_assignment_simplify(ranged_cond: MapElement) -> MapElement | None:
         assert isinstance(ranged_cond, RangeCondition)
         cond_function = ranged_cond.function
         if not isinstance(cond_function, ConditionalFunction):
@@ -337,7 +335,7 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
     @staticmethod
     def _bool_var_simplifier(
         map_elem: MapElement
-    ) -> Optional[Union[MapElement, ProcessFailureReason]]:
+    ) -> MapElement | ProcessFailureReason | None:
         assert isinstance(map_elem, ConditionalFunction)
 
         if len(map_elem.regions) != 2:
@@ -388,7 +386,7 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
         # )
 
     @staticmethod
-    def promise_validate_conditional_function(validator: OutputValidator, elem: MapElement) -> Optional[bool]:
+    def promise_validate_conditional_function(validator: OutputValidator, elem: MapElement) -> bool | None:
         # TODO: This is not precise, because a function's promise can depend on where it is defined,
         #       but let's keep it simple for now...
         if not isinstance(elem, ConditionalFunction):

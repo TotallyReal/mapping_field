@@ -4,9 +4,7 @@ import functools
 import inspect
 
 from abc import abstractmethod
-from typing import (
-    Callable, Dict, Generic, Iterator, List, Optional, Set, Tuple, Type, TypeVar, Union,
-)
+from typing import Callable, Generic, Iterator, Optional, TypeVar, Union
 
 from mapping_field.field import ExtElement, FieldElement
 from mapping_field.log_utils.tree_loggers import TreeLogger
@@ -57,11 +55,11 @@ class MapElementProcessor:
         pass
 
 
-VarDict = Dict["Var", "MapElement"]
-FuncDict = Dict["NamedFunc", "MapElement"]
+VarDict = dict["Var", "MapElement"]
+FuncDict = dict["NamedFunc", "MapElement"]
 
 
-def get_var_values(var_list: List["Var"], var_dict: VarDict) -> Optional[List["MapElement"]]:
+def get_var_values(var_list: list["Var"], var_dict: VarDict) -> list["MapElement"] | None:
     """
     Looks for the valuations of the given variables, and return them as a list, if at least one of them
     is not trivial. Otherwise, returns None
@@ -111,11 +109,11 @@ def class_simplifier(method) -> Callable:
 
 
 class OutputValidator(MultiValidator["MapElement", Context], Generic[Context]):
-    def __init__(self, name: Optional[str] = None, context: Optional[Context] = None):
+    def __init__(self, name: str | None = None, context: Context | None = None):
         super().__init__(name=name, context=context)
         self.register_validator(self._check_promises_on_element)
 
-    def _check_promises_on_element(self, elem: "MapElement") -> Optional[bool]:
+    def _check_promises_on_element(self, elem: "MapElement") -> bool | None:
         # TODO: Find a better way
         if self in elem.promises._promises:
             return True
@@ -147,12 +145,12 @@ class OutputPromises:
     # TODO: I don't like this mechanism too much. Think if there is a better way
 
     def __init__(self,
-                 promises: Optional[Set[OutputValidator]] = None,
-                 invalid_promises: Optional[Set[OutputValidator]] = None):
+                 promises: set[OutputValidator] | None = None,
+                 invalid_promises: set[OutputValidator] | None = None):
         # TODO: Since these are set, iterating over their elements below is done in a random order.
         #       Should I change it to a list?
-        self._promises: Set[OutputValidator] = promises.copy() if promises is not None else set()
-        self._invalid_promises: Set[OutputValidator] = invalid_promises.copy() if promises is not None else set()
+        self._promises: set[OutputValidator] = promises.copy() if promises is not None else set()
+        self._invalid_promises: set[OutputValidator] = invalid_promises.copy() if promises is not None else set()
 
     def copy(self) -> "OutputPromises":
         return OutputPromises(self._promises, set())
@@ -163,15 +161,15 @@ class OutputPromises:
     def add_invalid_promise(self, promise: OutputValidator):
         self._invalid_promises.add(promise)
 
-    def remove_promises(self, promises: List[OutputValidator]):
+    def remove_promises(self, promises: list[OutputValidator]):
         self._promises = self._promises.difference(set(promises))
 
-    def output_promises(self, of_type: Type[OutputValidatorType] = OutputValidator) -> Iterator[OutputValidatorType]:
+    def output_promises(self, of_type: type[OutputValidatorType] = OutputValidator) -> Iterator[OutputValidatorType]:
         for promise in self._promises:
             if isinstance(promise, of_type):
                 yield promise
 
-    def has_promise(self, promise: OutputValidator) -> Optional[bool]:
+    def has_promise(self, promise: OutputValidator) -> bool | None:
         if promise in self._promises:
             return True
         if promise in self._invalid_promises:
@@ -184,7 +182,7 @@ class OutputPromises:
 KeywordValue = TypeVar("KeywordValue")
 
 
-def extract_keyword(kwargs, key: str, value_type: Type[KeywordValue]) -> KeywordValue:
+def extract_keyword(kwargs, key: str, value_type: type[KeywordValue]) -> KeywordValue:
     if key not in kwargs:
         return None
     value = kwargs[key]
@@ -220,7 +218,7 @@ class MapElement:
             if callable(attr) and getattr(attr, "_is_simplifier", False):
                 cls.register_class_simplifier(attr)
 
-    def __init__(self, variables: List['Var'], name: Optional[str] = None, promises: Optional[OutputPromises] = None,
+    def __init__(self, variables: list['Var'], name: str | None = None, promises: OutputPromises | None = None,
                  simplified: bool = False):
         """
         The 'variables' are the ordered list used when calling the function, as in f(a_1,...,a_n).
@@ -236,7 +234,7 @@ class MapElement:
     #     copied_version.promises = self.promises.copy()
     #     return copied_version
 
-    def set_var_order(self, variables: List["Var"]):
+    def set_var_order(self, variables: list["Var"]):
         """
         Reset the order of the standard variables
         """
@@ -249,7 +247,7 @@ class MapElement:
 
         self.vars = variables
 
-    def _set_variables(self, variables: List["Var"]):
+    def _set_variables(self, variables: list["Var"]):
         """
         Should be called when copying this function, and want to reset it (in case you cannot go through the
         standard __init__ function).
@@ -263,7 +261,7 @@ class MapElement:
         self.promises = OutputPromises()
 
 
-    def has_promise(self, promise: OutputValidator) -> Optional[bool]:
+    def has_promise(self, promise: OutputValidator) -> bool | None:
         value = self.promises.has_promise(promise)
         if value is not None:
             return value
@@ -283,7 +281,7 @@ class MapElement:
     def __str__(self):
         return self.to_string({v: v.name for v in self.vars})
 
-    def to_string(self, vars_to_str: Dict["Var", str]):
+    def to_string(self, vars_to_str: dict["Var", str]):
         """
         --------------- Override ---------------
         Represents the function, given the string representations of its variables
@@ -297,14 +295,14 @@ class MapElement:
 
     # <editor-fold desc=" ------------------------ Call function ------------------------">
 
-    def _extract_var_dicts(self, args, kwargs) -> Tuple[VarDict, FuncDict]:
+    def _extract_var_dicts(self, args, kwargs) -> tuple[VarDict, FuncDict]:
         if len(args) != 0 and len(kwargs) != 0:
             raise Exception(f"When calling a function use just args or just kwargs, not both.")
 
         var_dict = {}
         func_dict = {}
         if len(kwargs) == 0:
-            if len(args) == 1 and isinstance(args[0], Dict):
+            if len(args) == 1 and isinstance(args[0], dict):
                 kwargs = args[0]
             else:
                 if len(args) != self.num_vars:
@@ -384,7 +382,7 @@ class MapElement:
         raise NotImplementedError('Wait until I rewrite the CompositionFunction class')
         # return CompositionFunction(self, entries)
 
-    def evaluate(self) -> Optional[ExtElement]:
+    def evaluate(self) -> ExtElement | None:
         """
         Returns the constant this map defines. If it is not constant, raises an error.
         """
@@ -412,7 +410,7 @@ class MapElement:
         return self._simplifier.final_version.get(self, None) is self
 
     # Override when needed
-    def _simplify_with_var_values2(self) -> Optional[Union["MapElement", ProcessFailureReason]]:
+    def _simplify_with_var_values2(self) -> Union["MapElement", ProcessFailureReason] | None:
         """
         --------------- Override when needed ---------------
         Try to simplify the given function, given assignment of variables.
@@ -674,21 +672,21 @@ class CompositeElement(MapElement):
     'operands' variable.
     """
 
-    auto_promises: List[OutputValidator] = []
+    auto_promises: list[OutputValidator] = []
 
     def __init_subclass__(cls, **kwargs):
         # TODO: Simplifier mechanism should be able to see super classes, then we can register this only once.
         cls.register_class_simplifier(CompositeElement._entries_simplifier)
         super().__init_subclass__(**kwargs)
 
-    def __init__(self, operands: List[MapElement], name: Optional[str] = None, simplified: bool = False) -> None:
+    def __init__(self, operands: list[MapElement], name: str | None = None, simplified: bool = False) -> None:
 
         self.operands = operands
         super().__init__(variables=Var.extract_variables(operands), name=name, simplified=simplified)
         for promise in self.__class__.auto_promises:
             self.promises.add_promise(promise)
 
-    def copy_with_operands(self, operands: List[MapElement]) -> MapElement:
+    def copy_with_operands(self, operands: list[MapElement]) -> MapElement:
         copy_version = copy.copy(self)
         # TODO: Note that this also copies the output promises in a shallow copy
         copy_version.operands = operands
@@ -697,7 +695,7 @@ class CompositeElement(MapElement):
             copy_version.promises.add_promise(promise)
         return copy_version
 
-    def to_string(self, vars_to_str: Dict["Var", str]):
+    def to_string(self, vars_to_str: dict["Var", str]):
         """
         --------------- Override ---------------
         Represents the function, given the string representations of its variables
@@ -721,7 +719,7 @@ class CompositeElement(MapElement):
         return self.copy_with_operands(operands=new_operands)
 
     @staticmethod
-    def _entries_simplifier(elem: 'CompositeElement') -> Optional[Union[MapElement, ProcessFailureReason]]:
+    def _entries_simplifier(elem: 'CompositeElement') -> MapElement | ProcessFailureReason | None:
         assert isinstance(elem, CompositeElement)
         simplified_entries = [entry._simplify2() for entry in elem.operands]
         if all(entry is None for entry in simplified_entries):
@@ -742,7 +740,7 @@ class Var(MapElement, DefaultSerializable):
     Cannot generate two variables with the same name. Trying to do so, will return the same variable.
     """
 
-    _instances: Dict[str, "Var"] = {}
+    _instances: dict[str, "Var"] = {}
 
     @classmethod
     def try_get(cls, var_name: str) -> Optional["Var"]:
@@ -754,7 +752,7 @@ class Var(MapElement, DefaultSerializable):
     # TODO: Consider using __class_getitem__ for the try_get method
 
     @classmethod
-    def try_get_valid_assignment(cls, key, value) -> Optional[Tuple["Var", MapElement]]:
+    def try_get_valid_assignment(cls, key, value) -> tuple["Var", MapElement] | None:
         value = convert_to_map(value)
         if value is NotImplemented:
             return None
@@ -770,7 +768,7 @@ class Var(MapElement, DefaultSerializable):
         cls._instances = {}
 
     @staticmethod
-    def extract_variables(elements: List[MapElement]) -> List['Var']:
+    def extract_variables(elements: list[MapElement]) -> list['Var']:
         seen = set()
         variables = []
 
@@ -801,7 +799,7 @@ class Var(MapElement, DefaultSerializable):
         super().__init__([self], name, simplified=True)
         self.initialized = True
 
-    def to_string(self, vars_to_str: Dict["Var", str]):
+    def to_string(self, vars_to_str: dict["Var", str]):
         entries = [vars_to_str.get(v, v) for v in self.vars]
         return entries[0]
 
@@ -820,7 +818,7 @@ class Var(MapElement, DefaultSerializable):
     def __hash__(self):
         return hash(("Var", self.name))
 
-    def _simplify_with_var_values2(self) -> Optional[Union[MapElement, ProcessFailureReason]]:
+    def _simplify_with_var_values2(self) -> MapElement | ProcessFailureReason | None:
         return None
 
 
@@ -831,14 +829,14 @@ class NamedFunc(CompositeElement, DefaultSerializable):
     Cannot generate two functions with the same name. Trying to do so, will raise an exception.
     """
 
-    _instances: Dict[str, "NamedFunc"] = {}
+    _instances: dict[str, "NamedFunc"] = {}
 
     @classmethod
     def try_get(cls, func_name: str) -> Optional["NamedFunc"]:
         return cls._instances.get(func_name, None)
 
     @classmethod
-    def try_get_valid_assignment(cls, key, value) -> Optional[Tuple["NamedFunc", MapElement]]:
+    def try_get_valid_assignment(cls, key, value) -> tuple["NamedFunc", MapElement] | None:
         value = convert_to_map(value)
         if value is NotImplemented:
             return None
@@ -863,7 +861,7 @@ class NamedFunc(CompositeElement, DefaultSerializable):
     def clear_vars(cls):
         cls._instances = {}
 
-    def __new__(cls, func_name: str, variables: List[Var]):
+    def __new__(cls, func_name: str, variables: list[Var]):
         if func_name in cls._instances:
             cur_instance = cls._instances[func_name]
             if cur_instance.vars != variables:
@@ -875,14 +873,14 @@ class NamedFunc(CompositeElement, DefaultSerializable):
         cls._instances[func_name] = instance
         return instance
 
-    def __init__(self, func_name: str, variables: List[Var]):
+    def __init__(self, func_name: str, variables: list[Var]):
         if hasattr(self, "initialized"):
             return
         super().__init__(operands=variables, name=func_name, simplified=True)
         self.initialized = True
 
     @classmethod
-    def serialization_name_conversion(cls) -> Dict:
+    def serialization_name_conversion(cls) -> dict:
         return {"func_name": "name", "variables": "vars"}
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
@@ -970,7 +968,7 @@ class Func:
 #   and only apply the dict where needed.
 # class CompositionFunction(MapElement, DefaultSerializable):
 #
-#     def __init__(self, function: MapElement, entries: List[MapElement]):
+#     def __init__(self, function: MapElement, entries: list[MapElement]):
 #         """
 #         The composition of the given function with the entries of that function.
 #         The number of entries should be the number of standard variables of the function, and in
@@ -996,7 +994,7 @@ class Func:
 #
 #         self.promises = function.promises.copy()
 #
-#     def to_string(self, vars_to_str: Dict[Var, str]):
+#     def to_string(self, vars_to_str: dict[Var, str]):
 #         # Compute the str representation for each entry, by supplying it the str
 #         # representations of its variables
 #         entries_to_str = {
@@ -1058,7 +1056,7 @@ class Func:
 #
 #         return None
 #
-#     def get_entries(self, as_function: Union[Type['MapElement'], List[Type['MapElement']]]) -> Optional[List['MapElement']]:
+#     def get_entries(self, as_function: Union[type['MapElement'], list[type['MapElement']]]) -> Optional[list['MapElement']]:
 #         if isinstance(self.function, as_function):
 #             return self.entries
 #         return None
@@ -1111,8 +1109,8 @@ MapElementConstant.one = MapElementConstant(1)
 class CompositeElementFromFunction(CompositeElement):
 
     def __init__(
-            self, name: str, function: Callable[[List[ExtElement]], ExtElement],
-            operands: Optional[List[MapElement]] = None, simplified: bool = False):
+            self, name: str, function: Callable[[list[ExtElement]], ExtElement],
+            operands: list[MapElement] | None = None, simplified: bool = False):
         """
         A map defined by a callable python function.
         The number of parameters to this function is the number of standard variables for this MapElement,
@@ -1128,7 +1126,7 @@ class CompositeElementFromFunction(CompositeElement):
         super().__init__(operands=operands, name=name, simplified=simplified)
 
     # Override when needed
-    def _simplify_with_var_values2(self) -> Optional[MapElement]:
+    def _simplify_with_var_values2(self) -> MapElement | None:
 
         values = [operand.evaluate() for operand in self.operands]
         if any(value is None for value in values):

@@ -1,4 +1,3 @@
-from typing import Optional
 
 import pytest
 
@@ -7,6 +6,7 @@ from mapping_field.mapping_field import (
     Var,
 )
 from mapping_field.tests.utils import DummyMap
+from mapping_field.utils.processors import ProcessFailureReason
 
 # ----------------- var tests -----------------
 
@@ -123,11 +123,11 @@ class DummyMapWithVar(CompositeElement):
         return isinstance(other, DummyMap) and other.value == self.value
 
     # Override when needed
-    def _simplify_with_var_values2(self) -> Optional[MapElement]:
+    def _simplify_with_var_values2(self) -> ProcessFailureReason | MapElement | None:
         return MapElementConstant.zero if (self.operands[0] == 0) else None
 
     @staticmethod
-    def _dummy_operand_simplifier(self) -> Optional[MapElement]:
+    def _dummy_operand_simplifier(self) -> ProcessFailureReason | MapElement | None:
         operand = self.operands[0]
         if hasattr(operand, "_dummy_operand_op"):
             return operand._dummy_operand_op(self)
@@ -141,9 +141,7 @@ class SpecialDummyVar(MapElement):
         super().__init__([], f"SpecialDummyVar_{value}")
         self.value = value
 
-    def _dummy_operand_op(
-        self, function: MapElement
-    ) -> Optional[MapElement]:
+    def _dummy_operand_op(self, function: MapElement) -> ProcessFailureReason | MapElement | None:
         if isinstance(function, DummyMapWithVar) and self.value == function.value:
             return MapElementConstant.one
         return None
@@ -249,7 +247,7 @@ def test_double_simplification():
             super().__init__()
             self.simplified_counter = 0
 
-        def _simplify_with_var_values2(self) -> Optional[MapElement]:
+        def _simplify_with_var_values2(self) -> ProcessFailureReason | MapElement | None:
             self.simplified_counter += 1
             return MapElementConstant(5)
 
@@ -274,7 +272,7 @@ def test_double_simplification_assignment():
             super().__init__()
             self.simplified_counter = 0
 
-        def _simplify_with_var_values2(self) -> Optional[MapElement]:
+        def _simplify_with_var_values2(self) -> ProcessFailureReason | MapElement | None:
             self.simplified_counter += 1
             return None
 

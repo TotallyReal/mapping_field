@@ -1,5 +1,4 @@
 from collections import deque
-from typing import Dict, List, Optional, Set, Type, Union
 
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
 from mapping_field.mapping_field import CompositeElement, MapElement, Var, convert_to_map
@@ -10,10 +9,10 @@ simplify_logger = TreeLogger(__name__)
 class AssociativeListFunction(CompositeElement):
     # TODO: add tests
 
-    def __init_subclass__(cls, binary_class: Optional[Type[CompositeElement]] = None, **kwargs) -> None:
+    def __init_subclass__(cls, binary_class: type[CompositeElement] | None = None, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
         if binary_class is not None:
-            def _to_multi_conversion(element: MapElement) -> Optional[Union[ProcessFailureReason, MapElement]]:
+            def _to_multi_conversion(element: MapElement) -> ProcessFailureReason | MapElement | None:
                 assert isinstance(element, binary_class)
                 if AssociativeListFunction.is_binary(element):
                     return ProcessFailureReason("Is a binary construct.", trivial = True)
@@ -33,7 +32,7 @@ class AssociativeListFunction(CompositeElement):
     left_bracket    = "("
     right_bracket   = ")"
 
-    binary_constructs: Set[int] = set()
+    binary_constructs: set[int] = set()
 
     @classmethod
     def is_trivial(cls, element: MapElement) -> bool:
@@ -44,7 +43,7 @@ class AssociativeListFunction(CompositeElement):
         return id(element) in cls.binary_constructs
 
     @classmethod
-    def unpack_list(cls, elements: List[MapElement]) -> List[MapElement]:
+    def unpack_list(cls, elements: list[MapElement]) -> list[MapElement]:
         elements = elements.copy()
         all_elements = []
 
@@ -61,10 +60,10 @@ class AssociativeListFunction(CompositeElement):
             all_elements.append(element)
         return all_elements
 
-    def __init__(self, operands: List[MapElement], simplified: bool = False):
+    def __init__(self, operands: list[MapElement], simplified: bool = False):
         super().__init__(operands=self.__class__.unpack_list(operands), simplified=simplified)
 
-    def to_string(self, vars_to_str: Dict[Var, str]):
+    def to_string(self, vars_to_str: dict[Var, str]):
         cls = self.__class__
         op_symbol = cls.op_symbol
         if cls.is_binary(self):
@@ -73,7 +72,7 @@ class AssociativeListFunction(CompositeElement):
         operands_str = op_symbol.join(operand.to_string(vars_to_str) for operand in self.operands)
         return f"{cls.left_bracket}{operands_str}{cls.right_bracket}"
 
-    def _simplify_with_var_values2(self) -> Optional[MapElement]:
+    def _simplify_with_var_values2(self) -> MapElement | None:
         if self.__class__.is_binary(self):
             simplify_logger.log("is binary special - avoid simplifying here.")
             return None
@@ -161,7 +160,8 @@ def sort_key(element: MapElement):
     return (element.num_vars, sorted([v.name for v in element.vars]), str(element))
 
 
-def _sorted_commutative_simplifier(element: MapElement) -> Optional[Union[ProcessFailureReason,MapElement]]:
+
+def _sorted_commutative_simplifier(element: MapElement) -> ProcessFailureReason | MapElement | None:
     assert isinstance(element, CompositeElement)
     operands = element.operands
     sorted_operands = sorted(operands, key=lambda operand: sort_key(operand))

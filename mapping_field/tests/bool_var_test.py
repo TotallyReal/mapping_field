@@ -1,4 +1,3 @@
-from typing import Optional
 
 from mapping_field.conditions import BinaryCondition, FalseCondition, TrueCondition
 from mapping_field.log_utils.tree_loggers import TreeLogger, blue
@@ -56,7 +55,7 @@ def test_two_var_simplifier():
             self.promises.add_promise(IsCondition)
             self.function = function
 
-        def _simplify_with_var_values2(self) -> Optional[MapElement]:
+        def _simplify_with_var_values2(self) -> MapElement | None:
             output_value = self.function({x:self.operands[0], y:self.operands[1]}).simplify2()
             if isinstance(output_value, BinaryCondition):
                 return output_value

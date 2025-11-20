@@ -1,10 +1,10 @@
-from typing import Callable, Generic, List, Optional, Type, TypeVar
+from typing import Callable, Generic, TypeVar
 
 T = TypeVar("T", bound=object)
 Context = TypeVar("Context", bound=object)
 
-Validator = Callable[[T], Optional[bool]]
-ContextValidator = Callable[[T, Context], Optional[bool]]
+Validator = Callable[[T], bool | None]
+ContextValidator = Callable[[T, Context], bool | None]
 
 
 class MultiValidator(Generic[T, Context]):
@@ -13,10 +13,10 @@ class MultiValidator(Generic[T, Context]):
     True\False to get this output
     """
 
-    def __init__(self, name: Optional[str] = None, context: Optional[Context] = None):
+    def __init__(self, name: str | None = None, context: Context | None = None):
         self.name = name or self.__class__.__name__
-        self.validators: List[Validator[T]] = []
-        self.context_validators: List[ContextValidator[T, Context]] = []
+        self.validators: list[Validator[T]] = []
+        self.context_validators: list[ContextValidator[T, Context]] = []
         self.direct = ValidatorByClassOrObject()
         self.register_validator(self.direct)
         self.context = context
@@ -24,10 +24,10 @@ class MultiValidator(Generic[T, Context]):
     def __repr__(self):
         return self.name
 
-    def __call__(self, value: T) -> Optional[bool]:
+    def __call__(self, value: T) -> bool | None:
         return self.validate(value)
 
-    def validate(self, value: T) -> Optional[bool]:
+    def validate(self, value: T) -> bool | None:
         if self.context is not None:
             for validator in self.context_validators:
                 validation = validator(value, self.context)
@@ -52,13 +52,13 @@ class ValidatorByClassOrObject(Generic[T]):
         self._validated_classes = []
         self._validated_elements = []
 
-    def register_class(self, cls_type: Type[T]):
+    def register_class(self, cls_type: type[T]):
         self._validated_classes.append(cls_type)
 
     def register_object(self, element: T):
         self._validated_elements.append(element)
 
-    def __call__(self, value: T) -> Optional[bool]:
+    def __call__(self, value: T) -> bool | None:
         if (value.__class__ in self._validated_classes) or (value in self._validated_elements):
             return True
         return None

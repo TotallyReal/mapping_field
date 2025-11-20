@@ -1,7 +1,6 @@
-from typing import Optional, Type, Union, Tuple
 
 from mapping_field.log_utils.tree_loggers import TreeLogger, green
-from mapping_field.mapping_field import MapElement, OutputValidator, Var, CompositeElement
+from mapping_field.mapping_field import CompositeElement, MapElement, OutputValidator, Var
 from mapping_field.utils.processors import ProcessFailureReason
 from mapping_field.utils.serializable import DefaultSerializable
 
@@ -10,7 +9,7 @@ simplify_logger = TreeLogger(__name__)
 IsCondition = OutputValidator("Condition")
 
 
-def validate_constant_condition(elem: MapElement) -> Optional[bool]:
+def validate_constant_condition(elem: MapElement) -> bool | None:
     value = elem.evaluate()
     if value is None:
         return None
@@ -22,13 +21,13 @@ IsCondition.register_validator(validate_constant_condition)
 IsIntegral = OutputValidator("Integral")
 
 
-def validate_constant_integral(elem: MapElement) -> Optional[bool]:
+def validate_constant_integral(elem: MapElement) -> bool | None:
     value = elem.evaluate()
     if value is None:
         return None
     return int(value) == value
 
-def condition_is_integral(elem: MapElement) -> Optional[bool]:
+def condition_is_integral(elem: MapElement) -> bool | None:
     return True if elem.has_promise(IsCondition) else None
 
 
@@ -45,9 +44,9 @@ class IntVar(Var, DefaultSerializable):
         super().__init__(name)
         self.promises.add_promise(IsIntegral)
 
-def register_promise_preserving_functions(promise: OutputValidator, elem_classes: Tuple[Type[CompositeElement]]):
+def register_promise_preserving_functions(promise: OutputValidator, elem_classes: tuple[type[CompositeElement]]):
 
-    def _promise_preserving_simplifier(elem: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
+    def _promise_preserving_simplifier(elem: MapElement) -> MapElement | ProcessFailureReason | None:
         assert isinstance(elem, CompositeElement)
         assert isinstance(elem, elem_classes)
 

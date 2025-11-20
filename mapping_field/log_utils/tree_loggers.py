@@ -4,7 +4,7 @@ import sys
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Union
 
 from colorama import Fore, Style
 
@@ -45,8 +45,8 @@ Information = Union["TreeContext", str]
 
 
 class TreeContext(DefaultSerializable):
-    def __init__(self, information: Optional[List[Information]] = None, title: str = ""):
-        self.parent: Optional["TreeContext"] = None
+    def __init__(self, information: (list[Information] | None) = None, title: str = ""):
+        self.parent: ("TreeContext" | None) = None
         self.information = [] if information is None else information
         for context in self.information:
             if isinstance(context, TreeContext):

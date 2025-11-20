@@ -1,4 +1,3 @@
-from typing import Optional, Tuple
 
 import pytest
 
@@ -11,7 +10,7 @@ simplify_logger = TreeLogger(__name__)
 
 
 class ImprovedDummyMap(MapElement):
-    def __init__(self, value: Tuple = (0,)):
+    def __init__(self, value: tuple = (0,)):
         super().__init__([], f"ImprovedDummyMap({value})")
         self.value = value
 
@@ -20,24 +19,24 @@ class ImprovedDummyMap(MapElement):
             return len(self.value) == 1 and self.value[0] == other.value
         return isinstance(other, ImprovedDummyMap) and set(self.value) == set(other.value)
 
-    def _op(self, elem2: MapElement) -> Optional[MapElement]:
+    def _op(self, elem2: MapElement) -> MapElement | None:
         if isinstance(elem2, DummyMap):
             return ImprovedDummyMap(self.value + (elem2.value,))
         if isinstance(elem2, ImprovedDummyMap):
             return ImprovedDummyMap(self.value + elem2.value)
         return None
 
-    def add(self, elem2: MapElement) -> Optional[MapElement]:
+    def add(self, elem2: MapElement) -> MapElement | None:
         return self._op(elem2)
 
-    def mul(self, elem2: MapElement) -> Optional[MapElement]:
+    def mul(self, elem2: MapElement) -> MapElement | None:
         return self._op(elem2)
 
 
 def test_arithmetic_premade_methods():
     class DummyMapNeg(DummyMap):
 
-        def neg(self) -> Optional[MapElement]:
+        def neg(self) -> MapElement | None:
             return DummyMap(-self.value) if self.value != 0 else None
 
     dummy = DummyMapNeg(0)

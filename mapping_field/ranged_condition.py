@@ -2,7 +2,7 @@ import math
 import operator
 
 from abc import abstractmethod
-from typing import Dict, Optional, Tuple, Union
+from typing import Optional, Union
 
 from mapping_field.arithmetics import MultiAdd, _Add, _as_combination, _Mult, _Sub
 from mapping_field.conditions import (
@@ -51,7 +51,7 @@ class IntervalRange:
                 (self.high == self.low and not (self.contain_low and self.contain_high)
         ))
         self.is_all = (low == float("-inf")) and (high == float("inf"))
-        self.is_point: Optional[float] = None
+        self.is_point: float | None = None
         if self.low == self.high and self.contain_low and self.contain_high:
             self.is_point = self.low
 
@@ -121,7 +121,7 @@ class IntervalRange:
 
         return True
 
-    def complement(self) -> Tuple["IntervalRange", "IntervalRange"]:
+    def complement(self) -> tuple["IntervalRange", "IntervalRange"]:
         if self.is_empty:
             return (self, IntervalRange.all())
         return (IntervalRange(low=float('-inf'), high=self.low, contain_low=False, contain_high=not self.contain_low) ,
@@ -214,13 +214,13 @@ class IntervalRange:
             self.contain_high & value.contain_high,
         )
 
-    def __radd__(self, value: Union[int, float]) -> "IntervalRange":
+    def __radd__(self, value: int | float) -> "IntervalRange":
         return self.__add__(value)
 
-    def __sub__(self, value: Union[int, float]) -> "IntervalRange":
+    def __sub__(self, value: int | float) -> "IntervalRange":
         return self.__add__(-value)
 
-    def __mul__(self, value: Union[int, float]) -> "IntervalRange":
+    def __mul__(self, value: int | float) -> "IntervalRange":
         if self.is_empty:
             return self
         if value > 0:
@@ -232,10 +232,10 @@ class IntervalRange:
         assert self.contain_low and self.contain_high
         return IntervalRange.of_point(0)
 
-    def __rmul__(self, value: Union[int, float]) -> "IntervalRange":
+    def __rmul__(self, value: int | float) -> "IntervalRange":
         return self.__mul__(value)
 
-    def __truediv__(self, value: Union[int, float]) -> "IntervalRange":
+    def __truediv__(self, value: int | float) -> "IntervalRange":
         assert value != 0, "DO NOT DIVIDE BY ZERO"
         return self.__mul__(1 / value)
 
@@ -265,7 +265,7 @@ class IntervalRange:
 
 class Ranged:
     @abstractmethod
-    def get_range(self) -> Optional[IntervalRange]:
+    def get_range(self) -> IntervalRange | None:
         raise NotImplementedError()
 
 
@@ -273,7 +273,7 @@ class InRange(OutputValidator[IntervalRange]):
     # TODO: add tests
 
     @classmethod
-    def get_range_of(cls, elem: MapElement) -> Optional[IntervalRange]:
+    def get_range_of(cls, elem: MapElement) -> IntervalRange | None:
         in_range = next(elem.promises.output_promises(of_type=InRange), None)
         if in_range is not None:
             return in_range.range
@@ -288,7 +288,7 @@ class InRange(OutputValidator[IntervalRange]):
 
         return None
 
-    def __init__(self, f_range: Union[IntervalRange, Tuple[float, float]]):
+    def __init__(self, f_range: IntervalRange | tuple[float, float]):
         self.range = f_range if isinstance(f_range, IntervalRange) else IntervalRange(*f_range)
         c = self.range.is_point
         name = f"Equal {c}" if c is not None else f"InRange {f_range}"
@@ -299,7 +299,7 @@ class InRange(OutputValidator[IntervalRange]):
     @staticmethod
     def consolidate_ranges(
         promises: OutputPromises,
-    ) -> Tuple[Optional[IntervalRange], Optional[OutputPromises]]:
+    ) -> tuple[IntervalRange | None, OutputPromises | None]:
         promises = promises.copy()
         f_range = IntervalRange.all()
         count = 0
@@ -319,13 +319,13 @@ class InRange(OutputValidator[IntervalRange]):
             f_range = None
         return f_range, promises
 
-    def _validate_constant_in_range(self, elem: MapElement) -> Optional[bool]:
+    def _validate_constant_in_range(self, elem: MapElement) -> bool | None:
         value = elem.evaluate()
         if value is None:
             return None
         return self.range.contains(value)
 
-    def _validate_using_other_ranges(self, elem: MapElement) -> Optional[bool]:
+    def _validate_using_other_ranges(self, elem: MapElement) -> bool | None:
         # TODO : add test
         if self.range.is_all:
             return True
@@ -337,7 +337,7 @@ class InRange(OutputValidator[IntervalRange]):
     @staticmethod
     def _arithmetic_op_range_simplifier(
         elem: MapElement
-    ) -> Optional[Union[MapElement, ProcessFailureReason]]:
+    ) -> MapElement | ProcessFailureReason | None:
         assert isinstance(elem, (_Add, _Sub))
         op = operator.sub if isinstance(elem, _Sub) else operator.add
 
@@ -372,7 +372,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
     auto_promises = [IsCondition]
 
-    def __init__(self, function: MapElement, f_range: Union[IntervalRange, Tuple[float, float]]):
+    def __init__(self, function: MapElement, f_range: IntervalRange | tuple[float, float]):
         super().__init__(operands=[function])
         self.range = f_range if isinstance(f_range, IntervalRange) else IntervalRange(*f_range)
 
@@ -384,7 +384,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
     def function(self, value: MapElement):
         self.operands[0] = value
 
-    def to_string(self, vars_to_str: Dict[Var, str]):
+    def to_string(self, vars_to_str: dict[Var, str]):
         return self.range.str_middle(self.function.to_string(vars_to_str))
 
     def __eq__(self, condition: MapElement) -> bool:
@@ -405,7 +405,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
             return func({self.function: value}, simplify=simplify)
         return func
 
-    def as_assignment(self) -> Optional[Tuple[Var, int]]:
+    def as_assignment(self) -> tuple[Var, int] | None:
         value = self.range.is_point
         if value is not None and value == int(value) and isinstance(self.function, Var):
             return self.function, int(value)
@@ -413,20 +413,20 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
     # <editor-fold desc=" ======= Binary arithmetics ======= ">
 
-    def invert(self) -> Optional[MapElement]:
+    def invert(self) -> MapElement | None:
         range1, range2 = self.range.complement()
         upper = RangeCondition(self.function, range1)
         lower = RangeCondition(self.function, range2)
         return upper | lower
 
-    def and_(self, condition: MapElement) -> Optional[MapElement]:
+    def and_(self, condition: MapElement) -> MapElement | None:
         if isinstance(condition, RangeCondition) and condition.function == self.function:
             f_range = self.range.intersection(condition.range)
             return FalseCondition if (f_range is None) else RangeCondition(condition.function, f_range)
 
         return None
 
-    def or_(self, condition: MapElement) -> Optional[MapElement]:
+    def or_(self, condition: MapElement) -> MapElement | None:
         if isinstance(condition, RangeCondition) and condition.function == self.function:
             if condition.function.has_promise(IsIntegral):
                 # Union works better for the integral version of ranges
@@ -466,7 +466,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
     # <editor-fold desc=" ======= Simplifiers ======= ">
 
-    def _simplify_with_var_values2(self) -> Optional[MapElement]:
+    def _simplify_with_var_values2(self) -> MapElement | None:
         if self.range.is_empty:
             return FalseCondition
         if self.range.is_all:
@@ -475,7 +475,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
     @class_simplifier
     @staticmethod
-    def _evaluated_simplifier(element: MapElement) -> Optional[MapElement]:
+    def _evaluated_simplifier(element: MapElement) -> MapElement | None:
         assert isinstance(element, RangeCondition)
         value = element.function.evaluate()
         if value is None:
@@ -484,7 +484,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
     @class_simplifier
     @staticmethod
-    def _condition_in_range_simplifier(element: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
+    def _condition_in_range_simplifier(element: MapElement) -> MapElement | ProcessFailureReason | None:
         # TODO: add tests.
         #       I don't like this step too much. If I start with (x << 1) for bool var, it will become just x.
         #       However, if I now try to set x = 1, instead of getting TrueCondition, I will get 1. And while they are
@@ -504,7 +504,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
     @staticmethod
     def _ranged_promise_simplifier(
         range_cond: MapElement
-    ) -> Optional[Union[MapElement, ProcessFailureReason]]:
+    ) -> MapElement | ProcessFailureReason | None:
         """
         Consolidate ranges on a function
         """
@@ -535,7 +535,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
     @staticmethod
     def _integral_simplifier(
         range_cond: MapElement
-    ) -> Optional[Union[MapElement, ProcessFailureReason]]:
+    ) -> MapElement | ProcessFailureReason | None:
         assert isinstance(range_cond, RangeCondition)
         if range_cond.function.has_promise(IsIntegral):
             f_range = range_cond.range.as_integral()
@@ -548,7 +548,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
     @staticmethod
     def _linear_combination_simplifier(
         element: MapElement
-    ) -> Optional[Union[MapElement, ProcessFailureReason]]:
+    ) -> MapElement | ProcessFailureReason | None:
         assert isinstance(element, RangeCondition)
         c1, elem1, c2, elem2 = _as_combination(element.function)
 
@@ -571,7 +571,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
     @class_simplifier
     @staticmethod
-    def _in_range_arithmetic_simplification(ranged_cond: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
+    def _in_range_arithmetic_simplification(ranged_cond: MapElement) -> MapElement | ProcessFailureReason | None:
         assert isinstance(ranged_cond, RangeCondition)
         elem = ranged_cond.function
         if isinstance(elem, MultiAdd) and len(elem.operands) == 2:
@@ -652,7 +652,7 @@ class BoolVar(Var):
         self.promises.add_promise(InRange(IntervalRange[0, 1]))
         self.promises.add_promise(IsCondition)
 
-def two_bool_vars_simplifier(elem: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
+def two_bool_vars_simplifier(elem: MapElement) -> MapElement | ProcessFailureReason | None:
     # TODO: make sure that I don't call has_promise for an element that I am trying to simplify, since it might
     #       call simplify inside it, and then we ar off to the infinite loop races.
     # if not elem.has_promise(IsCondition):
@@ -724,7 +724,7 @@ def two_bool_vars_simplifier(elem: MapElement) -> Optional[Union[MapElement, Pro
 
     return None
 
-def mult_binary_assignment_by_numbers(element: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
+def mult_binary_assignment_by_numbers(element: MapElement) -> MapElement | ProcessFailureReason | None:
     """
     change multiplications of (x << 1) * c into c * x for boolean variables x.
     """

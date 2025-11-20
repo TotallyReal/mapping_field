@@ -1,6 +1,6 @@
 import operator
 
-from typing import Dict, List, Optional, Tuple, Type, cast
+from typing import cast
 
 from mapping_field.associative import AssociativeListFunction
 from mapping_field.field import ExtElement
@@ -42,13 +42,13 @@ class BinaryCondition(Condition, DefaultSerializable):
         self.value = value
         self.promises.add_promise(IsCondition)
 
-    def to_string(self, vars_to_str: Dict[Var, str]):
+    def to_string(self, vars_to_str: dict[Var, str]):
         return repr(self.value)
 
-    def evaluate(self) -> Optional[ExtElement]:
+    def evaluate(self) -> ExtElement | None:
         return 1 if self is TrueCondition else 0
 
-    def invert(self) -> Optional[Condition]:
+    def invert(self) -> Condition | None:
         return FalseCondition if (self is TrueCondition) else TrueCondition
 
     def and_(self, condition: MapElement):
@@ -69,7 +69,7 @@ class _NotCondition(CompositeElementFromFunction):
 
     auto_promises = [IsCondition]
 
-    def __init__(self, operand: Optional[MapElement] = None):
+    def __init__(self, operand: MapElement | None = None):
         operands = [operand] if operand is not None else None
         super().__init__(operands=operands, name="Not", function=lambda a: 1 - a)
 
@@ -85,10 +85,10 @@ class _NotCondition(CompositeElementFromFunction):
     def operand(self, value: MapElement):
         self.operands[0] = value
 
-    def to_string(self, vars_to_str: Dict[Var, str]):
+    def to_string(self, vars_to_str: dict[Var, str]):
         return f"~({self.operand.to_string(vars_to_str)})"
 
-    def _simplify_with_var_values2(self) -> Optional[MapElement]:
+    def _simplify_with_var_values2(self) -> MapElement | None:
         operand = self.operand
 
         if isinstance(operand, BinaryCondition):
@@ -102,7 +102,7 @@ class _NotCondition(CompositeElementFromFunction):
 
     @class_simplifier
     @staticmethod
-    def _to_inversion_simplifier(inversion_func: MapElement) -> Optional[MapElement]:
+    def _to_inversion_simplifier(inversion_func: MapElement) -> MapElement | None:
         assert isinstance(inversion_func, _NotCondition)
         return inversion_func.operand.invert()
 
@@ -110,7 +110,7 @@ NotCondition = _NotCondition()
 MapElement.inversion = NotCondition
 
 
-def _as_inversion(condition: MapElement) -> Tuple[bool, MapElement]:
+def _as_inversion(condition: MapElement) -> tuple[bool, MapElement]:
     """
     return (has inversion, of elem)
     """
@@ -130,7 +130,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
     left_bracket  = "["
     right_bracket = "]"
 
-    list_classes = [cast(Type["_ListCondition"], None), cast(Type["_ListCondition"], None)]
+    list_classes = [cast(type["_ListCondition"], None), cast(type["_ListCondition"], None)]
     op_types = [operator.and_, operator.or_]
     method_names = ["and_", "or_"]
     trivials = [TrueCondition, FalseCondition]
@@ -154,7 +154,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
         setattr(cls, cls.method_names[1 - op_type], cls.rev_op)
 
     @classmethod
-    def _unpack_list(cls, elements: List[MapElement]) -> List[MapElement]:
+    def _unpack_list(cls, elements: list[MapElement]) -> list[MapElement]:
         elements = elements.copy()
         all_elements = []
 
@@ -166,7 +166,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
             all_elements.append(element)
         return all_elements
 
-    def __init__(self, operands: List[MapElement], simplified: bool = False):
+    def __init__(self, operands: list[MapElement], simplified: bool = False):
         super().__init__(
             operands=self.__class__._unpack_list(operands),
             simplified=simplified
@@ -176,11 +176,11 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
             assert operand.has_promise(IsCondition)
 
     @property
-    def conditions(self) -> List[MapElement]:
+    def conditions(self) -> list[MapElement]:
         return self.operands
 
     @conditions.setter
-    def conditions(self, value: List[MapElement]):
+    def conditions(self, value: list[MapElement]):
         self.operands = value
 
     def serialization_name_conversion(self):
@@ -199,17 +199,17 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
         return True
 
     @classmethod
-    def _op_between(cls, condition1: MapElement, condition2: MapElement) -> Optional[MapElement]:
+    def _op_between(cls, condition1: MapElement, condition2: MapElement) -> MapElement | None:
         return cls.bin_condition[cls.type](condition1, condition2, simplify=False)._simplify2()
         # return getattr(condition1, cls.method_names[cls.type])(condition2)
 
     @classmethod
-    def _rev_op_between(cls, condition1: MapElement, condition2: MapElement) -> Optional[MapElement]:
+    def _rev_op_between(cls, condition1: MapElement, condition2: MapElement) -> MapElement | None:
         rev_cls = cls.list_classes[1 - cls.type]
         return rev_cls([condition1, condition2])
         # return getattr(condition1, cls.method_names[1-cls.type])(condition2)
 
-    def op(self, condition: MapElement) -> Optional[MapElement]:
+    def op(self, condition: MapElement) -> MapElement | None:
         cls = self.__class__
 
         if isinstance(condition, BinaryCondition):
@@ -221,7 +221,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
 
         return cls([*self.conditions, condition])
 
-    def rev_op(self, condition: MapElement) -> Optional[MapElement]:
+    def rev_op(self, condition: MapElement) -> MapElement | None:
 
         cls = self.__class__
         rev_cls = cls.list_classes[1 - cls.type]
@@ -244,7 +244,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
     @classmethod
     def _rev_op_against_multiple_conditions(
         cls, list_cond1: "_ListCondition", list_cond2: "_ListCondition"
-    ) -> Optional[MapElement]:
+    ) -> MapElement | None:
         assert isinstance(list_cond1, cls) and isinstance(list_cond2, cls)
         simplify_logger.log(
             f"rev_op( {cls.join_delims[1-cls.type]} ) the conditions: {yellow(list_cond1)} and {yellow(list_cond2)})"
@@ -312,8 +312,8 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
 
     @classmethod
     def _rev_op_against_single_condition(
-        cls, conditions: List[MapElement], sp_condition: MapElement
-    ) -> Optional[MapElement]:
+        cls, conditions: list[MapElement], sp_condition: MapElement
+    ) -> MapElement | None:
 
         # Assumption:
         # Only called when sp_condition is not an instance of this class, and this class has at least 2 conditions
@@ -492,7 +492,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
     #     return None
 
 
-def _binary_simplify(elem: MapElement) -> Optional[MapElement]:
+def _binary_simplify(elem: MapElement) -> MapElement | None:
     assert isinstance(elem, _ListCondition)
     if len(elem.conditions) != 2:
         return None
@@ -534,7 +534,7 @@ class IntersectionCondition(_ListCondition, MapElementProcessor, op_type=_ListCo
 
     @class_simplifier
     @staticmethod
-    def _binary_and_simplify(intersection_cond: MapElement) -> Optional[MapElement]:
+    def _binary_and_simplify(intersection_cond: MapElement) -> MapElement | None:
         assert isinstance(intersection_cond, IntersectionCondition)
         if len(intersection_cond.conditions) != 2:
             return None
