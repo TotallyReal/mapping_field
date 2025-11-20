@@ -11,7 +11,7 @@ from mapping_field.conditions import (
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
 from mapping_field.mapping_field import (
     CompositeElement, FuncDict, MapElement, MapElementConstant, MapElementProcessor, OutputPromises,
-    OutputValidator, Var, VarDict, class_simplifier,
+    OutputValidator, SimplifierOutput, Var, VarDict, class_simplifier,
 )
 from mapping_field.promises import IsCondition, IsIntegral, register_promise_preserving_functions
 from mapping_field.utils.processors import ProcessFailureReason
@@ -335,9 +335,10 @@ class InRange(OutputValidator[IntervalRange]):
         return self.range.contains(f_range)
 
     @staticmethod
-    def _arithmetic_op_range_simplifier(
-        elem: MapElement
-    ) -> MapElement | ProcessFailureReason | None:
+    def _arithmetic_op_range_simplifier(elem: MapElement) -> SimplifierOutput:
+        """
+            x + y = 2   =>  (x=1) & (y=1)       [if true...]
+        """
         assert isinstance(elem, (_Add, _Sub))
         op = operator.sub if isinstance(elem, _Sub) else operator.add
 
@@ -484,7 +485,10 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
     @class_simplifier
     @staticmethod
-    def _condition_in_range_simplifier(element: MapElement) -> MapElement | ProcessFailureReason | None:
+    def _condition_in_range_simplifier(element: MapElement) -> SimplifierOutput:
+        """
+                cond == 1     =>      cond
+        """
         # TODO: add tests.
         #       I don't like this step too much. If I start with (x << 1) for bool var, it will become just x.
         #       However, if I now try to set x = 1, instead of getting TrueCondition, I will get 1. And while they are
@@ -492,7 +496,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
         assert isinstance(element, RangeCondition)
         if not element.function.has_promise(IsCondition):
             return ProcessFailureReason("Only applicable for ranges on conditions")
-        if isinstance(element.function, BoolVar):
+        if isinstance(element.function, BoolVar): # TODO: Only Var?
             return None
         if element.range == IntervalRange.of_point(1):
             return element.function
@@ -502,9 +506,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
     @class_simplifier
     @staticmethod
-    def _ranged_promise_simplifier(
-        range_cond: MapElement
-    ) -> MapElement | ProcessFailureReason | None:
+    def _ranged_promise_simplifier(range_cond: MapElement) -> SimplifierOutput:
         """
         Consolidate ranges on a function
         """
@@ -533,9 +535,10 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
     @class_simplifier
     @staticmethod
-    def _integral_simplifier(
-        range_cond: MapElement
-    ) -> MapElement | ProcessFailureReason | None:
+    def _integral_simplifier(range_cond: MapElement) -> SimplifierOutput:
+        """
+            (f integral) < 5.4      =>      (f integral) <= 5
+        """
         assert isinstance(range_cond, RangeCondition)
         if range_cond.function.has_promise(IsIntegral):
             f_range = range_cond.range.as_integral()
@@ -546,9 +549,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
     @class_simplifier
     @staticmethod
-    def _linear_combination_simplifier(
-        element: MapElement
-    ) -> MapElement | ProcessFailureReason | None:
+    def _linear_combination_simplifier(element: MapElement) -> SimplifierOutput:
         assert isinstance(element, RangeCondition)
         c1, elem1, c2, elem2 = _as_combination(element.function)
 
@@ -571,7 +572,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
     @class_simplifier
     @staticmethod
-    def _in_range_arithmetic_simplification(ranged_cond: MapElement) -> MapElement | ProcessFailureReason | None:
+    def _in_range_arithmetic_simplification(ranged_cond: MapElement) -> SimplifierOutput:
         assert isinstance(ranged_cond, RangeCondition)
         elem = ranged_cond.function
         if isinstance(elem, MultiAdd) and len(elem.operands) == 2:
@@ -652,7 +653,7 @@ class BoolVar(Var):
         self.promises.add_promise(InRange(IntervalRange[0, 1]))
         self.promises.add_promise(IsCondition)
 
-def two_bool_vars_simplifier(elem: MapElement) -> MapElement | ProcessFailureReason | None:
+def two_bool_vars_simplifier(elem: MapElement) -> SimplifierOutput:
     # TODO: make sure that I don't call has_promise for an element that I am trying to simplify, since it might
     #       call simplify inside it, and then we ar off to the infinite loop races.
     # if not elem.has_promise(IsCondition):
@@ -724,7 +725,7 @@ def two_bool_vars_simplifier(elem: MapElement) -> MapElement | ProcessFailureRea
 
     return None
 
-def mult_binary_assignment_by_numbers(element: MapElement) -> MapElement | ProcessFailureReason | None:
+def mult_binary_assignment_by_numbers(element: MapElement) -> SimplifierOutput:
     """
     change multiplications of (x << 1) * c into c * x for boolean variables x.
     """

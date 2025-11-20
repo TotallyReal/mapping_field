@@ -2,8 +2,8 @@
 from mapping_field.associative import AssociativeListFunction, _sorted_commutative_simplifier
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.mapping_field import (
-    CompositeElement, CompositeElementFromFunction, MapElement, MapElementConstant, Var,
-    class_simplifier,
+    CompositeElement, CompositeElementFromFunction, MapElement, MapElementConstant,
+    SimplifierOutput, Var, class_simplifier,
 )
 from mapping_field.utils.processors import ProcessFailureReason
 
@@ -90,7 +90,7 @@ class _Add(CompositeElement):
 
     @class_simplifier
     @staticmethod
-    def _additive_negation_simplifier(add_func: MapElement) -> ProcessFailureReason | MapElement | None:
+    def _additive_negation_simplifier(add_func: MapElement) -> SimplifierOutput:
         """
                 elem +    0     =>  elem
                 elem + (-elem)  =>  0
@@ -114,7 +114,7 @@ class _Add(CompositeElement):
 
     @class_simplifier
     @staticmethod
-    def _numbers_add_simplifier(add_func: MapElement) -> ProcessFailureReason | MapElement | None:
+    def _numbers_add_simplifier(add_func: MapElement) -> SimplifierOutput:
         """
                 2 + 3  =>  5
         """
@@ -126,7 +126,7 @@ class _Add(CompositeElement):
 
     @class_simplifier
     @staticmethod
-    def _to_add_simplifier(add_func: MapElement) -> ProcessFailureReason | MapElement | None:
+    def _to_add_simplifier(add_func: MapElement) -> SimplifierOutput:
         """
                 x + y   =>  x.add(y)
         """
@@ -142,7 +142,7 @@ class MultiAdd(AssociativeListFunction, binary_class=_Add):
 
     @class_simplifier
     @staticmethod
-    def _to_sub_simplifier(add_func: MapElement) -> ProcessFailureReason | MapElement | None:
+    def _to_sub_simplifier(add_func: MapElement) -> SimplifierOutput:
         """
                    x + (-y)  =>  x - y
                 (-x) + (-y)  =>  - (x + y)
@@ -433,7 +433,10 @@ class BinaryCombination(MapElement):
 
 
 # TODO: add tests
-def _binary_combination_simplifier(function: MapElement) -> MapElement | ProcessFailureReason | None:
+def _binary_combination_simplifier(function: MapElement) -> SimplifierOutput:
+    """
+        convert to (c1 * elem1 + c2 * elem2) for simplification.
+    """
     assert isinstance(function, (_Add, _Sub))
     c1, elem1, c2, elem2 = _as_combination(function)
     if c2 == 0:
@@ -448,17 +451,5 @@ def _binary_combination_simplifier(function: MapElement) -> MapElement | Process
 _Add.register_class_simplifier(_binary_combination_simplifier)
 _Sub.register_class_simplifier(_binary_combination_simplifier)
 
-def _binary_commutative_simplifier(function: MapElement) -> MapElement | ProcessFailureReason | None:
-    assert isinstance(function, (_Add, _Mult))
-    operands = function.operands
-    # Comparison:
-    #   1. First by number of variables
-    #   2. If have the same number of variables, compare by their names (sorted)
-    #   3. If have the exact same variables, just compare by the string representation of the functions.
-    key1 = (operands[0].num_vars, sorted([v.name for v in operands[0].vars]), str(operands[0]))
-    key2 = (operands[1].num_vars, sorted([v.name for v in operands[1].vars]), str(operands[1]))
-    if key1 > key2:
-        return function.copy_with_operands(operands=[operands[1], operands[0]])
-    return ProcessFailureReason("Did not need to change the order of parts", trivial=True)
-_Add.register_class_simplifier(_binary_commutative_simplifier)
-_Mult.register_class_simplifier(_binary_commutative_simplifier)
+_Add.register_class_simplifier(_sorted_commutative_simplifier)
+_Mult.register_class_simplifier(_sorted_commutative_simplifier)

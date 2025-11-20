@@ -192,6 +192,9 @@ def extract_keyword(kwargs, key: str, value_type: type[KeywordValue]) -> Keyword
     return value
 
 
+SimplifierOutput = Union[ProcessFailureReason , 'MapElement' , None]
+
+
 class MapElement:
     """
     The main class representing a "formula" which both has variables, and function variables.
@@ -410,7 +413,7 @@ class MapElement:
         return self._simplifier.final_version.get(self, None) is self
 
     # Override when needed
-    def _simplify_with_var_values2(self) -> Union["MapElement", ProcessFailureReason] | None:
+    def _simplify_with_var_values2(self) -> SimplifierOutput:
         """
         --------------- Override when needed ---------------
         Try to simplify the given function, given assignment of variables.
@@ -719,7 +722,7 @@ class CompositeElement(MapElement):
         return self.copy_with_operands(operands=new_operands)
 
     @staticmethod
-    def _entries_simplifier(elem: 'CompositeElement') -> MapElement | ProcessFailureReason | None:
+    def _entries_simplifier(elem: 'CompositeElement') -> SimplifierOutput:
         assert isinstance(elem, CompositeElement)
         simplified_entries = [entry._simplify2() for entry in elem.operands]
         if all(entry is None for entry in simplified_entries):
@@ -818,7 +821,7 @@ class Var(MapElement, DefaultSerializable):
     def __hash__(self):
         return hash(("Var", self.name))
 
-    def _simplify_with_var_values2(self) -> MapElement | ProcessFailureReason | None:
+    def _simplify_with_var_values2(self) -> SimplifierOutput:
         return None
 
 

@@ -1,6 +1,8 @@
 
 from mapping_field.log_utils.tree_loggers import TreeLogger, green
-from mapping_field.mapping_field import CompositeElement, MapElement, OutputValidator, Var
+from mapping_field.mapping_field import (
+    CompositeElement, MapElement, OutputValidator, SimplifierOutput, Var,
+)
 from mapping_field.utils.processors import ProcessFailureReason
 from mapping_field.utils.serializable import DefaultSerializable
 
@@ -46,7 +48,10 @@ class IntVar(Var, DefaultSerializable):
 
 def register_promise_preserving_functions(promise: OutputValidator, elem_classes: tuple[type[CompositeElement]]):
 
-    def _promise_preserving_simplifier(elem: MapElement) -> MapElement | ProcessFailureReason | None:
+    def _promise_preserving_simplifier(elem: MapElement) -> SimplifierOutput:
+        """
+            f(promise, promise) => promise
+        """
         assert isinstance(elem, CompositeElement)
         assert isinstance(elem, elem_classes)
 

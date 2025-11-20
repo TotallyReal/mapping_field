@@ -6,8 +6,8 @@ from mapping_field.conditions import FalseCondition, TrueCondition, UnionConditi
 from mapping_field.field import ExtElement
 from mapping_field.log_utils.tree_loggers import TreeLogger, red, yellow
 from mapping_field.mapping_field import (
-    CompositeElement, MapElement, MapElementConstant, MapElementProcessor, OutputValidator, Var,
-    convert_to_map, params_to_maps,
+    CompositeElement, MapElement, MapElementConstant, MapElementProcessor, OutputValidator,
+    SimplifierOutput, Var, convert_to_map, params_to_maps,
 )
 from mapping_field.promises import IsCondition, IsIntegral
 from mapping_field.ranged_condition import InRange, IntervalRange, RangeCondition, Ranged
@@ -80,7 +80,10 @@ class SingleRegion(CompositeElement, Ranged):
         return SingleRegion(self.condition, function)
 
     @staticmethod
-    def _true_condition_simplifier(region: MapElement) -> ProcessFailureReason | MapElement | None:
+    def _true_condition_simplifier(region: MapElement) -> SimplifierOutput:
+        """
+            ( TrueCondition, f) => f
+        """
         assert isinstance(region, SingleRegion)
         if region.condition is TrueCondition:
             return region.function
@@ -214,7 +217,10 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
         return element.condition is FalseCondition
 
     @staticmethod
-    def _binary_conditional_function_simplifier(element: 'ConditionalFunction') -> ProcessFailureReason | MapElement | None:
+    def _binary_conditional_function_simplifier(element: 'ConditionalFunction') -> SimplifierOutput:
+        """
+            ( cond, func ), (cond_, func(cond_) )   =>  ( cond | cond_ , func)
+        """
         assert isinstance(element, ConditionalFunction)
         if len(element.operands) != 2:
             return ProcessFailureReason('Only applicable to binary conditional functions', trivial=True)
@@ -333,9 +339,10 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
         return UnionCondition([condition & RangeCondition(func, f_range) for condition, func in cond_function.regions])
 
     @staticmethod
-    def _bool_var_simplifier(
-        map_elem: MapElement
-    ) -> MapElement | ProcessFailureReason | None:
+    def _bool_var_simplifier(map_elem: MapElement) -> SimplifierOutput:
+        """
+            ( c, x ) ; ( ~c, y )    =>    y + ( c, x-y )
+        """
         assert isinstance(map_elem, ConditionalFunction)
 
         if len(map_elem.regions) != 2:

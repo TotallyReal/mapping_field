@@ -4,8 +4,8 @@ from mapping_field.arithmetics import BinaryCombination, _Add, _as_combination, 
 from mapping_field.conditions import FalseCondition, TrueCondition
 from mapping_field.log_utils.tree_loggers import TreeLogger, green
 from mapping_field.mapping_field import (
-    CompositeElement, ExtElement, MapElement, MapElementConstant, Var, class_simplifier,
-    params_to_maps,
+    CompositeElement, ExtElement, MapElement, MapElementConstant, SimplifierOutput, Var,
+    class_simplifier, params_to_maps,
 )
 from mapping_field.ranged_condition import InRange, IntervalRange, RangeCondition, Ranged
 from mapping_field.utils.processors import ProcessFailureReason
@@ -139,7 +139,10 @@ class Linear(CompositeElement, DefaultSerializable, Ranged):
 
     @class_simplifier
     @staticmethod
-    def _transform_linear(element: MapElement) -> MapElement | ProcessFailureReason | None:
+    def _transform_linear(element: MapElement) -> SimplifierOutput:
+        """
+            (a * x + b) < c      =>       x < (c-b)/a
+        """
         assert isinstance(element, Linear)
         if isinstance(element.elem, Linear):
             a, b = element.a, element.b

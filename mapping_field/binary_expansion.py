@@ -7,7 +7,8 @@ from mapping_field.conditions import (
 from mapping_field.linear import Linear
 from mapping_field.log_utils.tree_loggers import TreeLogger, red
 from mapping_field.mapping_field import (
-    CompositeElement, ExtElement, MapElement, MapElementConstant, Var, convert_to_map,
+    CompositeElement, ExtElement, MapElement, MapElementConstant, SimplifierOutput, Var,
+    convert_to_map,
 )
 from mapping_field.promises import IsCondition, IsIntegral
 from mapping_field.ranged_condition import BoolVar, InRange, IntervalRange, RangeCondition
@@ -668,11 +669,9 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
     #       After the big refactorzation, delete one of them.
 
     @staticmethod
-    def _binary_combination_to_expansion_simplifier(
-        bin_comb: MapElement
-    ) -> MapElement | ProcessFailureReason | None:
+    def _binary_combination_to_expansion_simplifier(bin_comb: MapElement) -> SimplifierOutput:
         """
-        Try to simplify a binary linear combination into a binary expansion
+                2 * v1 + v0     =>  Bin[v0, v1]
         """
         assert isinstance(bin_comb, BinaryCombination)
 

@@ -1,7 +1,9 @@
 from collections import deque
 
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
-from mapping_field.mapping_field import CompositeElement, MapElement, Var, convert_to_map
+from mapping_field.mapping_field import (
+    CompositeElement, MapElement, SimplifierOutput, Var, convert_to_map,
+)
 from mapping_field.utils.processors import ProcessFailureReason
 
 simplify_logger = TreeLogger(__name__)
@@ -12,7 +14,7 @@ class AssociativeListFunction(CompositeElement):
     def __init_subclass__(cls, binary_class: type[CompositeElement] | None = None, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
         if binary_class is not None:
-            def _to_multi_conversion(element: MapElement) -> ProcessFailureReason | MapElement | None:
+            def _to_multi_conversion(element: MapElement) -> SimplifierOutput:
                 assert isinstance(element, binary_class)
                 if AssociativeListFunction.is_binary(element):
                     return ProcessFailureReason("Is a binary construct.", trivial = True)
@@ -161,7 +163,10 @@ def sort_key(element: MapElement):
 
 
 
-def _sorted_commutative_simplifier(element: MapElement) -> ProcessFailureReason | MapElement | None:
+def _sorted_commutative_simplifier(element: MapElement) -> SimplifierOutput:
+    """
+            x4 @ x1 @ x3 @ x2   =>  x1 @ x2 @ x3 @ x4
+    """
     assert isinstance(element, CompositeElement)
     operands = element.operands
     sorted_operands = sorted(operands, key=lambda operand: sort_key(operand))
