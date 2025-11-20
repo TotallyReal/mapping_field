@@ -146,7 +146,7 @@ class ProcessorCollection(Generic[Elem]):
                 logger.set_context_title(f'{title_start} = {magenta("- - -")}')
                 logger.log(message=f"{magenta('- - -')}", action=TreeAction.GO_UP, delete_context=result.trivial)
                 continue
-            logger.set_context_title(f"{title_start} => {green(result)}")
+            logger.set_context_title(f"{title_start} => {green(result)} [{cyan(result.__class__.__name__)}]")
             logger.log(message=f"Produced {green(result)}", action=TreeAction.GO_UP)
             return result
 

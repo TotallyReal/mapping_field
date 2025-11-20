@@ -2,8 +2,12 @@ import functools
 import logging
 
 from pathlib import Path
+from typing import Any
 
 import pytest
+
+from _pytest.nodes import Item
+from _pytest.runner import CallInfo
 
 from mapping_field.log_utils.tree_loggers import simplify_tree
 from mapping_field.mapping_field import NamedFunc, Var
@@ -63,14 +67,27 @@ def log_to_file(log_format: str = FULL_FORMAT):
     return decorator
 
 
-def pytest_runtest_makereport(item, call):
+def pytest_configure(config):
+    config.first_failure_logged = False
+
+
+def pytest_runtest_makereport(item: Item, call: CallInfo[Any]):
     """Hook called when pytest makes a test report."""
-    # We only care about the actual test call phase
-    if call.when == "call" and call.excinfo is not None:
+    global _first_failure_logged
+
+    # Run after failed tests
+    if call.when == "call" and (call.excinfo is not None):
+
+        # Only run after the first failed test
+        config = item.config
+        if config.first_failure_logged:
+            return
+        config.first_failure_logged = True
+
         save_logs_to_file(item)
 
 
-def save_logs_to_file(item):
+def save_logs_to_file(item: Item):
     # Determine log folder
     log_dir = Path(__file__).parent / "logs"
     log_dir.mkdir(exist_ok=True)

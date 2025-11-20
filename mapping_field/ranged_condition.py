@@ -4,7 +4,7 @@ import operator
 from abc import abstractmethod
 from typing import Dict, Optional, Tuple, Union
 
-from mapping_field.arithmetics import AssociativeAddition, _Add, _as_combination, _Mult, _Sub
+from mapping_field.arithmetics import MultiAdd, _Add, _as_combination, _Mult, _Sub
 from mapping_field.conditions import (
     BinaryCondition, FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
 )
@@ -592,7 +592,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
     def _in_range_arithmetic_simplification(ranged_cond: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
         assert isinstance(ranged_cond, RangeCondition)
         elem = ranged_cond.function
-        if isinstance(elem, AssociativeAddition) and len(elem.operands) == 2:
+        if isinstance(elem, MultiAdd) and len(elem.operands) == 2:
             op = operator.add
             op1 = operator.sub
             op2 = operator.sub

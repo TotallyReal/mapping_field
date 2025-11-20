@@ -1,5 +1,5 @@
 from collections import deque
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Set, Type, Union
 
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
 from mapping_field.mapping_field import CompositeElement, MapElement, Var, convert_to_map
@@ -10,15 +10,38 @@ simplify_logger = TreeLogger(__name__)
 class AssociativeListFunction(CompositeElement):
     # TODO: add tests
 
+    def __init_subclass__(cls, binary_class: Optional[Type[CompositeElement]] = None, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        if binary_class is not None:
+            def _to_multi_conversion(element: MapElement) -> Optional[Union[ProcessFailureReason, MapElement]]:
+                assert isinstance(element, binary_class)
+                if AssociativeListFunction.is_binary(element):
+                    return ProcessFailureReason("Is a binary construct.", trivial = True)
+
+                multi_version = cls(operands=element.operands)
+                multi_version.promises = element.promises.copy()
+                return multi_version
+
+            binary_class.register_class_simplifier(_to_multi_conversion)
+
+        cls.binary_class = binary_class or cls
+
+
     trivial_element = None      # x @ trivial = x
     final_element   = None      # x @ final   = final
     op_symbol       = "@"
     left_bracket    = "("
     right_bracket   = ")"
 
+    binary_constructs: Set[int] = set()
+
     @classmethod
     def is_trivial(cls, element: MapElement) -> bool:
         return element is cls.trivial_element
+
+    @classmethod
+    def is_binary(cls, element: MapElement) -> bool:
+        return id(element) in cls.binary_constructs
 
     @classmethod
     def unpack_list(cls, elements: List[MapElement]) -> List[MapElement]:
@@ -40,19 +63,18 @@ class AssociativeListFunction(CompositeElement):
 
     def __init__(self, operands: List[MapElement], simplified: bool = False):
         super().__init__(operands=self.__class__.unpack_list(operands), simplified=simplified)
-        self._binary_special = False
 
     def to_string(self, vars_to_str: Dict[Var, str]):
         cls = self.__class__
         op_symbol = cls.op_symbol
-        if self._binary_special:
+        if cls.is_binary(self):
             op_symbol = op_symbol * 2
         op_symbol = f" {op_symbol} "
         operands_str = op_symbol.join(operand.to_string(vars_to_str) for operand in self.operands)
         return f"{cls.left_bracket}{operands_str}{cls.right_bracket}"
 
     def _simplify_with_var_values2(self) -> Optional[MapElement]:
-        if self._binary_special:
+        if self.__class__.is_binary(self):
             simplify_logger.log("is binary special - avoid simplifying here.")
             return None
 
@@ -95,13 +117,19 @@ class AssociativeListFunction(CompositeElement):
                 simplify_logger.log(
                     f"Trying to combine {red(operand)} with existing {red(existing_operand)}",
                 )
-                binary_op = cls([existing_operand, operand])
+
+                binary_op = cls.binary_class([existing_operand, operand])
+                AssociativeListFunction.binary_constructs.add(id(binary_op))
                 if len(final_operands) == 1 and len(queue) == 0:
                     binary_op.promises = self.promises.copy()
-                binary_op._binary_special = True    # This will not loop back to be simplified here
                 simplified_binary_op = binary_op._simplify2()
+                AssociativeListFunction.binary_constructs.remove(id(binary_op))
 
                 if simplified_binary_op is not None:
+                    if cls.binary_class != cls and isinstance(simplified_binary_op, cls.binary_class):
+                        binary_op = cls(operands=simplified_binary_op.operands)
+                        binary_op.promises = simplified_binary_op.promises.copy()
+                        simplified_binary_op = binary_op
                     simplify_logger.log(
                         f"Combined: {red(operand)} with {red(existing_operand)}  =>  {green(simplified_binary_op)}",
                     )
@@ -140,5 +168,4 @@ def _sorted_commutative_simplifier(element: MapElement) -> Optional[Union[Proces
     if all(op1 is op2 for op1, op2 in zip(sorted_operands, operands)):
         return ProcessFailureReason('No need to sort', trivial=True)
     return element.copy_with_operands(sorted_operands)
-
 
