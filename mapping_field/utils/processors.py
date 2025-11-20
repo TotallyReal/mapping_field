@@ -133,10 +133,10 @@ class ProcessorCollection(Generic[Elem]):
             message = f"Processing {processor.__qualname__} ( {red(elem)} )"
             title_start = f"Step: {processor.__qualname__} ( {red(elem)} )"
             logger.log(message, action=TreeAction.GO_DOWN)
+
             result = processor(elem)
 
-            if result is None:
-                result = ProcessFailureReason("", False)
+            result = result or ProcessFailureReason("", False)
             if isinstance(result, ProcessFailureReason):
                 if result.reason != "" and not result.trivial:
                     logger.log(message=result.reason)
@@ -144,6 +144,8 @@ class ProcessorCollection(Generic[Elem]):
                 logger.set_context_title(f'{title_start} = {magenta("- - -")}')
                 logger.log(message=f"{magenta('- - -')}", action=TreeAction.GO_UP, delete_context=result.trivial)
                 continue
+
+            # result is an Elem type
             logger.set_context_title(f"{title_start} => {green(result)} [{cyan(result.__class__.__name__)}]")
             logger.log(message=f"Produced {green(result)}", action=TreeAction.GO_UP)
             return result
@@ -158,21 +160,22 @@ class ProcessorCollection(Generic[Elem]):
         if elem in self.final_version:
             elem_final_version = self.final_version[elem]
             return elem_final_version if (elem_final_version is not elem) else None
-        if self._process_stage.get(elem, False):
-            logger.log(f'{red("!!!")} looped back to processing {red(elem)}')
-            return None
-        self._process_stage[elem] = True
+
+        # Make sure not to go into simplification loops
         original_elem = elem
+        if self._process_stage.get(original_elem, False):
+            logger.log(f'{red("!!!")} looped back to processing {red(original_elem)}')
+            return None
+        self._process_stage[original_elem] = True
 
         was_processed = False
 
         title_start = f"Full: [{cyan(elem.__class__.__name__)}] ( {red(elem)} )"
         message = f"Full Processing ( {red(elem)} ) , [{cyan(elem.__class__.__name__)}]"
         logger.log(message=message, action=TreeAction.GO_DOWN, back=Back.LIGHTBLACK_EX)
+
+        # Run simplification steps
         while True:
-            # TODO:
-            #   Should I add a mechanism that prevent running the same process that made the change in the
-            #   last loop?
             if elem in self.final_version:
                 result = self.final_version[elem]
                 was_processed = (result is not original_elem)
@@ -185,14 +188,16 @@ class ProcessorCollection(Generic[Elem]):
             was_processed = True
 
         self._process_stage[original_elem] = False
+
         if was_processed:
             logger.set_context_title(f"{title_start} => {green(elem)}")
             logger.log(f"Full Produced {green(elem)}", action=TreeAction.GO_UP)
             self.final_version[original_elem] = elem
             self.final_version[elem] = elem
             return elem
-        logger.set_context_title(f'{title_start} = {magenta("X X X")}')
-        logger.log(f'{magenta("X X X")} ', action=TreeAction.GO_UP)
-        self.final_version[original_elem] = elem
-        return None
+        else:
+            logger.set_context_title(f'{title_start} = {magenta("X X X")}')
+            logger.log(f'{magenta("X X X")} ', action=TreeAction.GO_UP)
+            self.final_version[original_elem] = elem
+            return None
 
