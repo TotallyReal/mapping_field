@@ -1,0 +1,38 @@
+[project]
+name = "mapping_field"
+version = "0.1.0"
+description = "A library for mathematical function expressions"
+authors = [
+    { name = "Ofir David", email = "totallyrealfield@gmail.com" }
+]
+readme = "README.md"
+license = { text = "MIT" }  # adjust if needed
+
+# Runtime dependencies
+dependencies = [
+    "pyyaml ~=6.0.3",
+    "colorama ~=0.4.6",
+    "rich ~=14.2.0",
+]
+
+# Optional / development dependencies
+[project.optional-dependencies]
+dev = [
+    "pytest ~=8.4.2",
+    "isort ~=7.0.0",
+    "textual ~=6.5.0",
+]
+
+[tool.isort]
+# Basic formatting
+line_length = 100
+multi_line_output = 5
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+combine_as_imports = true
+lines_between_types = 1
+skip = ["mapping_field/old_code"]
+
+# First-party packages (your own modules)
+known_first_party = ["mapping_field"]
