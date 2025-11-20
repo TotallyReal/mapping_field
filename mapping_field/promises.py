@@ -1,7 +1,11 @@
-from typing import Optional
+from typing import Optional, Type, Union, Tuple
 
-from mapping_field.mapping_field import MapElement, OutputValidator, Var
+from mapping_field.log_utils.tree_loggers import TreeLogger, green
+from mapping_field.mapping_field import MapElement, OutputValidator, Var, CompositeElement
+from mapping_field.utils.processors import ProcessFailureReason
 from mapping_field.utils.serializable import DefaultSerializable
+
+simplify_logger = TreeLogger(__name__)
 
 IsCondition = OutputValidator("Condition")
 
@@ -40,3 +44,23 @@ class IntVar(Var, DefaultSerializable):
     def __init__(self, name: str):
         super().__init__(name)
         self.promises.add_promise(IsIntegral)
+
+def register_promise_preserving_functions(promise: OutputValidator, elem_classes: Tuple[Type[CompositeElement]]):
+
+    def _promise_preserving_simplifier(elem: MapElement) -> Optional[Union[MapElement, ProcessFailureReason]]:
+        assert isinstance(elem, CompositeElement)
+        assert isinstance(elem, elem_classes)
+
+        if elem.promises.has_promise(promise) is not None:
+            return ProcessFailureReason(f"{promise} is already known for {elem}", trivial=True)
+
+        if all(operand.has_promise(promise) for operand in elem.operands):
+            elem.promises.add_promise(IsIntegral)
+            simplify_logger.log(f'Adding {green(promise)} promise to {green(elem)}')
+            return elem
+
+        return None
+
+    for elem_class in elem_classes:
+        assert issubclass(elem_class, CompositeElement)
+        elem_class.register_class_simplifier(_promise_preserving_simplifier)

@@ -13,7 +13,7 @@ from mapping_field.mapping_field import (
     CompositeElement, FuncDict, MapElement, MapElementConstant, MapElementProcessor, OutputPromises,
     OutputValidator, Var, VarDict, class_simplifier,
 )
-from mapping_field.promises import IsCondition, IsIntegral
+from mapping_field.promises import IsCondition, IsIntegral, register_promise_preserving_functions
 from mapping_field.utils.processors import ProcessFailureReason
 
 simplify_logger = TreeLogger(__name__)
@@ -360,28 +360,10 @@ class InRange(OutputValidator[IntervalRange]):
             elem.promises = promises
         return elem
 
-# TODO: move to another module
-def _arithmetic_op_integral_simplifier(
-    elem: MapElement
-) -> Optional[Union[MapElement, ProcessFailureReason]]:
-    assert isinstance(elem, (_Add, _Sub, _Mult))
-
-    if elem.promises.has_promise(IsIntegral) is not None:
-        return ProcessFailureReason("Already know if the function is integral", trivial=True)
-
-    elem1, elem2 = elem.operands
-    if elem1.has_promise(IsIntegral) and elem2.has_promise(IsIntegral):
-        elem.promises.add_promise(IsIntegral)
-        simplify_logger.log(f'Adding {green("IsIntegral")} promise to {green(elem)}')
-        return elem
-    return None
-
+register_promise_preserving_functions(IsIntegral, (_Add, _Sub, _Mult))
 
 _Add.register_class_simplifier(InRange._arithmetic_op_range_simplifier)
 _Sub.register_class_simplifier(InRange._arithmetic_op_range_simplifier)
-_Add.register_class_simplifier(_arithmetic_op_integral_simplifier)
-_Sub.register_class_simplifier(_arithmetic_op_integral_simplifier)
-_Mult.register_class_simplifier(_arithmetic_op_integral_simplifier)
 
 # <editor-fold desc=" --------------- RangeCondition ---------------">
 
