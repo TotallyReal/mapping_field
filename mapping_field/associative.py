@@ -33,6 +33,7 @@ class AssociativeListFunction(CompositeElement):
     op_symbol       = "@"
     left_bracket    = "("
     right_bracket   = ")"
+    unpack_single   = True      # TODO: this is just for ConditionalFunction
 
     binary_constructs: set[int] = set()
 
@@ -97,7 +98,7 @@ class AssociativeListFunction(CompositeElement):
             if operand is cls.final_element:
                 return cls.final_element
 
-            if operand is cls.trivial_element:
+            if cls.is_trivial(operand):
                 is_whole_simpler = True
                 continue
 
@@ -145,7 +146,7 @@ class AssociativeListFunction(CompositeElement):
         if len(final_operands) == 0:
             return cls.trivial_element
 
-        if len(final_operands) == 1:
+        if cls.unpack_single and len(final_operands) == 1:
             return final_operands[0]
 
         if is_whole_simpler:

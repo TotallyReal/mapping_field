@@ -1,6 +1,6 @@
 import operator
 
-from typing import cast
+from typing import cast, Optional
 
 from mapping_field.associative import AssociativeListFunction
 from mapping_field.field import ExtElement
@@ -125,11 +125,11 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
     left_bracket  = "["
     right_bracket = "]"
 
-    list_classes = [cast(type["_ListCondition"], None), cast(type["_ListCondition"], None)]
-    op_types = [operator.and_, operator.or_]
-    method_names = ["and_", "or_"]
-    trivials = [TrueCondition, FalseCondition]
-    join_delims = ["&", "|"]
+    list_classes    = [cast(type["_ListCondition"], None), cast(type["_ListCondition"], None)]
+    op_types        = [operator.and_, operator.or_]
+    method_names    = ["and_", "or_"]
+    trivials        = [TrueCondition, FalseCondition]
+    op_symbols      = ["&", "|"]
 
     auto_promises = [IsCondition]
 
@@ -140,7 +140,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
         _ListCondition.list_classes[op_type] = cls
 
         cls.op_type = cls.op_types[op_type]
-        cls.op_symbol = cls.join_delims[op_type]
+        cls.op_symbol = cls.op_symbols[op_type]
         cls.one_condition = cls.trivials[op_type]
         cls.trivial_element = cls.trivials[op_type]
         cls.zero_condition = cls.trivials[1 - op_type]
@@ -196,13 +196,11 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
     @classmethod
     def _op_between(cls, condition1: MapElement, condition2: MapElement) -> MapElement | None:
         return cls.bin_condition[cls.type](condition1, condition2, simplify=False)._simplify2()
-        # return getattr(condition1, cls.method_names[cls.type])(condition2)
 
     @classmethod
     def _rev_op_between(cls, condition1: MapElement, condition2: MapElement) -> MapElement | None:
         rev_cls = cls.list_classes[1 - cls.type]
         return rev_cls([condition1, condition2])
-        # return getattr(condition1, cls.method_names[1-cls.type])(condition2)
 
     def op(self, condition: MapElement) -> MapElement | None:
         cls = self.__class__
@@ -242,7 +240,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
     ) -> MapElement | None:
         assert isinstance(list_cond1, cls) and isinstance(list_cond2, cls)
         simplify_logger.log(
-            f"rev_op( {cls.join_delims[1-cls.type]} ) the conditions: {yellow(list_cond1)} and {yellow(list_cond2)})"
+            f"rev_op( {cls.op_symbols[1 - cls.type]} ) the conditions: {yellow(list_cond1)} and {yellow(list_cond2)})"
         )
         if len(list_cond1.conditions) < len(list_cond2.conditions):
             list_cond1, list_cond2 = list_cond2, list_cond1
@@ -313,7 +311,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
         # Assumption:
         # Only called when sp_condition is not an instance of this class, and this class has at least 2 conditions
         simplify_logger.log(
-            f"rev_op( {cls.join_delims[1-cls.type]} ) the conditions vs 1: {yellow(conditions)} and {yellow(sp_condition)})"
+            f"rev_op( {cls.op_symbols[1 - cls.type]} ) the conditions vs 1: {yellow(conditions)} and {yellow(sp_condition)})"
         )
 
         rev_cls = cls.list_classes[1 - cls.type]
@@ -343,7 +341,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
         #
         # 1. If all (but one) can be written as in type (2), we return
         #       A_0 | B_0 | C_0      or     (A_0 & D) | B_0 | C_0  ,
-        # 2. Otherwise return:
+        # 2. Otherwise, return:
         #       ( A_0 | B_0 | C_0 ) & D
 
         prod_conditions   = []  # A & D = A0 & D
