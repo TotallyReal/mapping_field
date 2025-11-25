@@ -18,24 +18,19 @@ class Condition(MapElement):
     pass
 
 
-TrueCondition = None
-FalseCondition = None
-
-
 class BinaryCondition(Condition, DefaultSerializable):
     """
     An always True / False condition.
     """
+    _conditions: dict[bool, Optional['BinaryCondition']] = {True: None, False: None}
 
     def __new__(cls, value: bool):
-        if value:
-            if TrueCondition is not None:
-                return TrueCondition
-        else:
-            if FalseCondition is not None:
-                return FalseCondition
+        condition = BinaryCondition._conditions[value]
+        if condition is None:
+            condition = super(BinaryCondition, cls).__new__(cls)
+            BinaryCondition._conditions[value] = condition
 
-        return super(BinaryCondition, cls).__new__(cls)
+        return condition
 
     def __init__(self, value: bool):
         super().__init__(variables=[], simplified=True)
@@ -43,7 +38,7 @@ class BinaryCondition(Condition, DefaultSerializable):
         self.promises.add_promise(IsCondition)
 
     def to_string(self, vars_to_str: dict[Var, str]):
-        return repr(self.value)
+        return str(self.value)
 
     def evaluate(self) -> ExtElement | None:
         return 1 if self is TrueCondition else 0
