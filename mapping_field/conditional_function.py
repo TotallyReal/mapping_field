@@ -34,7 +34,7 @@ class SingleRegion(CompositeElement, Ranged):
             ):
                 return SingleRegion(condition, function)
 
-        return None
+        return SingleRegion(TrueCondition, element)
 
 
     def __init__(self, condition: MapElement, function: MapElement):
@@ -66,6 +66,9 @@ class SingleRegion(CompositeElement, Ranged):
         yield self.condition
         yield self.function
 
+    def get_range(self) -> IntervalRange | None:
+        return InRange.get_range_of(self.function)
+
     def _simplify_with_var_values2(self) -> MapElement | None:
         if not isinstance(self.condition, MapElementProcessor):
             return None
@@ -81,17 +84,20 @@ class SingleRegion(CompositeElement, Ranged):
 
         return SingleRegion(self.condition, function)
 
-    @staticmethod
-    def _true_condition_simplifier(region: MapElement) -> SimplifierOutput:
-        """
-            ( TrueCondition, f) => f
-        """
-        assert isinstance(region, SingleRegion)
-        if region.condition is TrueCondition:
-            return region.function
-        return ProcessFailureReason("Condition is not always true", trivial=True)
+    def neg(self) -> Optional["MapElement"]:
+        if self.function == 0:
+            return self
+        return SingleRegion(self.condition, -self.function)
 
-SingleRegion.register_class_simplifier(SingleRegion._true_condition_simplifier)
+    @class_simplifier
+    @staticmethod
+    def _nested_condition_simplifier(single_region: MapElement) -> SimplifierOutput:
+        assert isinstance(single_region, SingleRegion)
+        function = single_region.function
+        condition = single_region.condition
+        if isinstance(function, SingleRegion):
+            return SingleRegion(condition & function.condition, function.function)
+        return None
 
 
 class ConditionalFunction(AssociativeListFunction, Ranged):
@@ -168,6 +174,11 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
         return interval
 
     # <editor-fold desc=" ------------------------ arithmetics ------------------------">
+
+    def neg(self) -> Optional["MapElement"]:
+        return ConditionalFunction([
+            -region for region in self.regions
+        ])
 
     def _op(self, other: MapElement, op_func) -> "ConditionalFunction":
         if isinstance(other, int):
@@ -358,6 +369,28 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
         if any([validation is None for validation in validations]):
             return None
         return True
+
+    @class_simplifier
+    @staticmethod
+    def _nested_simplifier(elem: MapElement) -> SimplifierOutput:
+        assert isinstance(elem, ConditionalFunction)
+
+        simpler = False
+        regions = []
+        for region in elem.regions:
+            function = region.function
+            condition = region.condition
+
+            if isinstance(function, ConditionalFunction):
+                simpler = True
+                for inner_region in function.regions:
+                    regions.append((inner_region.condition & condition, inner_region.function))
+            else:
+                regions.append(region)
+
+        if simpler:
+            return ConditionalFunction(regions)
+        return None
 
     # </editor-fold>
 
