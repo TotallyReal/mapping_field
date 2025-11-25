@@ -14,15 +14,6 @@ from mapping_field.utils.validators import Context, MultiValidator
 
 simplify_logger = TreeLogger(__name__)
 
-# def _to_constant(elem):
-#     if isinstance(elem, MapElementConstant):
-#         return elem.get_element()
-#     if isinstance(elem, int):
-#         return FieldElement(elem)
-#     if isinstance(elem, FieldElement):
-#         return elem
-#     return None
-
 
 def convert_to_map(elem):
 
