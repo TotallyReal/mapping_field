@@ -4,7 +4,7 @@ import operator
 from abc import abstractmethod
 from typing import Optional, Union
 
-from mapping_field.arithmetics import MultiAdd, _Add, _as_combination, _Mult, _Sub
+from mapping_field.arithmetics import MultiAdd, _Add, _as_combination, _Mult, _Sub, _Negative
 from mapping_field.conditions import (
     BinaryCondition, FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
 )
@@ -295,11 +295,18 @@ class InRange(OutputValidator[IntervalRange]):
         super().__init__(name, context=self.range)
         self.register_validator(self._validate_constant_in_range)
         self.register_validator(self._validate_using_other_ranges)
+        self.register_validator(self.contain_validate)
+
+    def contain_validate(self, elem: MapElement) -> bool | None:
+        elem_range = InRange.get_range_of(elem)
+        if elem_range is None:
+            return None
+        if self.range.contains(elem_range):
+            return True
+        return None
 
     @staticmethod
-    def consolidate_ranges(
-        promises: OutputPromises,
-    ) -> tuple[IntervalRange | None, OutputPromises | None]:
+    def consolidate_ranges(promises: OutputPromises) -> tuple[IntervalRange | None, OutputPromises | None]:
         promises = promises.copy()
         f_range = IntervalRange.all()
         count = 0
@@ -361,7 +368,6 @@ class InRange(OutputValidator[IntervalRange]):
             elem.promises = promises
         return elem
 
-register_promise_preserving_functions(IsIntegral, (_Add, _Sub, _Mult))
 
 _Add.register_class_simplifier(InRange._arithmetic_op_range_simplifier)
 _Sub.register_class_simplifier(InRange._arithmetic_op_range_simplifier)
@@ -472,16 +478,11 @@ class RangeCondition(CompositeElement, MapElementProcessor):
             return FalseCondition
         if self.range.is_all:
             return TrueCondition
-        return None
 
-    @class_simplifier
-    @staticmethod
-    def _evaluated_simplifier(element: MapElement) -> MapElement | None:
-        assert isinstance(element, RangeCondition)
-        value = element.function.evaluate()
+        value = self.function.evaluate()
         if value is None:
             return None
-        return TrueCondition if element.range.contains(value) else FalseCondition
+        return TrueCondition if self.range.contains(value) else FalseCondition
 
     @class_simplifier
     @staticmethod
@@ -603,6 +604,14 @@ class RangeCondition(CompositeElement, MapElementProcessor):
             )
 
         return ProcessFailureReason(f'The ranges {f_range1_updated} and {f_range2_updated} on the factors are not enough to imply the original range', trivial=False)
+
+    @class_simplifier
+    @staticmethod
+    def _negation_in_range_simplification(ranged_cond: MapElement) -> SimplifierOutput:
+        assert isinstance(ranged_cond, RangeCondition)
+        if not isinstance(ranged_cond.function, _Negative):
+            return ProcessFailureReason('Only works for Negation', trivial=True)
+        return RangeCondition(ranged_cond.function.operand, -ranged_cond.range)
 
     # </editor-fold>
 
