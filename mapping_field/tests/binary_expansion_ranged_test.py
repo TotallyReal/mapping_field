@@ -2,7 +2,7 @@
 from mapping_field.binary_expansion import BinaryExpansion
 from mapping_field.conditions import TrueCondition
 from mapping_field.log_utils.tree_loggers import TreeLogger, blue
-from mapping_field.ranged_condition import BoolVar
+from mapping_field.ranged_condition import BoolVar, IntervalRange
 
 simplify_logger = TreeLogger(__name__)
 
@@ -36,6 +36,24 @@ def test_simplify_range():
     # cond1 = (x >= 7).simplify2()
     # cond2 = ((vv[3] << 1) | (x << 7)).simplify2()
     # assert cond1 == cond2
+
+
+def test_extreme_interval():
+    vv = [BoolVar(f"x_{i}") for i in range(3)]
+    x = BinaryExpansion(vv)
+
+    assert x._get_extreme_interval(vv[0]<<0, largest=False) == IntervalRange[0,0]
+    assert x._get_extreme_interval(vv[0]<<0, largest=True) == IntervalRange[6,6]
+
+    assert x._get_extreme_interval(vv[0]<<1, largest=False) == IntervalRange[1,1]
+    assert x._get_extreme_interval(vv[0]<<1, largest=True) == IntervalRange[7,7]
+
+    assert x._get_extreme_interval(vv[1]<<0, largest=False) == IntervalRange[0,1]
+    assert x._get_extreme_interval(vv[1]<<0, largest=True) == IntervalRange[4,5]
+
+    assert x._get_extreme_interval(vv[2]<<0, largest=False) == IntervalRange[0,3]
+    assert x._get_extreme_interval(vv[2]<<0, largest=True) == IntervalRange[0,3]
+
 
 
 def test_extend_range_to_full():
