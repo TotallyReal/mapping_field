@@ -13,13 +13,13 @@ from mapping_field.mapping_field import (
     params_to_maps, simplifier_context,
 )
 from mapping_field.property_engines import is_condition, is_integral
-from mapping_field.ranged_condition import IntervalRange, RangeCondition, Ranged, in_range
+from mapping_field.ranged_condition import IntervalRange, RangeCondition, in_range
 from mapping_field.utils.processors import ProcessFailureReason
 
 simplify_logger = TreeLogger(__name__)
 
 
-class SingleRegion(CompositeElement, Ranged):
+class SingleRegion(CompositeElement):
 
     @classmethod
     def of(cls, element):
@@ -68,8 +68,12 @@ class SingleRegion(CompositeElement, Ranged):
         yield self.condition
         yield self.function
 
-    def get_range(self) -> IntervalRange | None:
-        return in_range.compute(self.function, simplifier_context)
+    @in_range.register_rule
+    @staticmethod
+    def single_region_range(element: MapElement, context: SimplifierContext) -> IntervalRange | None:
+        if isinstance(element, SingleRegion):
+            return in_range.compute(element.function, context)
+        return None
 
     def _simplify_with_var_values(self) -> MapElement | None:
         if not isinstance(self.condition, MapElementProcessor):
@@ -102,7 +106,7 @@ class SingleRegion(CompositeElement, Ranged):
         return None
 
 
-class ConditionalFunction(AssociativeListFunction, Ranged):
+class ConditionalFunction(AssociativeListFunction):
     """
     A conditional function of the form:
        1_(cond_1) * f_1 + 1_(cond_2) * f_2 + ... + 1_(cond_n) * f_n
@@ -171,9 +175,14 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
 
     __hash__ = MapElement.__hash__
 
-    def get_range(self) -> IntervalRange | None:
+    @in_range.register_rule
+    @staticmethod
+    def get_range(element: MapElement, context: SimplifierContext) -> IntervalRange | None:
+        if not isinstance(element, ConditionalFunction):
+            return None
+
         interval = IntervalRange.empty()
-        for region in self.regions:
+        for region in element.regions:
             next_interval = in_range.compute(region, simplifier_context)
             if next_interval is None:
                 return None

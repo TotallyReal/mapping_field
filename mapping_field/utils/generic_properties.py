@@ -63,3 +63,4 @@ class PropertyByRulesEngine(PropertyEngine[Element, Context, Property], ABC):
 
     def register_rule(self, method: PropertyRule[Element, Context, Property]):
         self._rules.append(method)
+        return method

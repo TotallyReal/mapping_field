@@ -286,11 +286,6 @@ class IntervalRange:
         return IntervalRange[low, high]
 
 
-class Ranged:
-    @abstractmethod
-    def get_range(self) -> IntervalRange | None:
-        raise NotImplementedError()
-
 class RangeEngine(PropertyByRulesEngine[MapElement, SimplifierContext, IntervalRange]):
 
     def __init__(self):
@@ -323,6 +318,32 @@ class RangeEngine(PropertyByRulesEngine[MapElement, SimplifierContext, IntervalR
 
     @staticmethod
     @property_rule
+    def _trivial_ranges(element: MapElement, context: SimplifierContext) -> IntervalRange | None:
+        """
+            5 => [5,5]
+            condition => [0,1]
+        """
+        value = element.evaluate()
+        if value is not None:
+            return IntervalRange[value,value]
+
+        if is_condition.compute(element, context):
+            return IntervalRange[0,1]
+
+        return None
+
+    @property_rule
+    def _negative_range(self, element: MapElement, context: SimplifierContext) -> IntervalRange | None:
+        """
+            x in [-1,10]     =>  -x in [-10,1]
+        """
+        if not isinstance(element, _Negative):
+            return None
+
+        interval = self.compute(element.operand, context)
+        return -interval if interval is not None else None
+
+    @property_rule
     def _multi_add_ranges(self, element: MapElement, context: SimplifierContext) -> IntervalRange | None:
         """
             x < 1 and y < 2     =>  x + y < 3
@@ -338,36 +359,6 @@ class RangeEngine(PropertyByRulesEngine[MapElement, SimplifierContext, IntervalR
             final_interval = final_interval + interval
 
         return final_interval
-
-    @property_rule
-    def _negative_range(self, element: MapElement, context: SimplifierContext) -> IntervalRange | None:
-        """
-            x in [-1,10]     =>  -x in [-10,1]
-        """
-        if not isinstance(element, _Negative):
-            return None
-
-        interval = self.compute(element.operand, context)
-        return -interval if interval is not None else None
-
-    @staticmethod
-    @property_rule
-    def _trivial_ranges(element: MapElement, context: SimplifierContext) -> IntervalRange | None:
-        """
-            5 => [5,5]
-            condition => [0,1]
-        """
-        value = element.evaluate()
-        if value is not None:
-            return IntervalRange[value,value]
-
-        if isinstance(element, Ranged):
-            return element.get_range()
-
-        if is_condition.compute(element, context):
-            return IntervalRange[0,1]
-
-        return None
 
 in_range = RangeEngine()
 simplifier_context.register_engine(in_range)
