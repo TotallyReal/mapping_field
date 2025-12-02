@@ -59,9 +59,6 @@ class _Negative(CompositeElementFromFunction):
         operand = self.operand
         if isinstance(operand, _Negative):
             return operand.operand
-        if isinstance(operand, _Sub):
-            sub_operands = operand.operands
-            return Sub(sub_operands[1], sub_operands[0])
 
         return super()._simplify_with_var_values2()
 
@@ -157,6 +154,20 @@ class MultiAdd(AssociativeListFunction, binary_class=_Add):
             return MultiAdd([-operand for operand in self.operands])
         return None
 
+    def extract_scalar(self) -> tuple[MapElementConstant, 'MultiAdd'] | None:
+        summands = []
+        scalar = 0
+        for summand in self.operands:
+            value = summand.evaluate()
+            if value is None:
+                summands.append(summand)
+            else:
+                scalar += value
+        if len(summands) < len(self.operands):
+            return MapElementConstant(scalar), MultiAdd(summands)
+        else:
+            return None
+
     @class_simplifier
     @staticmethod
     def _neg_extractor_simplifier(multi_add: MapElement) -> SimplifierOutput:
@@ -196,63 +207,13 @@ MapElement.addition = Add
 
 MultiAdd.register_class_simplifier(_sorted_commutative_simplifier)
 
+def Sub(x, y):
+    return Add(x, -y)
+MapElement.subtraction = Sub
 
 # </editor-fold>
 
 
-# <editor-fold desc=" ------------------- Subtraction ------------------- ">
-
-class _Sub(CompositeElementFromFunction):
-
-    def __init__(self, operands: list[MapElement] | None = None):
-        assert operands is None or len(operands) == 2
-        super().__init__(operands=operands, name="Sub", function=lambda a, b: a - b)
-
-    def __eq__(self, other):
-        if self is other:
-            return True
-        if not isinstance(other, _Sub):
-            return False
-        return self.operands == other.operands
-
-    def _simplify_with_var_values2(self) -> MapElement | None:
-        operands = self.operands
-
-        if operands[0].evaluate() == 0:
-            return Neg(operands[1]).simplify2()
-        if operands[1].evaluate() == 0:
-            return operands[0]
-        if operands[0] is operands[1]:
-            # TODO:
-            #   I do not use entries[0] == entries[1], because some places might use the definition for x == y
-            #   as  x - y == 0. Consider adding 'equality' function that forbids this definition
-            return MapElementConstant.zero
-
-        sign0, map0 = as_neg(operands[0])
-        sign1, map1 = as_neg(operands[1])
-
-        if sign0 == -1 and sign1 == -1:
-            return Sub(map1, map0).simplify2()
-        if sign0 == 1 and sign1 == -1:
-            return Add(map0, map1).simplify2()
-        if sign0 == -1 and sign1 == 1:
-            return (-Add(map1, map0)).simplify2()
-
-        # sign0 == sign1 == 1
-        return super()._simplify_with_var_values2()
-
-    def to_string(self, vars_to_str: dict[Var, str]):
-        return f"({self.operands[0]}-{self.operands[1]})"
-
-    @class_simplifier
-    @staticmethod
-    def _to_sub_simplifier(sub_func: MapElement) -> MapElement | None:
-        assert isinstance(sub_func, _Sub)
-        return (sub_func.operands[0].sub(sub_func.operands[1]) or
-                sub_func.operands[1].rsub(sub_func.operands[0]))
-
-Sub = _Sub()
-MapElement.subtraction = Sub
 
 # </editor-fold>
 
@@ -368,6 +329,10 @@ def _as_scalar_mult(map_elem: MapElement) -> tuple[int, MapElement]:
     if value is not None:
         return value, MapElementConstant.one
 
+    if isinstance(map_elem, _Negative):
+        c, map_elem = _as_scalar_mult(map_elem.operand)
+        return -c, map_elem
+
     if not isinstance(map_elem, _Mult):
         return 1, map_elem
 
@@ -406,6 +371,11 @@ def _as_combination(map_elem: MapElement) -> tuple[int, MapElement, int, MapElem
             if c0 == 0 or elem0 is MapElementConstant.one:
                 return c1, elem1, c0, elem0
             return c0, elem0, c1, elem1
+        result = map_elem.extract_scalar()
+        if result is not None:
+            scalar, rest = result
+            c0, elem0 = _as_scalar_mult(rest)
+            return c0, elem0, scalar.evaluate(), MapElementConstant.one
 
     if isinstance(map_elem, _Add):
         c0, elem0 = _as_scalar_mult(map_elem.operands[0])
@@ -413,13 +383,6 @@ def _as_combination(map_elem: MapElement) -> tuple[int, MapElement, int, MapElem
         if c0 == 0 or elem0 is MapElementConstant.one:
             return c1, elem1, c0, elem0
         return c0, elem0, c1, elem1
-
-    if isinstance(map_elem, _Sub):
-        c0, elem0 = _as_scalar_mult(map_elem.operands[0])
-        c1, elem1 = _as_scalar_mult(map_elem.operands[1])
-        if c0 == 0 or elem0 is MapElementConstant.one:
-            return -c1, elem1, c0, elem0
-        return c0, elem0, -c1, elem1
 
     c, elem = _as_scalar_mult(map_elem)
     return c, elem, 0, MapElementConstant.zero
@@ -475,7 +438,7 @@ def _binary_combination_simplifier(function: MapElement) -> SimplifierOutput:
     """
         convert to (c1 * elem1 + c2 * elem2) for simplification.
     """
-    assert isinstance(function, (_Add, _Sub))
+    assert isinstance(function, _Add)
     c1, elem1, c2, elem2 = _as_combination(function)
     if c2 == 0:
         return None
@@ -484,10 +447,8 @@ def _binary_combination_simplifier(function: MapElement) -> SimplifierOutput:
         return None
     return result
 
-
 # TODO: should class simplifiers be inherited?
 _Add.register_class_simplifier(_binary_combination_simplifier)
-_Sub.register_class_simplifier(_binary_combination_simplifier)
 
 _Add.register_class_simplifier(_sorted_commutative_simplifier)
 _Mult.register_class_simplifier(_sorted_commutative_simplifier)

@@ -1,6 +1,6 @@
 import math
 
-from mapping_field.arithmetics import BinaryCombination, _Add, _as_combination, _Sub
+from mapping_field.arithmetics import BinaryCombination, _Add, _as_combination
 from mapping_field.conditions import FalseCondition, TrueCondition
 from mapping_field.log_utils.tree_loggers import TreeLogger, green
 from mapping_field.mapping_field import (
@@ -188,7 +188,7 @@ BinaryCombination.register_class_simplifier(Linear._binary_combination_lineariza
 
 
 def _extract_scalar_signed_addition(element: MapElement) -> MapElement | None:
-    assert isinstance(element, (_Add, _Sub))
+    assert isinstance(element, (_Add))
     sign = 1 if isinstance(element, _Add) else -1
 
     add_vars = element.operands
@@ -207,4 +207,3 @@ def _extract_scalar_signed_addition(element: MapElement) -> MapElement | None:
 
 
 _Add.register_class_simplifier(_extract_scalar_signed_addition)
-_Sub.register_class_simplifier(_extract_scalar_signed_addition)

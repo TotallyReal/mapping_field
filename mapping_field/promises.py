@@ -1,4 +1,4 @@
-from mapping_field.arithmetics import _Add, _Mult, _Sub
+from mapping_field.arithmetics import _Add, _Mult, _Negative
 from mapping_field.log_utils.tree_loggers import TreeLogger, green
 from mapping_field.mapping_field import (
     CompositeElement, MapElement, OutputValidator, SimplifierOutput, Var,
@@ -22,7 +22,7 @@ def register_promise_preserving_functions(promise: OutputValidator, elem_classes
             return ProcessFailureReason(f"{promise} is already known for {elem}", trivial=True)
 
         if all(operand.has_promise(promise) for operand in elem.operands):
-            elem.promises.add_promise(IsIntegral)
+            elem.promises.add_promise(promise)
             simplify_logger.log(f'Adding {green(promise)} promise to {green(elem)}')
             return elem
 
@@ -70,7 +70,7 @@ def condition_is_integral(elem: MapElement) -> bool | None:
     return True if elem.has_promise(IsCondition) else None
 
 
-register_promise_preserving_functions(IsIntegral, (_Add, _Sub, _Mult))
+register_promise_preserving_functions(IsIntegral, (_Add, _Mult, _Negative))
 
 
 class IntVar(Var, DefaultSerializable):

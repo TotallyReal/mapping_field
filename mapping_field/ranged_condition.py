@@ -4,7 +4,7 @@ import operator
 from abc import abstractmethod
 from typing import Optional, Union
 
-from mapping_field.arithmetics import MultiAdd, _Add, _as_combination, _Mult, _Sub, _Negative
+from mapping_field.arithmetics import MultiAdd, _Add, _as_combination, _Mult, _Negative
 from mapping_field.conditions import (
     BinaryCondition, FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
 )
@@ -342,12 +342,33 @@ class InRange(OutputValidator[IntervalRange]):
         return self.range.contains(f_range)
 
     @staticmethod
+    def _negation_range_simplifier(elem: MapElement) -> SimplifierOutput:
+        assert isinstance(elem, _Negative)
+
+        interval = InRange.get_range_of(elem.operand)
+        if interval is None:
+            return ProcessFailureReason('Operand does not have a range', trivial=True)
+        interval = -interval
+
+        orig_interval = InRange.get_range_of(elem)
+        if orig_interval is not None and interval.contains(orig_interval):
+            return ProcessFailureReason('The current range is already smaller than the one from the operand', trivial=True)
+
+        # TODO: need to create a new element
+        elem.promises.add_promise(InRange(interval))
+        count, promises = InRange.consolidate_ranges(elem.promises)
+        simplify_logger.log(f"Added range {green(interval)} to {green(elem)}")
+        if promises is not None:
+            elem.promises = promises
+        return elem
+
+    @staticmethod
     def _arithmetic_op_range_simplifier(elem: MapElement) -> SimplifierOutput:
         """
             x + y = 2   =>  (x=1) & (y=1)       [if true...]
         """
-        assert isinstance(elem, (_Add, _Sub))
-        op = operator.sub if isinstance(elem, _Sub) else operator.add
+        assert isinstance(elem, _Add)
+        op = operator.add
 
         elem1, elem2 = elem.operands
         f_range1 = InRange.get_range_of(elem1)
@@ -370,7 +391,8 @@ class InRange(OutputValidator[IntervalRange]):
 
 
 _Add.register_class_simplifier(InRange._arithmetic_op_range_simplifier)
-_Sub.register_class_simplifier(InRange._arithmetic_op_range_simplifier)
+_Negative.register_class_simplifier(InRange._negation_range_simplifier)
+
 
 # <editor-fold desc=" --------------- RangeCondition ---------------">
 
@@ -580,10 +602,6 @@ class RangeCondition(CompositeElement, MapElementProcessor):
             op = operator.add
             op1 = operator.sub
             op2 = operator.sub
-        elif isinstance(elem, _Sub):
-            op = operator.sub
-            op1 = operator.add
-            op2 = lambda e1, e2: e2 - e1
         else:
             return ProcessFailureReason('Only works for Addition and Subtraction', trivial=True)
         elem1, elem2 = elem.operands
