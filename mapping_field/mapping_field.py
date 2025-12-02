@@ -386,7 +386,6 @@ class MapElement:
         self.vars = variables
 
 
-
     # def has_promise(self, promise: OutputValidator) -> bool | None:
     #     value = self.promises.has_promise(promise)
     #     if value is not None:
@@ -919,17 +918,17 @@ class Var(MapElement, DefaultSerializable):
             seen.update(element.vars)
         return variables
 
-    def __new__(cls, name: str, **kwargs):
-        if name in cls._instances:
-            v = cls._instances[name]
-            assert (
-                v.__class__ == cls
-            ), f"Attempted to create two variables of different classes with the same name {name}"
-            return v
-
-        instance = super(Var, cls).__new__(cls)
-        cls._instances[name] = instance
-        return instance
+    # def __new__(cls, name: str, **kwargs):
+    #     if name in cls._instances:
+    #         v = cls._instances[name]
+    #         assert (
+    #             v.__class__ == cls
+    #         ), f"Attempted to create two variables of different classes with the same name {name}"
+    #         return v
+    #
+    #     instance = super(Var, cls).__new__(cls, **kwargs)
+    #     cls._instances[name] = instance
+    #     return instance
 
     def __init__(self, name: str, output_properties: dict[PropertyEngine[Any], Any] | None = None):
         """

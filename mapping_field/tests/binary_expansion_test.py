@@ -41,11 +41,12 @@ def test_equality_constant():
 
 
 def test_equality():
-    x1 = BinaryExpansion([BoolVar("v1"), 0, 1]).simplify2()
-    x2 = BinaryExpansion([BoolVar("v1"), 0, 1]).simplify2()
+    v = BoolVar("v1")
+    x1 = BinaryExpansion([v, 0, 1]).simplify2()
+    x2 = BinaryExpansion([v, 0, 1]).simplify2()
     assert x1 == x2
 
-    x2 = BinaryExpansion([BoolVar("v1"), 0, 1, 0, 0]).simplify2()
+    x2 = BinaryExpansion([v, 0, 1, 0, 0]).simplify2()
     assert x1 == x2
     assert x2 == x1
 

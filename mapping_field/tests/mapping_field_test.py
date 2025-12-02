@@ -16,10 +16,13 @@ def test_var_double_generation():
     assert x1 == x2
 
 
-def test_var_try_get():
-    x = Var("x")
-    assert Var.try_get("x") == x
-    assert Var.try_get("z") is None
+def test_same_name_variables():
+    x1 = Var("x")
+    x2 = Var("x")
+    assert id(x1) != id(x2)
+
+    with pytest.raises(ConflictingVariables):
+        MapElement(variables=[x1, x2])
 
 
 def test_set_var_order():
