@@ -79,12 +79,6 @@ class IntervalRange:
             return "∅"
         return f'{"[" if self.contain_low else "("}{self.low},{self.high}{"]" if self.contain_high else ")"}'
 
-    def is_closed(self) -> bool:
-        return self.contain_low and self.contain_high
-
-    def is_open(self) -> bool:
-        return ~self.contain_low and ~self.contain_high
-
     def str_middle(self, middle: str):
         if self.is_empty:
             return "!∅!"
@@ -95,6 +89,12 @@ class IntervalRange:
         lower = "" if self.low == float("-inf") else (str(self.low) + ("<=" if self.contain_low else "<"))
         upper = "" if self.high == float("inf") else (("<=" if self.contain_high else "<") + str(self.high))
         return f"{lower}{middle}{upper}"
+
+    def is_closed(self) -> bool:
+        return self.contain_low and self.contain_high
+
+    def is_open(self) -> bool:
+        return ~self.contain_low and ~self.contain_high
 
     def __eq__(self, other):
         if not isinstance(other, IntervalRange):
@@ -125,6 +125,8 @@ class IntervalRange:
             return False
 
         return True
+
+    # <editor-fold desc="------------------------ Boolean functions ------------------------">
 
     def complement(self) -> tuple["IntervalRange", "IntervalRange"]:
         if self.is_empty:
@@ -199,10 +201,20 @@ class IntervalRange:
         return IntervalRange(true_low, true_high, contain_true_low, contain_true_high)
 
     def integral_union(self, other: "IntervalRange") -> Optional["IntervalRange"]:
+        """
+        Returns the union if both intervals are considered over integral.
+
+        Example:
+            integral_union([1,3.2], [3.8, 4.5]) => [1,4]
+        """
         range1 = self.as_integral(half_open=True)
         range2 = other.as_integral(half_open=True)
         result = range1.union(range2)
         return None if result is None else result.as_integral(half_open=False)
+
+    # </editor-fold>
+
+    # <editor-fold desc="------------------------ Arithmetic functions ------------------------">
 
     def __neg__(self):
         return IntervalRange(-self.high, -self.low, self.contain_high, self.contain_low)
@@ -247,6 +259,8 @@ class IntervalRange:
     def __truediv__(self, value: int | float) -> "IntervalRange":
         assert value != 0, "DO NOT DIVIDE BY ZERO"
         return self.__mul__(1 / value)
+
+    # </editor-fold>
 
     def as_integral(self, half_open: bool = False) -> "IntervalRange":
         """
