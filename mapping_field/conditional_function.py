@@ -34,8 +34,9 @@ class SingleRegion(CompositeElement, Ranged):
                     is_condition.compute(condition, simplifier_context)
             ):
                 return SingleRegion(condition, function)
-
-        return SingleRegion(TrueCondition, element)
+        if isinstance(element, MapElement):
+            return SingleRegion(TrueCondition, element)
+        return None
 
 
     def __init__(self, condition: MapElement, function: MapElement):
