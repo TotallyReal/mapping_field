@@ -397,26 +397,26 @@ class InRange(OutputValidator[IntervalRange]):
             return True
         return None
 
-    @staticmethod
-    def consolidate_ranges(promises: OutputPromises) -> tuple[IntervalRange | None, OutputPromises | None]:
-        promises = promises.copy()
-        f_range = IntervalRange.all()
-        count = 0
-        in_range_promises = []
-        for in_range in promises.output_promises(of_type=InRange):
-            in_range_promises.append(in_range)
-            count += 1
-            f_range = f_range.intersection(in_range.range)
-            if f_range is None:
-                raise Exception(f"InRange promises collapse to an empty range")
-        if count > 1:
-            promises.remove_promises(in_range_promises)
-            promises.add_promise(InRange(f_range))
-        else:
-            promises = None
-        if count == 0:
-            f_range = None
-        return f_range, promises
+    # @staticmethod
+    # def consolidate_ranges(promises: OutputPromises) -> tuple[IntervalRange | None, OutputPromises | None]:
+    #     promises = promises.copy()
+    #     f_range = IntervalRange.all()
+    #     count = 0
+    #     in_range_promises = []
+    #     for in_range in promises.output_promises(of_type=InRange):
+    #         in_range_promises.append(in_range)
+    #         count += 1
+    #         f_range = f_range.intersection(in_range.range)
+    #         if f_range is None:
+    #             raise Exception(f"InRange promises collapse to an empty range")
+    #     if count > 1:
+    #         promises.remove_promises(in_range_promises)
+    #         promises.add_promise(InRange(f_range))
+    #     else:
+    #         promises = None
+    #     if count == 0:
+    #         f_range = None
+    #     return f_range, promises
 
     def _validate_constant_in_range(self, elem: MapElement) -> bool | None:
         value = elem.evaluate()
@@ -424,66 +424,66 @@ class InRange(OutputValidator[IntervalRange]):
             return None
         return self.range.contains(value)
 
-    def _validate_using_other_ranges(self, elem: MapElement) -> bool | None:
-        # TODO : add test
-        if self.range.is_all:
-            return True
-        f_range, _ = InRange.consolidate_ranges(elem.promises)
-        if f_range is None:
-            return None
-        return self.range.contains(f_range)
+    # def _validate_using_other_ranges(self, elem: MapElement) -> bool | None:
+    #     # TODO : add test
+    #     if self.range.is_all:
+    #         return True
+    #     f_range, _ = InRange.consolidate_ranges(elem.promises)
+    #     if f_range is None:
+    #         return None
+    #     return self.range.contains(f_range)
+    #
+    # @staticmethod
+    # def _negation_range_simplifier(elem: MapElement) -> SimplifierOutput:
+    #     assert isinstance(elem, _Negative)
+    #
+    #     interval = in_range.compute(elem.operand, simplifier_context)
+    #     if interval is None:
+    #         return ProcessFailureReason('Operand does not have a range', trivial=True)
+    #     interval = -interval
+    #
+    #     orig_interval = in_range.compute(elem, simplifier_context)
+    #     if orig_interval is not None and interval.contains(orig_interval):
+    #         return ProcessFailureReason('The current range is already smaller than the one from the operand', trivial=True)
+    #
+    #     # TODO: need to create a new element
+    #     elem.promises.add_promise(InRange(interval))
+    #     count, promises = InRange.consolidate_ranges(elem.promises)
+    #     simplify_logger.log(f"Added range {green(interval)} to {green(elem)}")
+    #     if promises is not None:
+    #         elem.promises = promises
+    #     return elem
 
-    @staticmethod
-    def _negation_range_simplifier(elem: MapElement) -> SimplifierOutput:
-        assert isinstance(elem, _Negative)
-
-        interval = in_range.compute(elem.operand, simplifier_context)
-        if interval is None:
-            return ProcessFailureReason('Operand does not have a range', trivial=True)
-        interval = -interval
-
-        orig_interval = in_range.compute(elem, simplifier_context)
-        if orig_interval is not None and interval.contains(orig_interval):
-            return ProcessFailureReason('The current range is already smaller than the one from the operand', trivial=True)
-
-        # TODO: need to create a new element
-        elem.promises.add_promise(InRange(interval))
-        count, promises = InRange.consolidate_ranges(elem.promises)
-        simplify_logger.log(f"Added range {green(interval)} to {green(elem)}")
-        if promises is not None:
-            elem.promises = promises
-        return elem
-
-    @staticmethod
-    def _arithmetic_op_range_simplifier(elem: MapElement) -> SimplifierOutput:
-        """
-            x + y = 2   =>  (x=1) & (y=1)       [if true...]
-        """
-        assert isinstance(elem, _Add)
-        op = operator.add
-
-        elem1, elem2 = elem.operands
-        f_range1 = in_range.compute(elem1, simplifier_context)
-        f_range2 = in_range.compute(elem2, simplifier_context)
-        if f_range1 is None or f_range2 is None:
-            return None
-        interval = op(f_range1, f_range2)
-        orig_interval = in_range.compute(elem, simplifier_context)
-        if orig_interval is not None:
-            interval = orig_interval.intersection(interval)
-            if interval.contains(orig_interval):
-                return None
-
-        elem.promises.add_promise(InRange(interval))
-        count, promises = InRange.consolidate_ranges(elem.promises)
-        simplify_logger.log(f"Added range {green(interval)} to {green(elem)}")
-        if promises is not None:
-            elem.promises = promises
-        return elem
+    # @staticmethod
+    # def _arithmetic_op_range_simplifier(elem: MapElement) -> SimplifierOutput:
+    #     """
+    #         x + y = 2   =>  (x=1) & (y=1)       [if true...]
+    #     """
+    #     assert isinstance(elem, _Add)
+    #     op = operator.add
+    #
+    #     elem1, elem2 = elem.operands
+    #     f_range1 = in_range.compute(elem1, simplifier_context)
+    #     f_range2 = in_range.compute(elem2, simplifier_context)
+    #     if f_range1 is None or f_range2 is None:
+    #         return None
+    #     interval = op(f_range1, f_range2)
+    #     orig_interval = in_range.compute(elem, simplifier_context)
+    #     if orig_interval is not None:
+    #         interval = orig_interval.intersection(interval)
+    #         if interval.contains(orig_interval):
+    #             return None
+    #
+    #     elem.promises.add_promise(InRange(interval))
+    #     count, promises = InRange.consolidate_ranges(elem.promises)
+    #     simplify_logger.log(f"Added range {green(interval)} to {green(elem)}")
+    #     if promises is not None:
+    #         elem.promises = promises
+    #     return elem
 
 
-_Add.register_class_simplifier(InRange._arithmetic_op_range_simplifier)
-_Negative.register_class_simplifier(InRange._negation_range_simplifier)
+# _Add.register_class_simplifier(InRange._arithmetic_op_range_simplifier)
+# _Negative.register_class_simplifier(InRange._negation_range_simplifier)
 
 
 # <editor-fold desc=" --------------- RangeCondition ---------------">
@@ -626,34 +626,34 @@ class RangeCondition(CompositeElement, MapElementProcessor):
             return ~element.function
         return None
 
-    @class_simplifier
-    @staticmethod
-    def _ranged_promise_simplifier(range_cond: MapElement) -> SimplifierOutput:
-        """
-        Consolidate ranges on a function
-        """
-        assert isinstance(range_cond, RangeCondition)
-
-        function = range_cond.function
-        f_range, promises = InRange.consolidate_ranges(function.promises)
-        if f_range is None:
-            return ProcessFailureReason("Function has no range", trivial=True)
-        if promises is not None:
-            # TODO: I don't want to change the function object itself. Consider either adding a 'copy' method
-            #       to the MapElement, or instead move the promises themselves else where.
-            function.promises = promises
-
-        if range_cond.range.contains(f_range):
-            return TrueCondition
-
-        f_range = f_range.intersection(range_cond.range)
-        if f_range is None:
-            return FalseCondition
-
-        if f_range != range_cond.range or promises is not None:
-            return RangeCondition(function, f_range)
-
-        return None
+    # @class_simplifier
+    # @staticmethod
+    # def _ranged_promise_simplifier(range_cond: MapElement) -> SimplifierOutput:
+    #     """
+    #     Consolidate ranges on a function
+    #     """
+    #     assert isinstance(range_cond, RangeCondition)
+    #
+    #     function = range_cond.function
+    #     f_range, promises = InRange.consolidate_ranges(function.promises)
+    #     if f_range is None:
+    #         return ProcessFailureReason("Function has no range", trivial=True)
+    #     if promises is not None:
+    #         # TODO: I don't want to change the function object itself. Consider either adding a 'copy' method
+    #         #       to the MapElement, or instead move the promises themselves else where.
+    #         function.promises = promises
+    #
+    #     if range_cond.range.contains(f_range):
+    #         return TrueCondition
+    #
+    #     f_range = f_range.intersection(range_cond.range)
+    #     if f_range is None:
+    #         return FalseCondition
+    #
+    #     if f_range != range_cond.range or promises is not None:
+    #         return RangeCondition(function, f_range)
+    #
+    #     return None
 
     @class_simplifier
     @staticmethod
