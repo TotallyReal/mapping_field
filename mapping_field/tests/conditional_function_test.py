@@ -7,7 +7,7 @@ from mapping_field.linear import Linear
 from mapping_field.mapping_field import MapElementConstant, Var, simplifier_context
 from mapping_field.promises import IsIntegral
 from mapping_field.property_engines import is_integral
-from mapping_field.ranged_condition import BoolVar, InRange, IntervalRange, RangeCondition
+from mapping_field.ranged_condition import BoolVar, InRange, IntervalRange, RangeCondition, in_range
 from mapping_field.tests.utils import DummyCondition, DummyConditionOn, DummyMap
 
 logger = logging.getLogger(__name__)
@@ -167,8 +167,7 @@ def test_addition():
 
 
 def test_addition_with_ranges():
-    dummy_map = DummyMap(0)
-    dummy_map.promises.add_promise(InRange(IntervalRange(0,40,True,False)))
+    dummy_map = DummyMap(0, output_properties={in_range: IntervalRange(0,40,True,False)})
 
     def ranged(low, high):
         return RangeCondition(dummy_map, IntervalRange(low,high,True,False))
@@ -220,8 +219,7 @@ def test_simplification():
     assert cond_func == simplified_version
 
     # Combine regions with assignments
-    x = Var("x")
-    x.promises.add_promise(InRange(IntervalRange[0,10]))
+    x = Var("x", output_properties={in_range: IntervalRange[0,10]})
     xx = Linear.of(x)
 
     cond_func = ConditionalFunction([

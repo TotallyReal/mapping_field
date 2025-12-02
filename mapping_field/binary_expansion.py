@@ -12,7 +12,7 @@ from mapping_field.mapping_field import (
 )
 from mapping_field.promises import IsCondition, IsIntegral
 from mapping_field.property_engines import is_condition
-from mapping_field.ranged_condition import BoolVar, InRange, IntervalRange, RangeCondition
+from mapping_field.ranged_condition import BoolVar, InRange, IntervalRange, RangeCondition, in_range
 from mapping_field.utils.processors import ProcessFailureReason
 from mapping_field.utils.serializable import DefaultSerializable
 
@@ -98,7 +98,9 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
             else:
                 self._bool_max_value.append(self._bool_max_value[-1] + two_power)
             two_power *= 2
-        self.promises.add_promise(InRange(IntervalRange[self._constant, self._constant + self._bool_max_value[-1]]))
+        f_range = IntervalRange[self._constant, self._constant + self._bool_max_value[-1]]
+        simplifier_context.set_property(self, in_range, f_range)
+        # self.promises.add_promise(InRange(IntervalRange[self._constant, self._constant + self._bool_max_value[-1]]))
 
     @property
     def coefficients(self) -> list[MapElement]:
@@ -441,7 +443,7 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
         condition = condition.simplify2()
 
         if condition is TrueCondition:
-            return next(self.promises.output_promises(of_type=InRange)).range
+            return in_range.compute(self, simplifier_context)
         if condition is FalseCondition:
             return IntervalRange.empty()
         if len(condition.vars) == 0:
@@ -478,7 +480,7 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
             if elem_vars_indices != list(range(sorted_elem_vars_indices[0], sorted_elem_vars_indices[-1] + 1)):
                 return None
 
-            other_range = next(elem.promises.output_promises(of_type=InRange)).range.intersection(sub_cond.range)
+            other_range = in_range.compute(elem, simplifier_context)
             if other_range is None:
                 return None
             other_range = other_range.as_integral()

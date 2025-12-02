@@ -126,6 +126,8 @@ class Linear(CompositeElement, DefaultSerializable, Ranged):
 
     @params_to_maps
     def __eq__(self, other: MapElement):
+        if self is other:
+            return True
         if other is MapElementConstant.zero:
             return self.evaluate() == 0
         return (self - Linear.of(other)).evaluate() == 0

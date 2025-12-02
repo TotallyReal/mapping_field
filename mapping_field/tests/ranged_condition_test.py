@@ -3,7 +3,7 @@ from mapping_field.conditional_function import ReLU
 from mapping_field.conditions import (
     FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
 )
-from mapping_field.log_utils.tree_loggers import TreeLogger
+from mapping_field.log_utils.tree_loggers import TreeLogger, blue
 from mapping_field.mapping_field import MapElementConstant, Var, simplifier_context
 from mapping_field.promises import IsIntegral
 from mapping_field.property_engines import is_integral
@@ -11,6 +11,24 @@ from mapping_field.ranged_condition import InRange, IntervalRange, RangeConditio
 from mapping_field.tests.utils import DummyMap
 
 simplify_logger = TreeLogger(__name__)
+
+def test_intersection_range_property_with_condition():
+    dummy = DummyMap(output_properties={in_range: IntervalRange[0,10]})
+
+    cond = dummy < 100
+    assert cond.simplify2() is TrueCondition
+
+    cond = dummy > 100
+    assert cond.simplify2() is FalseCondition
+
+    cond = (3 <= dummy) & (dummy <= 5)
+    cond.simplify2()
+    assert isinstance(cond, RangeCondition) and (cond.function is dummy) and (cond.range == IntervalRange[3,5])
+
+    cond = (3 <= dummy) & (dummy <= 15)
+    result = (3 <= dummy) & (dummy <= 10)
+    assert cond.simplify2() == result
+
 
 def test_in_range_promise():
     dummy = DummyMap()
@@ -24,8 +42,8 @@ def test_in_range_promise():
     assert cond3.simplify2() != TrueCondition
 
     # Now make it only take values in 0 or 1 (namely BoolVar)
-    dummy.promises.add_promise(InRange(IntervalRange[0, 1]))
-    simplifier_context.set_property(dummy, is_integral, True)
+    simplify_logger.log(blue("Adding 'condition' property"))
+    dummy = DummyMap(output_properties={in_range: IntervalRange[0, 1], is_integral: True})
 
     cond1 = (dummy << 0) | (dummy << 1)
     cond2 = (0 <= dummy) & (dummy <= 1)
@@ -78,6 +96,8 @@ def test_comparison_operators():
 
     # Unfortunately, python is terrible, and I can't use 2-sided comparisons like:
     #   cond = (10 <= dummy < 20)
+    cond = (10 <= dummy) & (dummy < 20)
+    assert cond == RangeCondition(dummy, IntervalRange(10, 20, True, False))
 
 
 def test_lshift_operator():
@@ -227,14 +247,14 @@ def test_simplify_on_ranged_promised_functions():
     dummy = DummyMap(0)
 
     # Simple condition, can't be simplified.
-    condition = 5 <= dummy
+    condition = (5 <= dummy)
     condition = condition._simplify2()
     assert condition is None
 
     # Add to dummy a nonnegative output assumption
-    dummy.promises.add_promise(InRange((0, float("inf"))))
+    dummy = DummyMap(output_properties={in_range: IntervalRange[0, float("inf")]})
 
-    condition = -5 <= dummy
+    condition = (-5 <= dummy)
     condition = condition.simplify2()
     assert condition is TrueCondition
 
@@ -266,7 +286,7 @@ def test_equality_as_integral():
     cond2 = (4.8 <= dummy) & (dummy <= 10.4)
     assert cond1 != cond2
 
-    simplifier_context.set_property(dummy, is_integral, True)
+    dummy = DummyMap(output_properties={is_integral: True})
 
     cond1 = (4 < dummy) & (dummy <= 10.2)
     cond2 = (4.8 <= dummy) & (dummy <= 10.4)
@@ -287,7 +307,12 @@ def test_integral_product():
     assert cond1 == cond2
     assert cond1 != cond3
 
-    dummy.promises.add_promise(InRange(IntervalRange(5, float("inf"), True, False)))
+    dummy = DummyMap(output_properties={
+        is_integral: True,
+        in_range: IntervalRange(5, float("inf"), True, False)
+    })
+    dummy2 = 2 * dummy
+
     # Now dummy is an integer >=5, so that dummy2 is an even integer >= 10
     cond1 = (6.5 <= dummy2).simplify2()
     cond2 = (10 <= dummy2).simplify2()
@@ -337,14 +362,11 @@ def test_range_of_constant():
     assert in_range.compute(c, simplifier_context) == IntervalRange.of_point(5)
 
 def test_sum_of_two_conditions():
-    dummy0, dummy1 = DummyMap(0), DummyMap(1)
+    dummy = [DummyMap(value=i, output_properties={in_range: IntervalRange[0,1]}) for i in (0,1)]
 
-    dummy0.promises.add_promise(InRange(IntervalRange[0,1]))
-    dummy1.promises.add_promise(InRange(IntervalRange[0,1]))
-
-    cond1 = (dummy0 + dummy1) << 2
+    cond1 = (dummy[0] + dummy[1]) << 2
     cond1 = cond1.simplify2()
-    cond2 = (dummy0 << 1) & (dummy1 << 1)
+    cond2 = (dummy[0] << 1) & (dummy[1] << 1)
 
     assert cond1 == cond2
 
@@ -361,10 +383,9 @@ def test_sum_of_conditions():
     assert cond1 == cond2
 
 def test_add_ranged_functions():
-    dummy1, dummy2 = DummyMap(1), DummyMap(2)
+    dummy1 = DummyMap(1, output_properties={in_range: IntervalRange[1, 4]})
+    dummy2 = DummyMap(2, output_properties={in_range: IntervalRange[3, 5]})
 
-    dummy1.promises.add_promise(InRange(IntervalRange[1, 4]))
-    dummy2.promises.add_promise(InRange(IntervalRange[3, 5]))
     result = dummy1 + dummy2
     f_range = in_range.compute(result, simplifier_context)
     assert f_range is not None
@@ -372,10 +393,9 @@ def test_add_ranged_functions():
 
 
 def test_sub_ranged_functions():
-    dummy1, dummy2 = DummyMap(1), DummyMap(2)
+    dummy1 = DummyMap(1, output_properties={in_range: IntervalRange[1, 4]})
+    dummy2 = DummyMap(2, output_properties={in_range: IntervalRange[3, 5]})
 
-    dummy1.promises.add_promise(InRange(IntervalRange[1, 4]))
-    dummy2.promises.add_promise(InRange(IntervalRange[3, 5]))
     result = dummy1 - dummy2
     f_range = in_range.compute(result, simplifier_context)
     assert f_range is not None
@@ -383,10 +403,8 @@ def test_sub_ranged_functions():
 
 
 def test_add_ranged_equality():
-    dummy1, dummy2 = DummyMap(1), DummyMap(2)
-
-    dummy1.promises.add_promise(InRange(IntervalRange[0, 1]))
-    dummy2.promises.add_promise(InRange(IntervalRange[0, 1]))
+    dummy1 = DummyMap(1, output_properties={in_range: IntervalRange[0, 1]})
+    dummy2 = DummyMap(2, output_properties={in_range: IntervalRange[0, 1]})
 
     cond1 = ((dummy1 + dummy2) << 2).simplify2()
     cond2 = (dummy1 << 1) & (dummy2 << 1)
@@ -394,10 +412,8 @@ def test_add_ranged_equality():
 
 
 def test_sub_ranged_equality():
-    dummy1, dummy2 = DummyMap(1), DummyMap(2)
-
-    dummy1.promises.add_promise(InRange(IntervalRange[0, 1]))
-    dummy2.promises.add_promise(InRange(IntervalRange[0, 1]))
+    dummy1 = DummyMap(1, output_properties={in_range: IntervalRange[0, 1]})
+    dummy2 = DummyMap(2, output_properties={in_range: IntervalRange[0, 1]})
 
     cond1 = ((dummy1 - dummy2) << 1).simplify2()
     cond2 = (dummy1 << 1) & (dummy2 << 0)
@@ -405,12 +421,8 @@ def test_sub_ranged_equality():
 
 
 def test_addition_arithmetic_and_ranged():
-    dummy1 = DummyMap(1, output_properties={is_integral: True})
-    dummy2 = DummyMap(2, output_properties={is_integral: True})
-
-
-    dummy1.promises.add_promise(InRange(IntervalRange[0, 1]))
-    dummy2.promises.add_promise(InRange(IntervalRange[0, 1]))
+    dummy1 = DummyMap(1, output_properties={in_range: IntervalRange[0, 1], is_integral: True})
+    dummy2 = DummyMap(2, output_properties={in_range: IntervalRange[0, 1], is_integral: True})
 
     cond = RangeCondition(dummy1 - dummy2, IntervalRange(0, 1, False, True))
     cond = cond.simplify2()

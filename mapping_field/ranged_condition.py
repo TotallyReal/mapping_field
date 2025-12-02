@@ -585,16 +585,25 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
     # <editor-fold desc=" ======= Simplifiers ======= ">
 
-    def _simplify_with_var_values2(self) -> MapElement | None:
+    def _simplify_with_var_values2(self) -> SimplifierOutput:
         if self.range.is_empty:
             return FalseCondition
         if self.range.is_all:
             return TrueCondition
 
-        value = self.function.evaluate()
-        if value is None:
-            return None
-        return TrueCondition if self.range.contains(value) else FalseCondition
+        cur_range = in_range.compute(self.function, simplifier_context)
+        if cur_range is None:
+            return ProcessFailureReason('No existing range to intersect with', trivial=True)
+        if self.range.contains(cur_range):
+            return TrueCondition
+        if cur_range.contains(self.range):
+            return ProcessFailureReason('New range is smaller than existing range', trivial=False)
+
+        f_range = cur_range.intersection(self.range)
+        if f_range.is_empty:
+            return FalseCondition
+
+        return RangeCondition(self.function, f_range)
 
     @class_simplifier
     @staticmethod
@@ -766,7 +775,7 @@ class BoolVar(Var):
 
     def __init__(self, name: str):
         super().__init__(name, output_properties={is_condition: True, is_integral: True})
-        self.promises.add_promise(InRange(IntervalRange[0, 1]))
+        simplifier_context.set_property(self, in_range, IntervalRange[0, 1])
 
 def two_bool_vars_simplifier(elem: MapElement) -> SimplifierOutput:
     # TODO: make sure that I don't call has_promise for an element that I am trying to simplify, since it might
