@@ -1,7 +1,7 @@
 import pytest
 
 from mapping_field.conditions import FalseCondition, TrueCondition
-from mapping_field.mapping_field import MapElementConstant, SimplifierContext, Var
+from mapping_field.mapping_field import MapElementConstant, SimplifierContext
 from mapping_field.property_engines import is_condition, is_integral
 from mapping_field.tests.utils import DummyMap
 

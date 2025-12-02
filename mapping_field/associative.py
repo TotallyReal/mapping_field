@@ -1,10 +1,8 @@
 from collections import deque
-from typing import Any
 
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
 from mapping_field.mapping_field import (
-    CompositeElement, MapElement, SimplifierOutput, Var, convert_to_map, PropertyEngine, simplifier_context,
-    ElemPropertyEngine, OutputProperties,
+    CompositeElement, MapElement, OutputProperties, SimplifierOutput, Var, convert_to_map, simplifier_context,
 )
 from mapping_field.utils.processors import ProcessFailureReason
 

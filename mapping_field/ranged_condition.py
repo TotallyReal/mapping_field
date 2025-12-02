@@ -1,20 +1,21 @@
 import math
-import operator
 
 from abc import abstractmethod
 from functools import cache
 from typing import Optional, Union
 
-from mapping_field.arithmetics import MultiAdd, _Add, _as_combination, _Mult, _Negative
+from mapping_field.arithmetics import MultiAdd, _as_combination, _Mult, _Negative
 from mapping_field.conditions import (
     BinaryCondition, FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
 )
-from mapping_field.log_utils.tree_loggers import TreeLogger, green, red, cyan
+from mapping_field.log_utils.tree_loggers import TreeLogger, cyan, green, red
 from mapping_field.mapping_field import (
     CompositeElement, FuncDict, MapElement, MapElementConstant, MapElementProcessor,
-    SimplifierOutput, Var, VarDict, class_simplifier, simplifier_context, SimplifierContext,
+    SimplifierContext, SimplifierOutput, Var, VarDict, class_simplifier, simplifier_context,
 )
-from mapping_field.property_engines import is_condition, is_integral, PropertyByRulesEngine, property_rule
+from mapping_field.property_engines import (
+    PropertyByRulesEngine, is_condition, is_integral, property_rule,
+)
 from mapping_field.utils.processors import ProcessFailureReason
 
 simplify_logger = TreeLogger(__name__)

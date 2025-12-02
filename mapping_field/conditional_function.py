@@ -1,6 +1,6 @@
 import operator
 
-from typing import cast, Optional, Any
+from typing import Optional, cast
 
 from mapping_field.arithmetics import _Mult
 from mapping_field.associative import AssociativeListFunction
@@ -8,9 +8,9 @@ from mapping_field.conditions import FalseCondition, TrueCondition, UnionConditi
 from mapping_field.field import ExtElement
 from mapping_field.log_utils.tree_loggers import TreeLogger, red, yellow
 from mapping_field.mapping_field import (
-    CompositeElement, MapElement, MapElementConstant, MapElementProcessor,
-    SimplifierOutput, Var, class_simplifier, convert_to_map, params_to_maps, PropertyEngine, simplifier_context,
-    SimplifierContext, OutputProperties,
+    CompositeElement, MapElement, MapElementConstant, MapElementProcessor, OutputProperties,
+    SimplifierContext, SimplifierOutput, Var, class_simplifier, convert_to_map,
+    params_to_maps, simplifier_context,
 )
 from mapping_field.property_engines import is_condition, is_integral
 from mapping_field.ranged_condition import IntervalRange, RangeCondition, Ranged, in_range

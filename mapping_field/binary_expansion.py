@@ -1,16 +1,18 @@
 from typing import Optional
 
-from mapping_field.arithmetics import BinaryCombination, as_neg, _as_combination
+from mapping_field.arithmetics import BinaryCombination, _as_combination, as_neg
 from mapping_field.conditions import (
     FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
 )
-from mapping_field.log_utils.tree_loggers import TreeLogger, red, TreeAction, green, magenta
+from mapping_field.log_utils.tree_loggers import TreeAction, TreeLogger, green, magenta, red
 from mapping_field.mapping_field import (
     CompositeElement, ExtElement, MapElement, MapElementConstant, SimplifierOutput, Var,
     convert_to_map, simplifier_context,
 )
 from mapping_field.property_engines import is_condition, is_integral
-from mapping_field.ranged_condition import BoolVar, IntervalRange, RangeCondition, in_range, is_bool_var
+from mapping_field.ranged_condition import (
+    BoolVar, IntervalRange, RangeCondition, in_range, is_bool_var,
+)
 from mapping_field.utils.processors import ProcessFailureReason
 from mapping_field.utils.serializable import DefaultSerializable
 

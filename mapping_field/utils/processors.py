@@ -1,7 +1,7 @@
 import dataclasses
 import weakref
 
-from typing import Callable, Generic, TypeVar, Iterator
+from typing import Callable, Generic, Iterator, TypeVar
 
 from colorama import Back, init
 

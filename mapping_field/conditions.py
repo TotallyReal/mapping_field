@@ -1,13 +1,12 @@
 import operator
 
-from typing import cast, Optional, Any
+from typing import Optional, cast
 
 from mapping_field.associative import AssociativeListFunction
 from mapping_field.field import ExtElement
 from mapping_field.log_utils.tree_loggers import TreeLogger, yellow
 from mapping_field.mapping_field import (
-    CompositeElementFromFunction, MapElement, MapElementProcessor, Var, class_simplifier, PropertyEngine,
-    simplifier_context, OutputProperties,
+    CompositeElementFromFunction, MapElement, MapElementProcessor, OutputProperties, Var, class_simplifier, simplifier_context,
 )
 from mapping_field.property_engines import is_condition
 from mapping_field.utils.serializable import DefaultSerializable

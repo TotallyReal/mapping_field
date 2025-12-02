@@ -1,7 +1,8 @@
 import inspect
 import types
+
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, Callable
+from typing import Callable, Generic, TypeVar
 
 Property = TypeVar("Property")
 Element = TypeVar("Element")

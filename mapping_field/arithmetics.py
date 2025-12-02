@@ -1,10 +1,9 @@
-from typing import Any
 
 from mapping_field.associative import AssociativeListFunction, _sorted_commutative_simplifier
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.mapping_field import (
-    CompositeElement, CompositeElementFromFunction, MapElement, MapElementConstant,
-    SimplifierOutput, Var, class_simplifier, ElemPropertyEngine, OutputProperties,
+    CompositeElement, CompositeElementFromFunction, MapElement,
+    MapElementConstant, OutputProperties, SimplifierOutput, Var, class_simplifier,
 )
 from mapping_field.property_engines import is_integral
 from mapping_field.utils.processors import ProcessFailureReason

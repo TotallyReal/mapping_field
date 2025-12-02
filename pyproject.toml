@@ -36,3 +36,8 @@ skip = ["mapping_field/old_code"]
 
 # First-party packages (your own modules)
 known_first_party = ["mapping_field"]
+
+[tool.ruff]
+
+# Only check these rules:
+select = ["F401"]       # remove unused imports

@@ -1,11 +1,8 @@
-import inspect
-import types
-from abc import ABC
-from typing import Callable, Type
+
+from typing import Type
 
 from mapping_field.mapping_field import (
-    MapElement, PropertyEngine, SimplifierContext, Property,
-    CompositeElement,
+    CompositeElement, MapElement, SimplifierContext,
 )
 from mapping_field.utils.generic_properties import PropertyByRulesEngine, property_rule
 

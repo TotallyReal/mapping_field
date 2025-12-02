@@ -1,7 +1,8 @@
 import collections
 import logging
 import weakref
-from typing import Generic, TypeVar, Iterator, Iterable
+
+from typing import Generic, Iterable, Iterator, TypeVar
 
 logger = logging.getLogger(__name__)
 

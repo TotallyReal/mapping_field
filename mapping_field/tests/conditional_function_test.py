@@ -2,7 +2,7 @@ import logging
 
 from mapping_field.binary_expansion import BinaryExpansion
 from mapping_field.conditional_function import ConditionalFunction, ReLU
-from mapping_field.conditions import FalseCondition, TrueCondition, IntersectionCondition
+from mapping_field.conditions import FalseCondition, IntersectionCondition, TrueCondition
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.mapping_field import MapElementConstant, Var, simplifier_context
 from mapping_field.property_engines import is_integral

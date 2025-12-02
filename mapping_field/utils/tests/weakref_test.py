@@ -1,8 +1,10 @@
 import random
 import uuid
+
 from typing import Any
 
 from mapping_field.utils.weakref import GenericWeakKeyDictionary
+
 
 class Key:
     def __init__(self, key: int):

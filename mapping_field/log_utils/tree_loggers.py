@@ -4,7 +4,7 @@ import sys
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
-from typing import Union, Optional
+from typing import Optional, Union
 
 from colorama import Fore, Style
 

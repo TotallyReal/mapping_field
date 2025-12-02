@@ -1,7 +1,7 @@
 import functools
 import logging
-from logging import Logger
 
+from logging import Logger
 from pathlib import Path
 from typing import Any
 
@@ -10,7 +10,7 @@ import pytest
 from _pytest.nodes import Item
 from _pytest.runner import CallInfo
 
-from mapping_field.global_config import PROJECT_ROOT, SRC_ROOT
+from mapping_field.global_config import SRC_ROOT
 from mapping_field.log_utils.tree_loggers import simplify_tree
 from mapping_field.mapping_field import NamedFunc, Var, simplifier_context
 

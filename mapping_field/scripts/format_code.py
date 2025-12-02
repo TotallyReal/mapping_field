@@ -34,3 +34,6 @@ for py_file in src_root.rglob("*.py"):
     )
 
 print("\n ================= Finished code format ================= ")
+
+# Remove unused imports
+# ruff check --select F401 --fix

@@ -2,8 +2,8 @@
 import pytest
 
 from mapping_field.mapping_field import (
-    CompositeElement, CompositeElementFromFunction, Func, MapElement, MapElementConstant, NamedFunc,
-    SimplifierOutput, Var, ConflictingVariables, InvalidVariableOrder,
+    CompositeElement, CompositeElementFromFunction, ConflictingVariables, Func,
+    InvalidVariableOrder, MapElement, MapElementConstant, NamedFunc, SimplifierOutput, Var,
 )
 from mapping_field.tests.utils import DummyMap
 
