@@ -3,14 +3,15 @@ import copy
 import functools
 import inspect
 
-from abc import abstractmethod
-from typing import Callable, Generic, Iterator, Optional, TypeVar, Union
+from abc import abstractmethod, ABC
+from typing import Callable, Generic, Iterator, Optional, TypeVar, Union, Any
 
 from mapping_field.field import ExtElement, FieldElement
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.utils.processors import ProcessFailureReason, Processor, ProcessorCollection
 from mapping_field.utils.serializable import DefaultSerializable
 from mapping_field.utils.validators import Context, MultiValidator
+from mapping_field.utils.weakref import GenericWeakKeyDictionary
 
 simplify_logger = TreeLogger(__name__)
 
@@ -184,6 +185,105 @@ def extract_keyword(kwargs, key: str, value_type: type[KeywordValue]) -> Keyword
 
 
 SimplifierOutput = Union[ProcessFailureReason , 'MapElement' , None]
+
+
+Property = TypeVar("Property")
+
+
+class PropertyEngine(Generic[Property], ABC):
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    @abstractmethod
+    def compute(self, element: 'MapElement', context: 'SimplifierContext') -> Property | None:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def combine_properties(self, prop1: Property, prop2: Property) -> Property:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def is_stronger_property(self, strong_prop: Property, weak_prop: Property) -> bool:
+        """
+        Checks whether the strong_prop is stronger than (namely, implying the) weak_prop.
+
+        Example:
+             in_range[3,6] is stronger than in_range[1,10].
+        """
+        raise NotImplementedError()
+
+class SimplifierContext:
+    def __init__(self, name: str | None = None):
+        # id(map_element) ->  {prop_engine: prop_value}
+        self.property_table = GenericWeakKeyDictionary['MapElement', dict[PropertyEngine[Any], Any]]()
+        self.user_property_table = GenericWeakKeyDictionary['MapElement', dict[PropertyEngine[Any], Any]]()
+        self.engines: list[PropertyEngine[Any]] = []
+
+    def register_engine(self, engine: PropertyEngine[Any]) -> None:
+        self.engines.append(engine)
+
+    def set_property(self, element: 'MapElement', engine: PropertyEngine[Property], prop_value: Property):
+        if element not in self.property_table:
+            self.property_table[element] = {}
+        properties = self.property_table[element]
+
+        cur_prop = properties.get(engine, None)
+        properties[engine] = prop_value if cur_prop is None else engine.combine_properties(cur_prop, prop_value)
+
+    def get_property(self, element: 'MapElement', engine: PropertyEngine[Property]) -> Property | None:
+        if element not in self.property_table:
+            return None
+        properties = self.property_table[element]
+        return properties.get(engine, None)
+
+    def get_properties(self, element: 'MapElement') -> dict[PropertyEngine[Any], Any]:
+        return self.property_table.get(element, {}).copy()
+
+    def set_user_property(self, element: 'MapElement', engine: PropertyEngine[Property], prop_value: Property):
+        if element not in self.user_property_table:
+            self.user_property_table[element] = {}
+        properties = self.user_property_table[element]
+
+        cur_prop = properties.get(engine, None)
+        properties[engine] = prop_value if cur_prop is None else engine.combine_properties(cur_prop, prop_value)
+
+        self.set_property(element, engine, prop_value)
+
+    def get_user_property(self, element: 'MapElement', engine: PropertyEngine[Property]) -> Property | None:
+        if element not in self.user_property_table:
+            return None
+        properties = self.user_property_table[element]
+        return properties.get(engine, None)
+
+    def get_user_properties(self, element: 'MapElement'):
+        if element not in self.user_property_table:
+            return {}
+        return self.user_property_table[element]
+
+    def copy_properties(self, from_element: 'MapElement', to_element: 'MapElement'):
+        from_key = id(from_element)
+        if from_key not in self.property_table:
+            return
+
+        to_key = id(to_element)
+        if to_key not in self.property_table:
+            self.property_table[to_key] = {}
+
+        for engine, from_prop_value in self.property_table[from_key].items():
+            to_prop_value = self.property_table[to_key].get(engine, None)
+            if to_prop_value is None:
+                self.property_table[to_key][engine] = from_prop_value
+            else:
+                self.property_table[to_key][engine] = engine.combine_properties(from_prop_value, to_prop_value)
+
+    def clear(self):
+        self.property_table : dict[int, dict[PropertyEngine[Any], Any]] = {}
+        self.user_property_table : dict[int, dict[PropertyEngine[Any], Any]] = {}
+
+
+# TODO: get rid of all of these global variables
+simplifier_context = SimplifierContext()
 
 
 class MapElement:
