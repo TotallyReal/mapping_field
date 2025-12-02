@@ -8,28 +8,28 @@ from mapping_field.utils.serializable import DefaultSerializable
 simplify_logger = TreeLogger(__name__)
 
 
-def register_promise_preserving_functions(promise: OutputValidator, elem_classes: tuple[type[CompositeElement]]):
-
-    def _promise_preserving_simplifier(elem: MapElement) -> SimplifierOutput:
-        """
-            f(promise, promise) => promise
-        """
-        assert isinstance(elem, CompositeElement)
-        assert isinstance(elem, elem_classes)
-
-        if elem.promises.has_promise(promise) is not None:
-            return ProcessFailureReason(f"{promise} is already known for {elem}", trivial=True)
-
-        if all(operand.has_promise(promise) for operand in elem.operands):
-            elem.promises.add_promise(promise)
-            simplify_logger.log(f'Adding {green(promise)} promise to {green(elem)}')
-            return elem
-
-        return None
-
-    for elem_class in elem_classes:
-        assert issubclass(elem_class, CompositeElement)
-        elem_class.register_class_simplifier(_promise_preserving_simplifier)
+# def register_promise_preserving_functions(promise: OutputValidator, elem_classes: tuple[type[CompositeElement]]):
+#
+#     def _promise_preserving_simplifier(elem: MapElement) -> SimplifierOutput:
+#         """
+#             f(promise, promise) => promise
+#         """
+#         assert isinstance(elem, CompositeElement)
+#         assert isinstance(elem, elem_classes)
+#
+#         if elem.promises.has_promise(promise) is not None:
+#             return ProcessFailureReason(f"{promise} is already known for {elem}", trivial=True)
+#
+#         if all(operand.has_promise(promise) for operand in elem.operands):
+#             elem.promises.add_promise(promise)
+#             simplify_logger.log(f'Adding {green(promise)} promise to {green(elem)}')
+#             return elem
+#
+#         return None
+#
+#     for elem_class in elem_classes:
+#         assert issubclass(elem_class, CompositeElement)
+#         elem_class.register_class_simplifier(_promise_preserving_simplifier)
 
 
 # <editor-fold desc=" ----- Condition ------">

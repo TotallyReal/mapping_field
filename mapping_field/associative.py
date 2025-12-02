@@ -3,7 +3,7 @@ from typing import Any
 
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
 from mapping_field.mapping_field import (
-    CompositeElement, MapElement, SimplifierOutput, Var, convert_to_map, PropertyEngine,
+    CompositeElement, MapElement, SimplifierOutput, Var, convert_to_map, PropertyEngine, simplifier_context,
 )
 from mapping_field.utils.processors import ProcessFailureReason
 
@@ -20,8 +20,7 @@ class AssociativeListFunction(CompositeElement):
                 if AssociativeListFunction.is_binary(element):
                     return ProcessFailureReason("Is a binary construct.", trivial = True)
 
-                multi_version = cls(operands=element.operands)
-                multi_version.promises = element.promises.copy()
+                multi_version = cls(operands=element.operands, output_properties=simplifier_context.get_user_properties(element))
                 return multi_version
 
             binary_class.register_class_simplifier(_to_multi_conversion)
@@ -68,11 +67,7 @@ class AssociativeListFunction(CompositeElement):
         while len(elements) > 0:
             element = convert_to_map(elements.pop(0))
             if isinstance(element, cls):
-                for promise in element.promises.output_promises():
-                    if promise not in cls.auto_promises:
-                        all_elements.append(element)
-                        break
-                else:
+                if len(simplifier_context.get_user_properties(element)) == 0:
                     elements.extend(element.operands)
                 continue
             all_elements.append(element)
@@ -119,10 +114,7 @@ class AssociativeListFunction(CompositeElement):
                 continue
 
             if isinstance(operand, cls):
-                for promise in operand.promises.output_promises():
-                    if promise not in cls.auto_promises:
-                        break
-                else:
+                if len(simplifier_context.get_user_properties(operand)) == 0:
                     # unpack list operand of the same type
                     is_whole_simpler = True
                     queue.extendleft(reversed(operand.operands))
@@ -136,17 +128,18 @@ class AssociativeListFunction(CompositeElement):
                     f"Trying to combine {red(operand)} with existing {red(existing_operand)}",
                 )
 
-                binary_op = cls.binary_class([existing_operand, operand])
-                AssociativeListFunction.binary_constructs.add(id(binary_op))
+                user_properties = {}
                 if len(final_operands) == 1 and len(queue) == 0:
-                    binary_op.promises = self.promises.copy()
+                    user_properties = simplifier_context.get_user_properties(self)
+                binary_op = cls.binary_class([existing_operand, operand], output_properties=user_properties)
+
+                AssociativeListFunction.binary_constructs.add(id(binary_op))
                 simplified_binary_op = binary_op._simplify2()
                 AssociativeListFunction.binary_constructs.remove(id(binary_op))
 
                 if simplified_binary_op is not None:
                     if cls.binary_class != cls and isinstance(simplified_binary_op, cls.binary_class):
-                        binary_op = cls(operands=simplified_binary_op.operands)
-                        binary_op.promises = simplified_binary_op.promises.copy()
+                        binary_op = cls(operands=simplified_binary_op.operands, output_properties=simplifier_context.get_user_properties(simplified_binary_op))
                         simplified_binary_op = binary_op
                     simplify_logger.log(
                         f"Combined: {red(operand)} with {red(existing_operand)}  =>  {green(simplified_binary_op)}",

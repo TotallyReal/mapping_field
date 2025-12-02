@@ -122,52 +122,52 @@ class InvalidInput(Exception): pass
 class ConflictingVariables(Exception): pass
 class InvalidVariableOrder(Exception): pass
 
-def validate_promises_var_dict(var_dict: VarDict):
-    # TODO: Do I really need this, or should I validate the promises inside Var?
-    for v, value in var_dict.items():
-        for promise in v.promises.output_promises():
-            if not value.has_promise(promise):
-                raise InvalidInput(f"{v}={value} does not satisfy the promise of {promise}")
+# def validate_promises_var_dict(var_dict: VarDict):
+#     # TODO: Do I really need this, or should I validate the promises inside Var?
+#     for v, value in var_dict.items():
+#         for promise in v.promises.output_promises():
+#             if not value.has_promise(promise):
+#                 raise InvalidInput(f"{v}={value} does not satisfy the promise of {promise}")
 
 
 T = TypeVar("T", bound="MapElement")
 
 
-class OutputPromises:
-
-    # TODO: I don't like this mechanism too much. Think if there is a better way
-
-    def __init__(self,
-                 promises: set[OutputValidator] | None = None,
-                 invalid_promises: set[OutputValidator] | None = None):
-        # TODO: Since these are set, iterating over their elements below is done in a random order.
-        #       Should I change it to a list?
-        self._promises: set[OutputValidator] = promises.copy() if promises is not None else set()
-        self._invalid_promises: set[OutputValidator] = invalid_promises.copy() if promises is not None else set()
-
-    def copy(self) -> "OutputPromises":
-        return OutputPromises(self._promises, set())
-
-    def add_promise(self, promise: OutputValidator):
-        self._promises.add(promise)
-
-    def add_invalid_promise(self, promise: OutputValidator):
-        self._invalid_promises.add(promise)
-
-    def remove_promises(self, promises: list[OutputValidator]):
-        self._promises = self._promises.difference(set(promises))
-
-    def output_promises(self, of_type: type[OutputValidatorType] = OutputValidator) -> Iterator[OutputValidatorType]:
-        for promise in self._promises:
-            if isinstance(promise, of_type):
-                yield promise
-
-    def has_promise(self, promise: OutputValidator) -> bool | None:
-        if promise in self._promises:
-            return True
-        if promise in self._invalid_promises:
-            return False
-        return None
+# class OutputPromises:
+#
+#     # TODO: I don't like this mechanism too much. Think if there is a better way
+#
+#     def __init__(self,
+#                  promises: set[OutputValidator] | None = None,
+#                  invalid_promises: set[OutputValidator] | None = None):
+#         # TODO: Since these are set, iterating over their elements below is done in a random order.
+#         #       Should I change it to a list?
+#         self._promises: set[OutputValidator] = promises.copy() if promises is not None else set()
+#         self._invalid_promises: set[OutputValidator] = invalid_promises.copy() if promises is not None else set()
+#
+#     def copy(self) -> "OutputPromises":
+#         return OutputPromises(self._promises, set())
+#
+#     def add_promise(self, promise: OutputValidator):
+#         self._promises.add(promise)
+#
+#     def add_invalid_promise(self, promise: OutputValidator):
+#         self._invalid_promises.add(promise)
+#
+#     def remove_promises(self, promises: list[OutputValidator]):
+#         self._promises = self._promises.difference(set(promises))
+#
+#     def output_promises(self, of_type: type[OutputValidatorType] = OutputValidator) -> Iterator[OutputValidatorType]:
+#         for promise in self._promises:
+#             if isinstance(promise, of_type):
+#                 yield promise
+#
+#     def has_promise(self, promise: OutputValidator) -> bool | None:
+#         if promise in self._promises:
+#             return True
+#         if promise in self._invalid_promises:
+#             return False
+#         return None
 
     # </editor-fold>
 
@@ -234,8 +234,8 @@ class SimplifierContext:
         cur_prop = properties.get(engine, None)
         properties[engine] = prop_value if cur_prop is None else engine.combine_properties(cur_prop, prop_value)
 
-        if engine in engine_to_promise:
-            element.promises.add_promise(engine_to_promise[engine])
+        # if engine in engine_to_promise:
+        #     element.promises.add_promise(engine_to_promise[engine])
 
     def get_property(self, element: 'MapElement', engine: PropertyEngine[Property]) -> Property | None:
         if element not in self.property_table:
@@ -333,15 +333,16 @@ class MapElement:
             # print(f'New Registering simplifier {simplifier.__qualname__}')
             cls.register_class_simplifier(simplifier)
 
-    def __init__(self, variables: list['Var'], name: str | None = None, promises: OutputPromises | None = None,
+    def __init__(self, variables: list['Var'], name: str | None = None,
                  simplified: bool = False, output_properties: dict[PropertyEngine[Any], Any] | None = None):
         """
         The 'variables' are the ordered list used when calling the function, as in f(a_1,...,a_n).
         """
         self.name = name or self.__class__.__name__
         self._simplified_version = None if not simplified else self
-        self.promises = OutputPromises() if promises is None else promises
         self._reset(variables, output_properties)
+
+
 
     def _reset(self, variables: list["Var"], output_properties: dict[PropertyEngine[Any], Any] | None = None):
         """
@@ -356,7 +357,6 @@ class MapElement:
         self.num_vars = len(variables)
         self._simplified_version = None
         self._simplifier.reset_element(self)
-        self.promises = OutputPromises()
 
         if output_properties is not None:
             for engine, value in output_properties.items():
@@ -387,17 +387,17 @@ class MapElement:
 
 
 
-    def has_promise(self, promise: OutputValidator) -> bool | None:
-        value = self.promises.has_promise(promise)
-        if value is not None:
-            return value
-
-        value = promise(self)
-        if value:
-            self.promises.add_promise(promise)
-        if value is False:  # can be None!
-            self.promises.add_invalid_promise(promise)
-        return value
+    # def has_promise(self, promise: OutputValidator) -> bool | None:
+    #     value = self.promises.has_promise(promise)
+    #     if value is not None:
+    #         return value
+    #
+    #     value = promise(self)
+    #     if value:
+    #         self.promises.add_promise(promise)
+    #     if value is False:  # can be None!
+    #         self.promises.add_invalid_promise(promise)
+    #     return value
 
     # <editor-fold desc=" ------------------------ String representation ------------------------">
 
@@ -473,9 +473,9 @@ class MapElement:
         simplify = extract_keyword(kwargs, "simplify", bool)
         if simplify is None:
             simplify = True
-        validate_promises = extract_keyword(kwargs, "validate_promises", bool)
-        if validate_promises is None:
-            validate_promises = False
+        # validate_promises = extract_keyword(kwargs, "validate_promises", bool)
+        # if validate_promises is None:
+        #     validate_promises = False
 
         # TODO: Should I keep this here? In any case, handle the 'condition' parameter better.
         condition = extract_keyword(kwargs, "condition", MapElement)
@@ -486,8 +486,8 @@ class MapElement:
                 result = self
         else:
             var_dict, func_dict = self._extract_var_dicts(args, kwargs)
-            if validate_promises:
-                validate_promises_var_dict(var_dict)
+            # if validate_promises:
+            #     validate_promises_var_dict(var_dict)
             result = self
 
             if len(func_dict) > 0 or any([v in var_dict for v in self.vars]):
@@ -825,8 +825,8 @@ class CompositeElement(MapElement):
 
         self.operands = operands
         super().__init__(variables=Var.extract_variables(operands), name=name, simplified=simplified, output_properties=output_properties)
-        for promise in self.__class__.auto_promises:
-            self.promises.add_promise(promise)
+        # for promise in self.__class__.auto_promises:
+        #     self.promises.add_promise(promise)
 
     def copy_with_operands(self, operands: list[MapElement]) -> MapElement:
         copy_version = copy.copy(self)
@@ -834,8 +834,6 @@ class CompositeElement(MapElement):
         copy_version.operands = operands
         copy_version._reset(
             Var.extract_variables(operands), output_properties=simplifier_context.get_user_properties(self))
-        for promise in self.__class__.auto_promises:
-            copy_version.promises.add_promise(promise)
         return copy_version
 
     def to_string(self, vars_to_str: dict["Var", str]):

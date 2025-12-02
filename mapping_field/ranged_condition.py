@@ -11,7 +11,7 @@ from mapping_field.conditions import (
 )
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
 from mapping_field.mapping_field import (
-    CompositeElement, FuncDict, MapElement, MapElementConstant, MapElementProcessor, OutputPromises,
+    CompositeElement, FuncDict, MapElement, MapElementConstant, MapElementProcessor,
     OutputValidator, SimplifierOutput, Var, VarDict, class_simplifier, simplifier_context, SimplifierContext,
 )
 from mapping_field.property_engines import is_condition, is_integral, PropertyByRulesEngine, property_rule
@@ -282,9 +282,6 @@ class RangeEngine(PropertyByRulesEngine[IntervalRange]):
         super().__init__()
 
     def compute(self, element: 'MapElement', context: 'SimplifierContext') -> IntervalRange | None:
-        in_range = next(element.promises.output_promises(of_type=InRange), None)
-        if in_range is not None:
-            return in_range.range
 
         value = context.get_property(element, self)
         if value is not None:

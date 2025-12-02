@@ -57,8 +57,6 @@ class BoolPropertyEngine(PropertyByRulesEngine[bool]):
         value = context.get_property(element, self)
         if value is not None:
             return value
-        if element.has_promise(self.validator):
-            return True
 
         for rule in self._rules:
             result = rule(element, context)
