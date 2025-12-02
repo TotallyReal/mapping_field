@@ -4,7 +4,7 @@ from abc import ABC
 from typing import Callable, Type
 
 from mapping_field.mapping_field import (
-    MapElement, PropertyEngine, SimplifierContext, simplifier_context, OutputValidator, engine_to_promise, Property,
+    MapElement, PropertyEngine, SimplifierContext, simplifier_context, OutputValidator, Property,
     CompositeElement,
 )
 from mapping_field.promises import IsIntegral, IsCondition
@@ -125,7 +125,6 @@ class ConditionEngine(BoolPropertyEngine):
         return None
 
 is_condition = ConditionEngine()
-engine_to_promise[is_condition] = IsCondition
 
 # </editor-fold>
 
@@ -164,6 +163,5 @@ class IntegralEngine(BoolPropertyEngine):
         return None
 
 is_integral = IntegralEngine()
-engine_to_promise[is_integral] = IsIntegral
 
 # </editor-fold>

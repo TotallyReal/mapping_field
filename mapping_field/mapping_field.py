@@ -214,7 +214,7 @@ class PropertyEngine(Generic[Property], ABC):
         """
         raise NotImplementedError()
 
-engine_to_promise: dict['PropertyEngine', OutputValidator] = {}
+# engine_to_promise: dict['PropertyEngine', OutputValidator] = {}
 
 class SimplifierContext:
     def __init__(self, name: str | None = None):

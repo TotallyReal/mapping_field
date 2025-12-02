@@ -3,7 +3,6 @@ import logging
 from mapping_field.binary_expansion import BinaryExpansion
 from mapping_field.conditional_function import ConditionalFunction, ReLU
 from mapping_field.conditions import FalseCondition, TrueCondition, IntersectionCondition
-from mapping_field.linear import Linear
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.mapping_field import MapElementConstant, Var, simplifier_context
 from mapping_field.property_engines import is_integral
@@ -243,25 +242,23 @@ def test_simplification():
 
     # Combine regions with assignments
     x = Var("x", output_properties={in_range: IntervalRange[0,10]})
-    xx = Linear.of(x)
 
     cond_func = ConditionalFunction([
-        ( (0<=x) & (x<10), xx + 3),
+        ( (0<=x) & (x<10), x + 3),
         (x << 10, MapElementConstant(13)),
     ])
 
     cond_func = cond_func.simplify2()
 
-    assert cond_func == xx + 3
+    assert cond_func == x + 3
 
 
 def test_linear_ranged_condition_subtraction():
     vv = [BoolVar(f"x_{i}") for i in range(4)]
     x = BinaryExpansion(vv)
-    xx = Linear.of(x)
 
-    v1 = ReLU(xx - 7)
-    v2 = ReLU(xx - 8)
+    v1 = ReLU(x - 7)
+    v2 = ReLU(x - 8)
     # Full Processing ( 0 < Lin[Bin[x_0, x_1, x_2, x_3] - 8] < inf , {} ) , [RangeCondition]
     v = v1 - v2
     v = v.simplify2()
@@ -271,14 +268,14 @@ def test_linear_ranged_condition_subtraction():
     assert v == (x.coefficients[3] << 1)
 
     v = 8 * v
-    u = xx - v
+    u = x - v
 
     result = BinaryExpansion(vv[:3])
     assert u == result
 
 
 def test_ranges_over_conditional_function():
-    x = Linear.of(Var("x"))
+    x = Var("x")
 
     # absolute value of x:
     func = ConditionalFunction([
@@ -344,7 +341,7 @@ def test_output_promise():
 
 
 def test_mul_generation():
-    x = Linear.of(Var("x"))
+    x = Var("x")
 
     func1 = (3 <= x) * x
 

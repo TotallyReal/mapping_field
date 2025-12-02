@@ -4,7 +4,6 @@ from mapping_field.arithmetics import BinaryCombination, as_neg, _as_combination
 from mapping_field.conditions import (
     FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
 )
-from mapping_field.linear import Linear
 from mapping_field.log_utils.tree_loggers import TreeLogger, red, TreeAction, green, magenta
 from mapping_field.mapping_field import (
     CompositeElement, ExtElement, MapElement, MapElementConstant, SimplifierOutput, Var,
@@ -773,8 +772,7 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
             return None
         if elem is None:
             return constant
-        # TODO: I think I want to just return elem + constant, and not use Linear
-        return Linear(1, elem, constant.evaluate())
+        return elem + constant.evaluate()
 
     @staticmethod
     def transform_range(range_cond: MapElement) -> MapElement | None:
@@ -925,7 +923,7 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
         result = BinaryExpansion.linear_combination(bin_comb.c1, elem1, bin_comb.c2, elem2)
         if result is not None:
             coef, elem = result
-            return Linear(coef, elem, 0)
+            return coef * elem
         return None
 
     # </editor-fold>

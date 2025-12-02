@@ -97,7 +97,7 @@ def test_arithmetic_construction():
     bin_expa = BinaryExpansion([v1, v2])
     assert result == bin_expa
 
-    result = 1 + 4 * result
+    result = BinaryExpansion.of(1 + 4 * result)
     bin_expa = BinaryExpansion([1, 0, v1, v2])
     assert result == bin_expa
 

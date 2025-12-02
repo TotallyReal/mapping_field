@@ -1,5 +1,5 @@
 from mapping_field.conditions import FalseCondition, TrueCondition
-from mapping_field.linear import Linear
+from mapping_field.old_code.to_delete.linear import Linear
 from mapping_field.mapping_field import MapElement, convert_to_map
 from mapping_field.ranged_condition import IntervalRange, RangeCondition
 from mapping_field.tests.utils import DummyMap
