@@ -4,7 +4,7 @@ import sys
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
-from typing import Union
+from typing import Union, Optional
 
 from colorama import Fore, Style
 
@@ -12,27 +12,27 @@ from mapping_field.utils.serializable import DefaultSerializable
 
 
 def red(x) -> str:
-    return f"{Fore.RED}{x}{Style.RESET_ALL}"
+    return f"{Fore.RED}{x}{Fore.RESET}"
 
 
 def green(x) -> str:
-    return f"{Fore.GREEN}{x}{Style.RESET_ALL}"
+    return f"{Fore.GREEN}{x}{Fore.RESET}"
 
 
 def blue(x) -> str:
-    return f"{Fore.BLUE}{x}{Style.RESET_ALL}"
+    return f"{Fore.BLUE}{x}{Fore.RESET}"
 
 
 def yellow(x) -> str:
-    return f"{Fore.YELLOW}{x}{Style.RESET_ALL}"
+    return f"{Fore.YELLOW}{x}{Fore.RESET}"
 
 
 def magenta(x) -> str:
-    return f"{Fore.MAGENTA}{x}{Style.RESET_ALL}"
+    return f"{Fore.MAGENTA}{x}{Fore.RESET}"
 
 
 def cyan(x) -> str:
-    return f"{Fore.CYAN}{x}{Style.RESET_ALL}"
+    return f"{Fore.CYAN}{x}{Fore.RESET}"
 
 
 class TreeAction(Enum):
@@ -46,7 +46,7 @@ Information = Union["TreeContext", str]
 
 class TreeContext(DefaultSerializable):
     def __init__(self, information: (list[Information] | None) = None, title: str = ""):
-        self.parent: ("TreeContext" | None) = None
+        self.parent: Optional["TreeContext"] = None
         self.information = [] if information is None else information
         for context in self.information:
             if isinstance(context, TreeContext):
