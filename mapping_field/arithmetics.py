@@ -472,5 +472,4 @@ def _binary_combination_simplifier(function: MapElement) -> SimplifierOutput:
 # TODO: should class simplifiers be inherited?
 _Add.register_class_simplifier(_binary_combination_simplifier)
 
-_Add.register_class_simplifier(_sorted_commutative_simplifier)
 _Mult.register_class_simplifier(_sorted_commutative_simplifier)
