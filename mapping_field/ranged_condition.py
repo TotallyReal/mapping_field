@@ -667,11 +667,14 @@ class RangeCondition(CompositeElement, MapElementProcessor):
             if f_range != range_cond.range:
                 return RangeCondition(range_cond.function, f_range)
 
-        return ProcessFailureReason("Function is not Integral", trivial=True)
+        return ProcessFailureReason("Function is not Integral", trivial=False)
 
     @class_simplifier
     @staticmethod
     def _linear_combination_simplifier(element: MapElement) -> SimplifierOutput:
+        """
+            c*x + d < r     =>      x < (r-d)/c     (for c>0)
+        """
         assert isinstance(element, RangeCondition)
         c1, elem1, c2, elem2 = _as_combination(element.function)
 
@@ -694,37 +697,42 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
     @class_simplifier
     @staticmethod
-    def _in_range_arithmetic_simplification(ranged_cond: MapElement) -> SimplifierOutput:
+    def _sum_equality_to_summands_equality_simplifier(ranged_cond: MapElement) -> SimplifierOutput:
+        """
+            if x_i in [a_i, b_i], then
+                    sum x_i = sum a_i   =>  x_i = a_i
+        """
         assert isinstance(ranged_cond, RangeCondition)
         elem = ranged_cond.function
-        if isinstance(elem, MultiAdd) and len(elem.operands) == 2:
-            op = operator.add
-            op1 = operator.sub
-            op2 = operator.sub
-        else:
-            return ProcessFailureReason('Only works for Addition and Subtraction', trivial=True)
-        elem1, elem2 = elem.operands
-        total_range = ranged_cond.range
-        f_range1 = in_range.compute(elem1, simplifier_context) or IntervalRange.all()
-        f_range2 = in_range.compute(elem2, simplifier_context) or IntervalRange.all()
+        if not isinstance(elem, MultiAdd):
+            return ProcessFailureReason('Only works for Addition', trivial=True)
+        sum_range = ranged_cond.range
+        value = sum_range.is_point
+        if value is None:
+            return ProcessFailureReason('Only applicable for sum x_i = point ranges', trivial=True)
 
-        f_range1_updated = f_range1.intersection(op1(total_range, f_range2))
-        f_range2_updated = f_range2.intersection(op2(total_range, f_range1))
+        ranges = [in_range.compute(summand, simplifier_context) for summand in elem.operands]
+        if None in ranges:
+            return ProcessFailureReason('Not all summands have range condition', trivial=True)
 
-        if f_range1_updated is None or f_range2_updated is None:
-            return FalseCondition
-
-        total_range_updated = op(f_range1_updated, f_range2_updated)
-        if total_range.contains(total_range_updated):
+        if value == sum(f_range.low for f_range in ranges):
             return IntersectionCondition(
-                [RangeCondition(elem1, f_range1_updated), RangeCondition(elem2, f_range2_updated)]
+                [RangeCondition(summand, IntervalRange.of_point(f_range.low)) for summand, f_range in zip(elem.operands, ranges)],
             )
 
-        return ProcessFailureReason(f'The ranges {f_range1_updated} and {f_range2_updated} on the factors are not enough to imply the original range', trivial=False)
+        if value == sum(f_range.high for f_range in ranges):
+            return IntersectionCondition(
+                [RangeCondition(summand, IntervalRange.of_point(f_range.high)) for summand, f_range in zip(elem.operands, ranges)],
+            )
+
+        return None
 
     @class_simplifier
     @staticmethod
     def _negation_in_range_simplification(ranged_cond: MapElement) -> SimplifierOutput:
+        """
+            -x in I     =>      x in -I
+        """
         assert isinstance(ranged_cond, RangeCondition)
         if not isinstance(ranged_cond.function, _Negative):
             return ProcessFailureReason('Only works for Negation', trivial=True)
