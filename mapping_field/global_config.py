@@ -4,6 +4,7 @@ from pathlib import Path
 # Core project paths
 # -------------------------
 PROJECT_ROOT = Path(__file__).parent.parent
+SRC_ROOT = PROJECT_ROOT / "mapping_field"
 PYTHON_EXEC = PROJECT_ROOT / ".venv/bin/python"
 
 
