@@ -402,7 +402,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
     auto_promises = [IsCondition]
 
     def __init__(self, function: MapElement, f_range: IntervalRange | tuple[float, float]):
-        super().__init__(operands=[function])
+        super().__init__(operands=[function], output_properties={})
         self.range = f_range if isinstance(f_range, IntervalRange) else IntervalRange(*f_range)
 
     @property

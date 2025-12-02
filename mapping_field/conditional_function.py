@@ -1,6 +1,6 @@
 import operator
 
-from typing import cast, Optional
+from typing import cast, Optional, Any
 
 from mapping_field.arithmetics import _Mult
 from mapping_field.associative import AssociativeListFunction
@@ -9,7 +9,7 @@ from mapping_field.field import ExtElement
 from mapping_field.log_utils.tree_loggers import TreeLogger, red, yellow
 from mapping_field.mapping_field import (
     CompositeElement, MapElement, MapElementConstant, MapElementProcessor, OutputValidator,
-    SimplifierOutput, Var, class_simplifier, convert_to_map, params_to_maps,
+    SimplifierOutput, Var, class_simplifier, convert_to_map, params_to_maps, PropertyEngine,
 )
 from mapping_field.promises import IsCondition, IsIntegral
 from mapping_field.ranged_condition import InRange, IntervalRange, RangeCondition, Ranged
@@ -118,11 +118,12 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
     def always(map: MapElement):
         return ConditionalFunction([(TrueCondition, map)])
 
-    def __init__(self, regions: list[tuple[MapElement, MapElement] | SingleRegion]):
+    def __init__(self, regions: list[tuple[MapElement, MapElement] | SingleRegion],
+            output_properties: dict[PropertyEngine[Any], Any] | None = None):
         true_regions = [SingleRegion.of(region) for region in regions]
         assert None not in true_regions, f'Could not convert the regions {regions} into SingleRegions.'
 
-        super().__init__(operands=true_regions)
+        super().__init__(operands=true_regions, output_properties=output_properties)
 
     @property
     def regions(self) -> list[SingleRegion]:

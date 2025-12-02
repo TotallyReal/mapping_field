@@ -1,12 +1,12 @@
 import operator
 
-from typing import cast, Optional
+from typing import cast, Optional, Any
 
 from mapping_field.associative import AssociativeListFunction
 from mapping_field.field import ExtElement
 from mapping_field.log_utils.tree_loggers import TreeLogger, yellow
 from mapping_field.mapping_field import (
-    CompositeElementFromFunction, MapElement, MapElementProcessor, Var, class_simplifier,
+    CompositeElementFromFunction, MapElement, MapElementProcessor, Var, class_simplifier, PropertyEngine,
 )
 from mapping_field.promises import IsCondition
 from mapping_field.utils.serializable import DefaultSerializable
@@ -161,14 +161,16 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
             all_elements.append(element)
         return all_elements
 
-    def __init__(self, operands: list[MapElement], simplified: bool = False):
-        super().__init__(
-            operands=self.__class__._unpack_list(operands),
-            simplified=simplified
-        )
-
+    def __init__(self, operands: list[MapElement], simplified: bool = False,
+            output_properties: dict[PropertyEngine[Any], Any] | None = None):
         for operand in operands:
             assert operand.has_promise(IsCondition)
+
+        super().__init__(
+            operands=self.__class__._unpack_list(operands),
+            simplified=simplified,
+            output_properties=output_properties
+        )
 
     @property
     def conditions(self) -> list[MapElement]:

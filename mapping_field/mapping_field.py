@@ -328,18 +328,16 @@ class MapElement:
             cls.register_class_simplifier(simplifier)
 
     def __init__(self, variables: list['Var'], name: str | None = None, promises: OutputPromises | None = None,
-                 simplified: bool = False):
+                 simplified: bool = False, output_properties: dict[PropertyEngine[Any], Any] | None = None):
         """
         The 'variables' are the ordered list used when calling the function, as in f(a_1,...,a_n).
         """
         self.name = name or self.__class__.__name__
         self._simplified_version = None if not simplified else self
-        self._set_variables(variables)
+        self._reset(variables, output_properties)
         self.promises = OutputPromises() if promises is None else promises
-        if simplified:
-            self._simplifier.set_final_version(self, self)
 
-    def _set_variables(self, variables: list["Var"]):
+    def _reset(self, variables: list["Var"], output_properties: dict[PropertyEngine[Any], Any] | None = None):
         """
         Should be called when copying this function, and want to reset it (in case you cannot go through the
         standard __init__ function).
@@ -352,6 +350,11 @@ class MapElement:
         self._simplified_version = None
         self._simplifier.reset_element(self)
         self.promises = OutputPromises()
+
+        if output_properties is not None:
+            for engine, value in output_properties.items():
+                simplifier_context.set_user_property(self, engine, value)
+
     # def copy(self) -> "MapElement":
     #     copied_version = copy.copy(self)
     #     copied_version.promises = self.promises.copy()
@@ -804,10 +807,12 @@ class CompositeElement(MapElement):
 
     auto_promises: list[OutputValidator] = []
 
-    def __init__(self, operands: list[MapElement], name: str | None = None, simplified: bool = False) -> None:
+    def __init__(
+            self, operands: list[MapElement], name: str | None = None, simplified: bool = False,
+            output_properties: dict[PropertyEngine[Any], Any] | None = None) -> None:
 
         self.operands = operands
-        super().__init__(variables=Var.extract_variables(operands), name=name, simplified=simplified)
+        super().__init__(variables=Var.extract_variables(operands), name=name, simplified=simplified, output_properties=output_properties)
         for promise in self.__class__.auto_promises:
             self.promises.add_promise(promise)
 
@@ -815,7 +820,8 @@ class CompositeElement(MapElement):
         copy_version = copy.copy(self)
         # TODO: Note that this also copies the output promises in a shallow copy
         copy_version.operands = operands
-        copy_version._set_variables(Var.extract_variables(operands))
+        copy_version._reset(
+            Var.extract_variables(operands), output_properties={})#simplifier_context.get_user_properties(self))
         for promise in self.__class__.auto_promises:
             copy_version.promises.add_promise(promise)
         return copy_version
@@ -915,14 +921,14 @@ class Var(MapElement, DefaultSerializable):
         cls._instances[name] = instance
         return instance
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, output_properties: dict[PropertyEngine[Any], Any] | None = None):
         """
         Initializes the Variable. If a Variable with the given name already exists, will not create a
         second object, and instead returns the existing variable.
         """
         if hasattr(self, "initialized"):
             return
-        super().__init__([self], name, simplified=True)
+        super().__init__([self], name, simplified=True, output_properties=output_properties)
         self.initialized = True
 
     def to_string(self, vars_to_str: dict["Var", str]):
