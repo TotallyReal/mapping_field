@@ -2,13 +2,15 @@ import logging
 
 from mapping_field.binary_expansion import BinaryExpansion
 from mapping_field.conditional_function import ConditionalFunction, ReLU
-from mapping_field.conditions import FalseCondition, TrueCondition
+from mapping_field.conditions import FalseCondition, TrueCondition, IntersectionCondition
 from mapping_field.linear import Linear
+from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.mapping_field import MapElementConstant, Var, simplifier_context
 from mapping_field.property_engines import is_integral
 from mapping_field.ranged_condition import BoolVar, IntervalRange, RangeCondition, in_range
 from mapping_field.tests.utils import DummyCondition, DummyConditionOn, DummyMap
 
+simplify_logger = TreeLogger(__name__)
 logger = logging.getLogger(__name__)
 
 
@@ -23,26 +25,26 @@ def test_post_generation_independence():
     x = Var("x")
     regions = [
         (dummy0 < 0, x),
-        (x < 0, dummy0),
+        (dummy0 >= 0, 5),
     ]
     func = ConditionalFunction(regions)
-    assert str(func) == "[ DummyMap(0)<0 -> x  ;  x<0 -> DummyMap(0) ]"
+    assert str(func) == "[ DummyMap(0)<0 -> x  ;  0<=DummyMap(0) -> 5 ]"
 
     # Changing the region list should not change the function
-    dummy1 = DummyMap(1)
-    regions[0] = (dummy0 < 0, dummy1)
-    regions[1] = (dummy1 < 0, dummy0)
+    regions[0] = (dummy0 < 1, 3)
+    regions[1] = (dummy0 >=1, 2*x)
     region_changed_func = ConditionalFunction(regions)
 
-    assert str(func) == "[ DummyMap(0)<0 -> x  ;  x<0 -> DummyMap(0) ]"
-    assert str(region_changed_func) == "[ DummyMap(0)<0 -> DummyMap(1)  ;  DummyMap(1)<0 -> DummyMap(0) ]"
+    assert str(func) == "[ DummyMap(0)<0 -> x  ;  0<=DummyMap(0) -> 5 ]"
+    assert str(region_changed_func) == "[ DummyMap(0)<1 -> 3  ;  1<=DummyMap(0) -> (2*x) ]"
 
     # Calling the function
+    dummy1 = DummyMap(1)
     assigned_func = func({x: dummy1})
 
-    assert str(assigned_func) == "[ DummyMap(0)<0 -> DummyMap(1)  ;  DummyMap(1)<0 -> DummyMap(0) ]"
+    assert str(assigned_func) == "[ DummyMap(0)<0 -> DummyMap(1)  ;  0<=DummyMap(0) -> 5 ]"
     # Some indication that func is frozen
-    assert str(func) == "[ DummyMap(0)<0 -> x  ;  x<0 -> DummyMap(0) ]"
+    assert str(func) == "[ DummyMap(0)<0 -> x  ;  0<=DummyMap(0) -> 5 ]"
 
 
 def test_evaluate():
@@ -67,6 +69,28 @@ def test_evaluate():
         (dummy_conditions[1], DummyMap(0)),
     ])
     assert func.evaluate() is None
+
+
+def test_equality_to_self():
+    dummy_conditions = [DummyConditionOn(set_size=3, values=i) for i in range(3)]
+    dummy = DummyMap(0)
+
+    cond_func = ConditionalFunction([
+        (dummy_conditions[0], dummy),
+        (dummy_conditions[1], 1),
+        (dummy_conditions[2], 2),
+    ])
+
+    assert cond_func == cond_func
+
+    cond_func_same = ConditionalFunction([
+        (dummy_conditions[0], dummy),
+        (dummy_conditions[1], 1),
+        (dummy_conditions[2], 2),
+    ])
+
+    assert cond_func == cond_func_same
+
 
 
 def test_equality_to_standard_function():
@@ -330,3 +354,15 @@ def test_mul_generation():
     ])
 
     assert func1 == func2
+
+def test_sum_of_conditions():
+    n = 2
+    simplify_logger.tree.max_log_count = -1
+    x = [Var(f'x_{i}') for i in range(n)]
+    # simplify_logger.tree.set_active(False)
+    elem = sum([x[i]<<2*i for i in range(n)], 1-n)
+    elem = ReLU(elem)
+    # simplify_logger.tree.set_active(True)
+    cond1 = elem.simplify2()
+    cond2 = IntersectionCondition([x[i]<<2*i for i in range(n)])
+    assert cond1 == cond2
