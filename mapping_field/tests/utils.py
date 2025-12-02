@@ -1,13 +1,15 @@
+from typing import Any
 
 from mapping_field.conditions import FalseCondition, TrueCondition
-from mapping_field.mapping_field import MapElement, Var
+from mapping_field.mapping_field import MapElement, Var, PropertyEngine
 from mapping_field.promises import IsCondition
+from mapping_field.property_engines import is_condition
 
 
 class DummyMap(MapElement):
-    def __init__(self, value=0):
-        super().__init__([], f"DummyMap({value})")
+    def __init__(self, value=0, output_properties: dict[PropertyEngine[Any], Any] | None = None):
         self.value = value
+        super().__init__([], f"DummyMap({value})", output_properties=output_properties)
 
     def to_string(self, vars_to_str: dict[Var, str]):
         return f"DummyMap({self.value})"
@@ -20,10 +22,9 @@ class DummyMap(MapElement):
 
 class DummyCondition(MapElement):
     def __init__(self, type: int = 0, values: int | set[int] = 0):
-        super().__init__([])
         self.values: set[int] = set([values]) if isinstance(values, int) else values
         self.type = type
-        self.promises.add_promise(IsCondition)
+        super().__init__([], output_properties={is_condition: True})
 
     def to_string(self, vars_to_str: dict[Var, str]):
         return f"DummyCond_{self.type}({self.values})"
@@ -53,11 +54,10 @@ class DummyCondition(MapElement):
 
 class DummyConditionOn(MapElement):
     def __init__(self, set_size: int = 1, values: int | set[int] = 0):
-        super().__init__([])
         self.values: set[int] = set([values]) if isinstance(values, int) else values
         assert all(0<=value<set_size for value in self.values)
         self.set_size = set_size
-        self.promises.add_promise(IsCondition)
+        super().__init__([], output_properties={is_condition: True})
 
     def to_string(self, vars_to_str: dict[Var, str]):
         return f"DummyCondOn_{self.set_size}({self.values})"

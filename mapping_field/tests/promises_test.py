@@ -1,14 +1,15 @@
 import pytest
 
 from mapping_field.conditions import FalseCondition, TrueCondition
-from mapping_field.mapping_field import InvalidInput
+from mapping_field.mapping_field import InvalidInput, simplifier_context, Var
 from mapping_field.promises import IntVar, IsIntegral
+from mapping_field.property_engines import is_integral, is_condition
 from mapping_field.ranged_condition import BoolVar
 from mapping_field.tests.utils import DummyMap
 
 
 def test_int_var_promise():
-    x = IntVar("x")
+    x = Var("x", output_properties={is_integral: True})
 
     assigned = x(3)
     with pytest.raises(InvalidInput):
@@ -16,7 +17,7 @@ def test_int_var_promise():
 
 
 def test_bool_var_promise():
-    x = BoolVar("x")
+    x = Var("x", output_properties={is_condition: True})
 
     assigned = x(0)
     assigned = x(1)
@@ -33,18 +34,18 @@ def test_integral_arithmetic():
     dummy1, dummy2 = DummyMap(1), DummyMap(2)
 
     result = dummy1 + dummy2
-    assert result.has_promise(IsIntegral) is None
+    assert is_integral.compute(result, simplifier_context) is None
     result = dummy1 - dummy2
-    assert result.has_promise(IsIntegral) is None
+    assert is_integral.compute(result, simplifier_context) is None
     result = dummy1 * dummy2
-    assert result.has_promise(IsIntegral) is None
+    assert is_integral.compute(result, simplifier_context) is None
 
-    dummy1.promises.add_promise(IsIntegral)
-    dummy2.promises.add_promise(IsIntegral)
+    simplifier_context.set_property(dummy1, is_integral, True)
+    simplifier_context.set_property(dummy2, is_integral, True)
 
     result = dummy1 + dummy2
-    assert result.has_promise(IsIntegral) is True
+    assert is_integral.compute(result, simplifier_context) is True
     result = dummy1 - dummy2
-    assert result.has_promise(IsIntegral) is True
+    assert is_integral.compute(result, simplifier_context) is True
     result = dummy1 * dummy2
-    assert result.has_promise(IsIntegral) is True
+    assert is_integral.compute(result, simplifier_context) is True

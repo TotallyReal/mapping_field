@@ -301,7 +301,7 @@ def test_output_promise():
     dummy_cond = [DummyCondition(values={i}) for i in range(2)]
     dummy_func = [DummyMap(i) for i in range(2)]
 
-    dummy_func[0].promises.add_promise(IsIntegral)
+    dummy_func[0] = DummyMap(0, output_properties={is_integral: True})
 
     cond_func = ConditionalFunction([
         (dummy_cond[i], dummy_func[i]) for i in range(2)
@@ -312,12 +312,13 @@ def test_output_promise():
     dummy_cond = [DummyCondition(values={i}) for i in range(2)]
     dummy_func = [DummyMap(i) for i in range(2)]
 
-    dummy_func[0].promises.add_promise(IsIntegral)
-    dummy_func[1].promises.add_promise(IsIntegral)
+    dummy_func[0] = DummyMap(0, output_properties={is_integral: True})
+    dummy_func[1] = DummyMap(1, output_properties={is_integral: True})
 
     cond_func = ConditionalFunction([
         (dummy_cond[i], dummy_func[i]) for i in range(2)
     ])
+    cond_func = cond_func.simplify2()
     assert is_integral.compute(cond_func, simplifier_context)
 
 

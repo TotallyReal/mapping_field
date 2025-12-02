@@ -3,6 +3,7 @@ from mapping_field.conditions import BinaryCondition, FalseCondition, TrueCondit
 from mapping_field.log_utils.tree_loggers import TreeLogger, blue
 from mapping_field.mapping_field import CompositeElement, MapElement
 from mapping_field.promises import IsCondition
+from mapping_field.property_engines import is_condition
 from mapping_field.ranged_condition import BoolVar, IntervalRange, RangeCondition
 
 simplify_logger = TreeLogger(__name__)
@@ -51,8 +52,7 @@ def test_two_var_simplifier():
 
     class TwoVar(CompositeElement):
         def __init__(self, function):
-            super().__init__(operands=[x, y])
-            self.promises.add_promise(IsCondition)
+            super().__init__(operands=[x, y], output_properties={is_condition: True})
             self.function = function
 
         def _simplify_with_var_values2(self) -> MapElement | None:

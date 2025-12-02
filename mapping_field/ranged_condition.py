@@ -674,10 +674,8 @@ class BoolVar(Var):
         return super(BoolVar, cls).__new__(cls, var_name)
 
     def __init__(self, name: str):
-        super().__init__(name)
-        self.promises.add_promise(IsIntegral)
+        super().__init__(name, output_properties={is_condition: True, is_integral: True})
         self.promises.add_promise(InRange(IntervalRange[0, 1]))
-        self.promises.add_promise(IsCondition)
 
 def two_bool_vars_simplifier(elem: MapElement) -> SimplifierOutput:
     # TODO: make sure that I don't call has_promise for an element that I am trying to simplify, since it might

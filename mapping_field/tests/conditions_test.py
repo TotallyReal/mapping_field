@@ -13,7 +13,6 @@ from mapping_field.tests.utils import DummyCondition
 #       │           Binary And \ Or \ Invert              │
 #       ╰─────────────────────────────────────────────────╯
 
-
 def test_binary_condition_invert():
     assert ~TrueCondition == FalseCondition
     assert ~FalseCondition == TrueCondition

@@ -4,8 +4,9 @@ from mapping_field.conditions import (
     FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
 )
 from mapping_field.log_utils.tree_loggers import TreeLogger
-from mapping_field.mapping_field import MapElementConstant, Var
+from mapping_field.mapping_field import MapElementConstant, Var, simplifier_context
 from mapping_field.promises import IsIntegral
+from mapping_field.property_engines import is_integral
 from mapping_field.ranged_condition import InRange, IntervalRange, RangeCondition
 from mapping_field.tests.utils import DummyMap
 
@@ -24,7 +25,7 @@ def test_in_range_promise():
 
     # Now make it only take values in 0 or 1 (namely BoolVar)
     dummy.promises.add_promise(InRange(IntervalRange[0, 1]))
-    dummy.promises.add_promise(IsIntegral)
+    simplifier_context.set_property(dummy, is_integral, True)
 
     cond1 = (dummy << 0) | (dummy << 1)
     cond2 = (0 <= dummy) & (dummy <= 1)
@@ -265,7 +266,7 @@ def test_equality_as_integral():
     cond2 = (4.8 <= dummy) & (dummy <= 10.4)
     assert cond1 != cond2
 
-    dummy.promises.add_promise(IsIntegral)
+    simplifier_context.set_property(dummy, is_integral, True)
 
     cond1 = (4 < dummy) & (dummy <= 10.2)
     cond2 = (4.8 <= dummy) & (dummy <= 10.4)
@@ -277,8 +278,7 @@ def test_equality_as_integral():
 
 
 def test_integral_product():
-    dummy = DummyMap(0)
-    dummy.promises.add_promise(IsIntegral)
+    dummy = DummyMap(output_properties={is_integral: True})
     dummy2 = 2 * dummy  # Only even integers
 
     cond1 = (6.5 <= dummy2).simplify2()
@@ -302,7 +302,7 @@ def test_union_for_integral_functions():
     result = UnionCondition([cond1, cond2])._simplify2()
     assert result is None
 
-    dummy.promises.add_promise(IsIntegral)
+    dummy = DummyMap(output_properties={is_integral: True})
 
     cond1 = (5.5 <= dummy) & (dummy <= 10.2)
     cond2 = (10.8 <= dummy) & (dummy <= 17.4)
@@ -311,9 +311,7 @@ def test_union_for_integral_functions():
 
 
 def test_union_of_integral_points():
-    dummy = DummyMap(0)
-
-    dummy.promises.add_promise(IsIntegral)
+    dummy = DummyMap(output_properties={is_integral: True})
 
     conditions = [(dummy << i) for i in range(3, 9)]
     union = UnionCondition(conditions).simplify2()
@@ -407,12 +405,12 @@ def test_sub_ranged_equality():
 
 
 def test_addition_arithmetic_and_ranged():
-    dummy1, dummy2 = DummyMap(1), DummyMap(2)
+    dummy1 = DummyMap(1, output_properties={is_integral: True})
+    dummy2 = DummyMap(2, output_properties={is_integral: True})
+
 
     dummy1.promises.add_promise(InRange(IntervalRange[0, 1]))
-    dummy1.promises.add_promise(IsIntegral)
     dummy2.promises.add_promise(InRange(IntervalRange[0, 1]))
-    dummy2.promises.add_promise(IsIntegral)
 
     cond = RangeCondition(dummy1 - dummy2, IntervalRange(0, 1, False, True))
     cond = cond.simplify2()

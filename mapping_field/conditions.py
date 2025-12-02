@@ -35,9 +35,8 @@ class BinaryCondition(Condition, DefaultSerializable):
         return condition
 
     def __init__(self, value: bool):
-        super().__init__(variables=[], simplified=True)
         self.value = value
-        self.promises.add_promise(IsCondition)
+        super().__init__(variables=[], simplified=True, output_properties={is_condition: True})
 
     def to_string(self, vars_to_str: dict[Var, str]):
         return str(self.value)
@@ -72,7 +71,7 @@ class _NotCondition(CompositeElementFromFunction):
 
         for v in self.vars:
             # TODO: Maybe switch directly to BoolVars?
-            v.promises.add_promise(IsCondition)
+            simplifier_context.set_property(v, is_condition, True)
 
     @property
     def operand(self) -> MapElement:

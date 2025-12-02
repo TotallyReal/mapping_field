@@ -214,6 +214,8 @@ class PropertyEngine(Generic[Property], ABC):
         """
         raise NotImplementedError()
 
+engine_to_promise: dict['PropertyEngine', OutputValidator] = {}
+
 class SimplifierContext:
     def __init__(self, name: str | None = None):
         # id(map_element) ->  {prop_engine: prop_value}
@@ -231,6 +233,9 @@ class SimplifierContext:
 
         cur_prop = properties.get(engine, None)
         properties[engine] = prop_value if cur_prop is None else engine.combine_properties(cur_prop, prop_value)
+
+        if engine in engine_to_promise:
+            element.promises.add_promise(engine_to_promise[engine])
 
     def get_property(self, element: 'MapElement', engine: PropertyEngine[Property]) -> Property | None:
         if element not in self.property_table:
@@ -335,8 +340,8 @@ class MapElement:
         """
         self.name = name or self.__class__.__name__
         self._simplified_version = None if not simplified else self
-        self._reset(variables, output_properties)
         self.promises = OutputPromises() if promises is None else promises
+        self._reset(variables, output_properties)
 
     def _reset(self, variables: list["Var"], output_properties: dict[PropertyEngine[Any], Any] | None = None):
         """
@@ -355,6 +360,7 @@ class MapElement:
 
         if output_properties is not None:
             for engine, value in output_properties.items():
+                # TODO: This can be called before the object is fully initialized.
                 simplifier_context.set_user_property(self, engine, value)
 
 
@@ -915,7 +921,7 @@ class Var(MapElement, DefaultSerializable):
             seen.update(element.vars)
         return variables
 
-    def __new__(cls, name: str):
+    def __new__(cls, name: str, **kwargs):
         if name in cls._instances:
             v = cls._instances[name]
             assert (
@@ -948,6 +954,11 @@ class Var(MapElement, DefaultSerializable):
         for promise in self.promises.output_promises():
             if not value.has_promise(promise):
                 raise InvalidInput(f"{self}={value} does not satisfy the promise of {promise}")
+
+        for engine, prop_value in simplifier_context.get_properties(self).items():
+            assigned_prop = engine.compute(value, simplifier_context)
+            if (assigned_prop is None) or (not engine.is_stronger_property(assigned_prop, prop_value)):
+                raise InvalidInput(f"{self}={value} does not satisfy the promise of {engine}={prop_value}")
         return value
 
     def __eq__(self, other):
