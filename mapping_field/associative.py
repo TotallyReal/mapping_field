@@ -37,6 +37,18 @@ class AssociativeListFunction(CompositeElement):
 
     binary_constructs: set[int] = set()
 
+    def __eq__(self, other: MapElement) -> bool:
+        if not isinstance(other, self.__class__):
+            return False
+        if len(self.operands) != len(other.operands):
+            return False
+
+        for operand in self.operands:
+            if operand not in other.operands:
+                return False
+
+        return True
+
     @classmethod
     def is_trivial(cls, element: MapElement) -> bool:
         return element is cls.trivial_element

@@ -181,18 +181,6 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
     def serialization_name_conversion(self):
         return {"simplified": self._simplify_with_var_values2}
 
-    def __eq__(self, other: MapElement) -> bool:
-        if not isinstance(other, self.__class__):
-            return False
-        if len(self.conditions) != len(other.conditions):
-            return False
-
-        for condition in self.conditions:
-            if condition not in other.conditions:
-                return False
-
-        return True
-
     @classmethod
     def _op_between(cls, condition1: MapElement, condition2: MapElement) -> MapElement | None:
         return cls.bin_condition[cls.type](condition1, condition2, simplify=False)._simplify2()
