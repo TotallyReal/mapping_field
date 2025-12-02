@@ -904,8 +904,15 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
     def _binary_combination_to_expansion_simplifier(bin_comb: MapElement) -> SimplifierOutput:
         """
                 2 * v1 + v0     =>  Bin[v0, v1]
+            Doesn't combine constants into the expansion - it is not consider simpler.
+            To combine constants, use BinaryExpansion.of(...).
         """
         assert isinstance(bin_comb, BinaryCombination)
+
+        value1 = bin_comb.elem1.evaluate()
+        value2 = bin_comb.elem2.evaluate()
+        if value1 is not None or value2 is not None:
+            return None
 
         elem1 = BinaryExpansion.of(bin_comb.elem1)
         if elem1 is None:
