@@ -13,7 +13,7 @@ from mapping_field.mapping_field import (
 )
 from mapping_field.promises import IsCondition, IsIntegral
 from mapping_field.property_engines import is_condition
-from mapping_field.ranged_condition import InRange, IntervalRange, RangeCondition, Ranged
+from mapping_field.ranged_condition import InRange, IntervalRange, RangeCondition, Ranged, in_range
 from mapping_field.utils.processors import ProcessFailureReason
 
 simplify_logger = TreeLogger(__name__)
@@ -68,7 +68,7 @@ class SingleRegion(CompositeElement, Ranged):
         yield self.function
 
     def get_range(self) -> IntervalRange | None:
-        return InRange.get_range_of(self.function)
+        return in_range.compute(self.function, simplifier_context)
 
     def _simplify_with_var_values2(self) -> MapElement | None:
         if not isinstance(self.condition, MapElementProcessor):
@@ -173,7 +173,7 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
     def get_range(self) -> IntervalRange | None:
         interval = IntervalRange.empty()
         for region in self.regions:
-            next_interval = InRange.get_range_of(region)
+            next_interval = in_range.compute(region, simplifier_context)
             if next_interval is None:
                 return None
             interval = interval.union_fill(next_interval)
@@ -411,7 +411,7 @@ IsIntegral.register_validator(lambda elem: ConditionalFunction.promise_validate_
 
 
 def ReLU(map_elem: MapElement) -> MapElement:
-    f_range = InRange.get_range_of(map_elem)
+    f_range = in_range.compute(map_elem, simplifier_context)
     if f_range is not None and f_range.low >= 0:
         return map_elem
     zero = MapElementConstant.zero

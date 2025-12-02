@@ -5,9 +5,9 @@ from mapping_field.conditions import FalseCondition, TrueCondition
 from mapping_field.log_utils.tree_loggers import TreeLogger, green
 from mapping_field.mapping_field import (
     CompositeElement, ExtElement, MapElement, MapElementConstant, SimplifierOutput, Var,
-    class_simplifier, params_to_maps,
+    class_simplifier, params_to_maps, simplifier_context,
 )
-from mapping_field.ranged_condition import InRange, IntervalRange, RangeCondition, Ranged
+from mapping_field.ranged_condition import InRange, IntervalRange, RangeCondition, Ranged, in_range
 from mapping_field.utils.processors import ProcessFailureReason
 from mapping_field.utils.serializable import DefaultSerializable
 
@@ -56,7 +56,7 @@ class Linear(CompositeElement, DefaultSerializable, Ranged):
         return f"Lin[{a_str}{self.elem.to_string(vars_to_str)}{b_str}]"
 
     def get_range(self) -> IntervalRange | None:
-        f_range = InRange.get_range_of(self.elem)
+        f_range = in_range.compute(self.elem, simplifier_context)
         if f_range is None:
             return None
         return self.a * f_range + self.b

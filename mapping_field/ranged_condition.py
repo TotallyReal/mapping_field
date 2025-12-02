@@ -2,6 +2,7 @@ import math
 import operator
 
 from abc import abstractmethod
+from functools import cache
 from typing import Optional, Union
 
 from mapping_field.arithmetics import MultiAdd, _Add, _as_combination, _Mult, _Negative
@@ -11,10 +12,10 @@ from mapping_field.conditions import (
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
 from mapping_field.mapping_field import (
     CompositeElement, FuncDict, MapElement, MapElementConstant, MapElementProcessor, OutputPromises,
-    OutputValidator, SimplifierOutput, Var, VarDict, class_simplifier, simplifier_context,
+    OutputValidator, SimplifierOutput, Var, VarDict, class_simplifier, simplifier_context, SimplifierContext,
 )
 from mapping_field.promises import IsCondition, IsIntegral, register_promise_preserving_functions
-from mapping_field.property_engines import is_condition, is_integral
+from mapping_field.property_engines import is_condition, is_integral, PropertyByRulesEngine, property_rule
 from mapping_field.utils.processors import ProcessFailureReason
 
 simplify_logger = TreeLogger(__name__)
@@ -34,10 +35,12 @@ class IntervalRange:
         return IntervalRange[value, value]
 
     @staticmethod
+    @cache
     def all():
         return IntervalRange(float("-inf"), float("inf"), False, False)
 
     @staticmethod
+    @cache
     def empty():
         return IntervalRange(1, 0, False, False)
 
@@ -94,7 +97,8 @@ class IntervalRange:
         return f"{lower}{middle}{upper}"
 
     def __eq__(self, other):
-        assert isinstance(other, IntervalRange)
+        if not isinstance(other, IntervalRange):
+            return False
 
         if not self.is_empty and not other.is_empty:
             return (( self.low,  self.high,  self.contain_low,  self.contain_high) ==
@@ -136,19 +140,19 @@ class IntervalRange:
         range2 = other
 
         if range1.is_empty or range2.is_empty:
-            return None
+            return IntervalRange.empty()
 
         low  = max(range1.low,  range2.low)
         high = min(range1.high, range2.high)
         if high < low:
-            return None
+            return IntervalRange.empty()
 
         contain_low  = range1.contains(low) and range2.contains(low)
         contain_high = range1.contains(high) and range2.contains(high)
 
         if high == low:
             if not contain_low:
-                return None
+                return IntervalRange.empty()
             return IntervalRange.of_point(low)
 
         return IntervalRange(low, high, contain_low, contain_high)
@@ -208,6 +212,10 @@ class IntervalRange:
             if value == 0:
                 return self
             value = IntervalRange.of_point(value)
+        if self.is_empty:
+            return value
+        if value.is_empty:
+            return self
         return IntervalRange(
             self.low + value.low,
             self.high + value.high,
@@ -269,6 +277,89 @@ class Ranged:
     def get_range(self) -> IntervalRange | None:
         raise NotImplementedError()
 
+class RangeEngine(PropertyByRulesEngine[IntervalRange]):
+
+    def __init__(self):
+        super().__init__()
+
+    def compute(self, element: 'MapElement', context: 'SimplifierContext') -> IntervalRange | None:
+        in_range = next(element.promises.output_promises(of_type=InRange), None)
+        if in_range is not None:
+            return in_range.range
+
+        value = context.get_property(element, self)
+        if value is not None:
+            return value
+
+        intervals = [rule(element, context) for rule in self._rules]
+        intervals = [interval for interval in intervals if interval is not None]
+        if len(intervals) == 0:
+            return None
+        final_interval = IntervalRange.all()
+        for interval in intervals:
+            final_interval = final_interval.intersection(interval)
+        if not final_interval.is_all:
+            # simplify_logger.log(f"Setting range of {red(element)} to {final_interval}")
+            context.set_property(element, self, final_interval)
+
+        return final_interval
+
+    def combine_properties(self, prop1: IntervalRange, prop2: IntervalRange) -> IntervalRange:
+        return prop1.intersection(prop2)
+
+    def is_stronger_property(self, strong_prop: IntervalRange, weak_prop: IntervalRange) -> bool:
+        return weak_prop.contains(strong_prop)
+
+    @staticmethod
+    @property_rule
+    def _multi_add_ranges(self, element: MapElement, context: SimplifierContext) -> IntervalRange | None:
+        """
+            x < 1 and y < 2     =>  x + y < 3
+        """
+        if not isinstance(element, MultiAdd):
+            return None
+
+        intervals = [self.compute(summand, context) for summand in element.operands]
+        if None in intervals:
+            return None
+        final_interval = IntervalRange.empty()
+        for interval in intervals:
+            final_interval = final_interval + interval
+
+        return final_interval
+
+    @property_rule
+    def _negative_range(self, element: MapElement, context: SimplifierContext) -> IntervalRange | None:
+        """
+            x in [-1,10]     =>  -x in [-10,1]
+        """
+        if not isinstance(element, _Negative):
+            return None
+
+        interval = self.compute(element.operand, context)
+        return -interval if interval is not None else None
+
+    @staticmethod
+    @property_rule
+    def _trivial_ranges(element: MapElement, context: SimplifierContext) -> IntervalRange | None:
+        """
+            5 => [5,5]
+            condition => [0,1]
+        """
+        value = element.evaluate()
+        if value is not None:
+            return IntervalRange[value,value]
+
+        if isinstance(element, Ranged):
+            return element.get_range()
+
+        if is_condition.compute(element, context):
+            return IntervalRange[0,1]
+
+        return None
+
+in_range = RangeEngine()
+simplifier_context.register_engine(in_range)
 
 class InRange(OutputValidator[IntervalRange]):
     # TODO: add tests
@@ -299,7 +390,7 @@ class InRange(OutputValidator[IntervalRange]):
         self.register_validator(self.contain_validate)
 
     def contain_validate(self, elem: MapElement) -> bool | None:
-        elem_range = InRange.get_range_of(elem)
+        elem_range = in_range.compute(elem, simplifier_context)
         if elem_range is None:
             return None
         if self.range.contains(elem_range):
@@ -346,12 +437,12 @@ class InRange(OutputValidator[IntervalRange]):
     def _negation_range_simplifier(elem: MapElement) -> SimplifierOutput:
         assert isinstance(elem, _Negative)
 
-        interval = InRange.get_range_of(elem.operand)
+        interval = in_range.compute(elem.operand, simplifier_context)
         if interval is None:
             return ProcessFailureReason('Operand does not have a range', trivial=True)
         interval = -interval
 
-        orig_interval = InRange.get_range_of(elem)
+        orig_interval = in_range.compute(elem, simplifier_context)
         if orig_interval is not None and interval.contains(orig_interval):
             return ProcessFailureReason('The current range is already smaller than the one from the operand', trivial=True)
 
@@ -372,12 +463,12 @@ class InRange(OutputValidator[IntervalRange]):
         op = operator.add
 
         elem1, elem2 = elem.operands
-        f_range1 = InRange.get_range_of(elem1)
-        f_range2 = InRange.get_range_of(elem2)
+        f_range1 = in_range.compute(elem1, simplifier_context)
+        f_range2 = in_range.compute(elem2, simplifier_context)
         if f_range1 is None or f_range2 is None:
             return None
         interval = op(f_range1, f_range2)
-        orig_interval = InRange.get_range_of(elem)
+        orig_interval = in_range.compute(elem, simplifier_context)
         if orig_interval is not None:
             interval = orig_interval.intersection(interval)
             if interval.contains(orig_interval):
@@ -605,8 +696,8 @@ class RangeCondition(CompositeElement, MapElementProcessor):
             return ProcessFailureReason('Only works for Addition and Subtraction', trivial=True)
         elem1, elem2 = elem.operands
         total_range = ranged_cond.range
-        f_range1 = InRange.get_range_of(elem1) or IntervalRange.all()
-        f_range2 = InRange.get_range_of(elem2) or IntervalRange.all()
+        f_range1 = in_range.compute(elem1, simplifier_context) or IntervalRange.all()
+        f_range2 = in_range.compute(elem2, simplifier_context) or IntervalRange.all()
 
         f_range1_updated = f_range1.intersection(op1(total_range, f_range2))
         f_range2_updated = f_range2.intersection(op2(total_range, f_range1))

@@ -7,7 +7,7 @@ from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.mapping_field import MapElementConstant, Var, simplifier_context
 from mapping_field.promises import IsIntegral
 from mapping_field.property_engines import is_integral
-from mapping_field.ranged_condition import InRange, IntervalRange, RangeCondition
+from mapping_field.ranged_condition import InRange, IntervalRange, RangeCondition, in_range
 from mapping_field.tests.utils import DummyMap
 
 simplify_logger = TreeLogger(__name__)
@@ -334,7 +334,7 @@ def test_ranged_condition_as_input():
 def test_range_of_constant():
     c = MapElementConstant(5)
 
-    assert InRange.get_range_of(c) == IntervalRange.of_point(5)
+    assert in_range.compute(c, simplifier_context) == IntervalRange.of_point(5)
 
 def test_sum_of_two_conditions():
     dummy0, dummy1 = DummyMap(0), DummyMap(1)
@@ -366,7 +366,7 @@ def test_add_ranged_functions():
     dummy1.promises.add_promise(InRange(IntervalRange[1, 4]))
     dummy2.promises.add_promise(InRange(IntervalRange[3, 5]))
     result = dummy1 + dummy2
-    f_range = InRange.get_range_of(result)
+    f_range = in_range.compute(result, simplifier_context)
     assert f_range is not None
     assert f_range == IntervalRange[4, 9]
 
@@ -377,7 +377,7 @@ def test_sub_ranged_functions():
     dummy1.promises.add_promise(InRange(IntervalRange[1, 4]))
     dummy2.promises.add_promise(InRange(IntervalRange[3, 5]))
     result = dummy1 - dummy2
-    f_range = InRange.get_range_of(result)
+    f_range = in_range.compute(result, simplifier_context)
     assert f_range is not None
     assert f_range == IntervalRange[-4, 1]
 
