@@ -8,7 +8,7 @@ from mapping_field.conditions import FalseCondition, TrueCondition, UnionConditi
 from mapping_field.field import ExtElement
 from mapping_field.log_utils.tree_loggers import TreeLogger, red, yellow
 from mapping_field.mapping_field import (
-    CompositeElement, MapElement, MapElementConstant, MapElementProcessor, OutputValidator,
+    CompositeElement, MapElement, MapElementConstant, MapElementProcessor,
     SimplifierOutput, Var, class_simplifier, convert_to_map, params_to_maps, PropertyEngine, simplifier_context,
     SimplifierContext,
 )
@@ -339,30 +339,6 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
             return value1 + (value2 - value1) * cond2
         return value2 + (value1 - value2) * cond1
 
-        # if not (isinstance(cond1, RangeCondition) and isinstance(cond2, RangeCondition)):
-        #     return None
-        # assign1 = cond1.as_assignment()
-        # assign2 = cond2.as_assignment()
-        # if assign1 is None or assign2 is None:
-        #     return None
-        #
-        # v1 = assign1[0]
-        # v2 = assign2[0]
-        # if not (isinstance(v1, BoolVar) and v1 is v2):
-        #     return None
-        #
-        # assigned_value1 = assign1[1]
-        # assigned_value2 = assign2[1]
-        #
-        # if (assigned_value1, assigned_value2) == (0, 1):
-        #     return (value1 + (value2 - value1) * v1).simplify2()
-        #
-        # if (assigned_value1, assigned_value2) == (1, 0):
-        #     return (value2 + (value1 - value2) * v1).simplify2()
-        #
-        # raise Exception(
-        #     f"The assigned values should be 0 and 1, but instead got {assigned_value1} and {assigned_value2}"
-        # )
 
     @is_integral.register_rule
     @staticmethod
@@ -405,11 +381,6 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
 
 _Mult.register_class_simplifier(ConditionalFunction.mult_condition_by_element)
 RangeCondition.register_class_simplifier(ConditionalFunction.new_assignment_simplify)
-
-# TODO: Make it work for any validator in the future
-# IsIntegral.register_validator(lambda elem: ConditionalFunction.promise_validate_conditional_function(IsIntegral, elem))
-# TODO: Don't think of ConditionalFunction as a condition for now
-# IsCondition.register_validator(lambda elem: promise_validate_conditional_function(IsCondition, elem))
 
 
 def ReLU(map_elem: MapElement) -> MapElement:

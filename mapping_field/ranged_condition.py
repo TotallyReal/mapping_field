@@ -9,10 +9,10 @@ from mapping_field.arithmetics import MultiAdd, _Add, _as_combination, _Mult, _N
 from mapping_field.conditions import (
     BinaryCondition, FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
 )
-from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
+from mapping_field.log_utils.tree_loggers import TreeLogger, green, red, cyan
 from mapping_field.mapping_field import (
     CompositeElement, FuncDict, MapElement, MapElementConstant, MapElementProcessor,
-    OutputValidator, SimplifierOutput, Var, VarDict, class_simplifier, simplifier_context, SimplifierContext,
+    SimplifierOutput, Var, VarDict, class_simplifier, simplifier_context, SimplifierContext,
 )
 from mapping_field.property_engines import is_condition, is_integral, PropertyByRulesEngine, property_rule
 from mapping_field.utils.processors import ProcessFailureReason
@@ -357,130 +357,6 @@ class RangeEngine(PropertyByRulesEngine[IntervalRange]):
 in_range = RangeEngine()
 simplifier_context.register_engine(in_range)
 
-class InRange(OutputValidator[IntervalRange]):
-    # TODO: add tests
-
-    @classmethod
-    def get_range_of(cls, elem: MapElement) -> IntervalRange | None:
-        in_range = next(elem.promises.output_promises(of_type=InRange), None)
-        if in_range is not None:
-            return in_range.range
-
-        if isinstance(elem, MapElementConstant):
-            value = elem.evaluate()
-            return IntervalRange.of_point(value)
-        if is_condition.compute(elem, simplifier_context):
-            return IntervalRange[0,1]
-        if isinstance(elem, Ranged):
-            return elem.get_range()
-
-        return None
-
-    def __init__(self, f_range: IntervalRange | tuple[float, float]):
-        self.range = f_range if isinstance(f_range, IntervalRange) else IntervalRange(*f_range)
-        c = self.range.is_point
-        name = f"Equal {c}" if c is not None else f"InRange {f_range}"
-        super().__init__(name, context=self.range)
-        self.register_validator(self._validate_constant_in_range)
-        self.register_validator(self._validate_using_other_ranges)
-        self.register_validator(self.contain_validate)
-
-    def contain_validate(self, elem: MapElement) -> bool | None:
-        elem_range = in_range.compute(elem, simplifier_context)
-        if elem_range is None:
-            return None
-        if self.range.contains(elem_range):
-            return True
-        return None
-
-    # @staticmethod
-    # def consolidate_ranges(promises: OutputPromises) -> tuple[IntervalRange | None, OutputPromises | None]:
-    #     promises = promises.copy()
-    #     f_range = IntervalRange.all()
-    #     count = 0
-    #     in_range_promises = []
-    #     for in_range in promises.output_promises(of_type=InRange):
-    #         in_range_promises.append(in_range)
-    #         count += 1
-    #         f_range = f_range.intersection(in_range.range)
-    #         if f_range is None:
-    #             raise Exception(f"InRange promises collapse to an empty range")
-    #     if count > 1:
-    #         promises.remove_promises(in_range_promises)
-    #         promises.add_promise(InRange(f_range))
-    #     else:
-    #         promises = None
-    #     if count == 0:
-    #         f_range = None
-    #     return f_range, promises
-
-    def _validate_constant_in_range(self, elem: MapElement) -> bool | None:
-        value = elem.evaluate()
-        if value is None:
-            return None
-        return self.range.contains(value)
-
-    # def _validate_using_other_ranges(self, elem: MapElement) -> bool | None:
-    #     # TODO : add test
-    #     if self.range.is_all:
-    #         return True
-    #     f_range, _ = InRange.consolidate_ranges(elem.promises)
-    #     if f_range is None:
-    #         return None
-    #     return self.range.contains(f_range)
-    #
-    # @staticmethod
-    # def _negation_range_simplifier(elem: MapElement) -> SimplifierOutput:
-    #     assert isinstance(elem, _Negative)
-    #
-    #     interval = in_range.compute(elem.operand, simplifier_context)
-    #     if interval is None:
-    #         return ProcessFailureReason('Operand does not have a range', trivial=True)
-    #     interval = -interval
-    #
-    #     orig_interval = in_range.compute(elem, simplifier_context)
-    #     if orig_interval is not None and interval.contains(orig_interval):
-    #         return ProcessFailureReason('The current range is already smaller than the one from the operand', trivial=True)
-    #
-    #     # TODO: need to create a new element
-    #     elem.promises.add_promise(InRange(interval))
-    #     count, promises = InRange.consolidate_ranges(elem.promises)
-    #     simplify_logger.log(f"Added range {green(interval)} to {green(elem)}")
-    #     if promises is not None:
-    #         elem.promises = promises
-    #     return elem
-
-    # @staticmethod
-    # def _arithmetic_op_range_simplifier(elem: MapElement) -> SimplifierOutput:
-    #     """
-    #         x + y = 2   =>  (x=1) & (y=1)       [if true...]
-    #     """
-    #     assert isinstance(elem, _Add)
-    #     op = operator.add
-    #
-    #     elem1, elem2 = elem.operands
-    #     f_range1 = in_range.compute(elem1, simplifier_context)
-    #     f_range2 = in_range.compute(elem2, simplifier_context)
-    #     if f_range1 is None or f_range2 is None:
-    #         return None
-    #     interval = op(f_range1, f_range2)
-    #     orig_interval = in_range.compute(elem, simplifier_context)
-    #     if orig_interval is not None:
-    #         interval = orig_interval.intersection(interval)
-    #         if interval.contains(orig_interval):
-    #             return None
-    #
-    #     elem.promises.add_promise(InRange(interval))
-    #     count, promises = InRange.consolidate_ranges(elem.promises)
-    #     simplify_logger.log(f"Added range {green(interval)} to {green(elem)}")
-    #     if promises is not None:
-    #         elem.promises = promises
-    #     return elem
-
-
-# _Add.register_class_simplifier(InRange._arithmetic_op_range_simplifier)
-# _Negative.register_class_simplifier(InRange._negation_range_simplifier)
-
 
 # <editor-fold desc=" --------------- RangeCondition ---------------">
 
@@ -623,35 +499,6 @@ class RangeCondition(CompositeElement, MapElementProcessor):
             return ~element.function
         return None
 
-    # @class_simplifier
-    # @staticmethod
-    # def _ranged_promise_simplifier(range_cond: MapElement) -> SimplifierOutput:
-    #     """
-    #     Consolidate ranges on a function
-    #     """
-    #     assert isinstance(range_cond, RangeCondition)
-    #
-    #     function = range_cond.function
-    #     f_range, promises = InRange.consolidate_ranges(function.promises)
-    #     if f_range is None:
-    #         return ProcessFailureReason("Function has no range", trivial=True)
-    #     if promises is not None:
-    #         # TODO: I don't want to change the function object itself. Consider either adding a 'copy' method
-    #         #       to the MapElement, or instead move the promises themselves else where.
-    #         function.promises = promises
-    #
-    #     if range_cond.range.contains(f_range):
-    #         return TrueCondition
-    #
-    #     f_range = f_range.intersection(range_cond.range)
-    #     if f_range is None:
-    #         return FalseCondition
-    #
-    #     if f_range != range_cond.range or promises is not None:
-    #         return RangeCondition(function, f_range)
-    #
-    #     return None
-
     @class_simplifier
     @staticmethod
     def _integral_simplifier(range_cond: MapElement) -> SimplifierOutput:
@@ -784,15 +631,6 @@ def is_bool_var(v: MapElement) -> bool:
 
     return (f_range is not None) and IntervalRange[0,1].contains(f_range) and is_integral.compute(v, simplifier_context)
 
-
-# class BoolVar(Var):
-#
-#     def __init__(self, name: str):
-#         super().__init__(name)
-#         self.promises.add_promise(IsIntegral)
-#         in_range.add_range(self, IntervalRange[0, 1])
-#         # self.promises.add_promise(InRange(IntervalRange[0, 1]))
-#         self.promises.add_promise(IsCondition)
 
 def two_bool_vars_simplifier(elem: MapElement) -> SimplifierOutput:
     # TODO: make sure that I don't call has_promise for an element that I am trying to simplify, since it might

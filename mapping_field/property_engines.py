@@ -7,7 +7,6 @@ from mapping_field.mapping_field import (
     MapElement, PropertyEngine, SimplifierContext, Property,
     CompositeElement,
 )
-from mapping_field.promises import IsIntegral, IsCondition
 
 PropertyRule = Callable[[MapElement, SimplifierContext], Property | None]
 

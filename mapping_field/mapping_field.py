@@ -101,75 +101,10 @@ def class_simplifier(method) -> Callable:
     return method
 
 
-class OutputValidator(MultiValidator["MapElement", Context], Generic[Context]):
-    def __init__(self, name: str | None = None, context: Context | None = None):
-        super().__init__(name=name, context=context)
-        self.register_validator(self._check_promises_on_element)
-
-    def _check_promises_on_element(self, elem: "MapElement") -> bool | None:
-        # TODO: Find a better way
-        if self in elem.promises._promises:
-            return True
-        if self in elem.promises._invalid_promises:
-            return False
-        return None
-
-
-OutputValidatorType = TypeVar("OutputValidatorType", bound=OutputValidator)
-
 
 class InvalidInput(Exception): pass
 class ConflictingVariables(Exception): pass
 class InvalidVariableOrder(Exception): pass
-
-# def validate_promises_var_dict(var_dict: VarDict):
-#     # TODO: Do I really need this, or should I validate the promises inside Var?
-#     for v, value in var_dict.items():
-#         for promise in v.promises.output_promises():
-#             if not value.has_promise(promise):
-#                 raise InvalidInput(f"{v}={value} does not satisfy the promise of {promise}")
-
-
-T = TypeVar("T", bound="MapElement")
-
-
-# class OutputPromises:
-#
-#     # TODO: I don't like this mechanism too much. Think if there is a better way
-#
-#     def __init__(self,
-#                  promises: set[OutputValidator] | None = None,
-#                  invalid_promises: set[OutputValidator] | None = None):
-#         # TODO: Since these are set, iterating over their elements below is done in a random order.
-#         #       Should I change it to a list?
-#         self._promises: set[OutputValidator] = promises.copy() if promises is not None else set()
-#         self._invalid_promises: set[OutputValidator] = invalid_promises.copy() if promises is not None else set()
-#
-#     def copy(self) -> "OutputPromises":
-#         return OutputPromises(self._promises, set())
-#
-#     def add_promise(self, promise: OutputValidator):
-#         self._promises.add(promise)
-#
-#     def add_invalid_promise(self, promise: OutputValidator):
-#         self._invalid_promises.add(promise)
-#
-#     def remove_promises(self, promises: list[OutputValidator]):
-#         self._promises = self._promises.difference(set(promises))
-#
-#     def output_promises(self, of_type: type[OutputValidatorType] = OutputValidator) -> Iterator[OutputValidatorType]:
-#         for promise in self._promises:
-#             if isinstance(promise, of_type):
-#                 yield promise
-#
-#     def has_promise(self, promise: OutputValidator) -> bool | None:
-#         if promise in self._promises:
-#             return True
-#         if promise in self._invalid_promises:
-#             return False
-#         return None
-
-    # </editor-fold>
 
 
 KeywordValue = TypeVar("KeywordValue")
@@ -816,16 +751,12 @@ class CompositeElement(MapElement):
     'operands' variable.
     """
 
-    auto_promises: list[OutputValidator] = []
-
     def __init__(
             self, operands: list[MapElement], name: str | None = None, simplified: bool = False,
             output_properties: dict[PropertyEngine[Any], Any] | None = None) -> None:
 
         self.operands = operands
         super().__init__(variables=Var.extract_variables(operands), name=name, simplified=simplified, output_properties=output_properties)
-        # for promise in self.__class__.auto_promises:
-        #     self.promises.add_promise(promise)
 
     def copy_with_operands(self, operands: list[MapElement]) -> MapElement:
         copy_version = copy.copy(self)
@@ -918,18 +849,6 @@ class Var(MapElement, DefaultSerializable):
             seen.update(element.vars)
         return variables
 
-    # def __new__(cls, name: str, **kwargs):
-    #     if name in cls._instances:
-    #         v = cls._instances[name]
-    #         assert (
-    #             v.__class__ == cls
-    #         ), f"Attempted to create two variables of different classes with the same name {name}"
-    #         return v
-    #
-    #     instance = super(Var, cls).__new__(cls, **kwargs)
-    #     cls._instances[name] = instance
-    #     return instance
-
     def __init__(self, name: str, output_properties: dict[PropertyEngine[Any], Any] | None = None):
         """
         Initializes the Variable. If a Variable with the given name already exists, will not create a
@@ -948,9 +867,6 @@ class Var(MapElement, DefaultSerializable):
         value = var_dict.get(self, None)
         if value is None:
             return self
-        # for promise in self.promises.output_promises():
-        #     if not value.has_promise(promise):
-        #         raise InvalidInput(f"{self}={value} does not satisfy the promise of {promise}")
 
         for engine, prop_value in simplifier_context.get_properties(self).items():
             assigned_prop = engine.compute(value, simplifier_context)
@@ -1071,147 +987,6 @@ class Func:
 
 
 # </editor-fold>
-
-
-# TODO:
-#   Should I keep this class? Maybe have the general MapElement class be a "CompositionFunction"?
-#   MapElement will have 'entries' for the top node of computation + 'vars' needed for the full function.
-#   This means that both (x+y) and (x+(y*z)) are of type Add, so instead of having just one unique 'Add' function
-#   I will have one unique 'Add' class, and one unique instance will indicate the 'base' Add X_Add_1 + X_Add_2 .
-#   The variables of (x+(y*z)) are x,y,z, but the entries are x and (y*z). If I want to create a new function
-#   for which x,y,z are the entries, then I can use a composition class.
-#   Sounds legit. I will think about more it after finishing with the Condition to MapElement stuff.
-#
-# TODO:
-#   You are wrong, past me. There was a good reason why past past us chose to write it this way. If we combine each
-#   function class with its entries, then it makes it more difficult to compare the root of the computation tree. For
-#   example, we can't register a simplifier fo a specific function (of a given MapElement class) at the top of the
-#   tree, without adding an equality process between two functions which can ignore the entries.
-#   In any case, the right way to go is actually to change the Simplifier process. Instead of
-#           MapElement, VarDict -> MapElement,
-#   it should be
-#           MapElement, VarDict -> MapElement, VarDict,
-#   or in other words use CompositionFunctions. Then the composition function can have an is_simplified flag,
-#   which can also help make the simplification much faster, while now it is always a problem if var_dict is not empty.
-#
-# TODO:
-#   This is an interesting discussion. I am rethinking the MapElement with entries approach.
-#   We think of function as computation trees, where is node is a "basic" function. If we go this route, we have to
-#   add to each basic function the method to copy itself with new entries, which up to now was simple via
-#   the CompositionFunction class. This is already an issue right now with the OutputPromise mechanism which
-#   is coupled with the base MapElement class, since when we change it we change the function, instead of creating
-#   a new function.
-#
-#   The most basic components of a function are
-#       1) Its domain, represented by OutputPromises on the variables,
-#       2) Its target, represented by the OutputPromises on the function itself, and
-#       3) The computation of the function, done via the __call__ function and simplify mechanism.
-#   If we always think of the computation via the computation tree, I think it is better to move the entries also
-#   into the MapElement class. In any case, the weird mix of it sometimes being in CompositionFunction, and sometimes
-#   part of the other classes makes the code complicated. For example, _call_with_dict should be almost unified for
-#   all function types, and not as it is right now. It will give us a canonical way to scan the computation tree
-#   and only apply the dict where needed.
-# class CompositionFunction(MapElement, DefaultSerializable):
-#
-#     def __init__(self, function: MapElement, entries: list[MapElement]):
-#         """
-#         The composition of the given function with the entries of that function.
-#         The number of entries should be the number of standard variables of the function, and in
-#         the same order.
-#         """
-#         seen = set()
-#         variables = []
-#
-#         for entry in entries:
-#             variables += [v for v in entry.vars if v not in seen]
-#             seen.update(entry.vars)
-#
-#         super().__init__(variables)
-#         if isinstance(function, CompositionFunction):
-#             top_function = function.function
-#             var_dict = {var: entry for var, entry in zip(function.vars, entries)}
-#             top_entries = [entry._call_with_dict(var_dict, {}) for entry in function.entries]
-#             self.function = top_function
-#             self.entries = top_entries
-#         else:
-#             self.function = function
-#             self.entries = entries
-#
-#         self.promises = function.promises.copy()
-#
-#     def to_string(self, vars_to_str: dict[Var, str]):
-#         # Compute the str representation for each entry, by supplying it the str
-#         # representations of its variables
-#         entries_to_str = {
-#             v: entry.to_string(vars_to_str)
-#             for v, entry in zip(self.function.vars, self.entries)}
-#         return self.function.to_string(entries_to_str)
-#
-#     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
-#         if len(var_dict) == 0 and len(func_dict) == 0:
-#             return self
-#         eval_function = self.function._call_with_dict({}, func_dict)
-#         eval_entries = [entry._call_with_dict(var_dict, func_dict) for entry in self.entries]
-#         if (eval_function is self.function) and all([e1 is e2 for e1, e2 in zip(self.entries, eval_entries)]):
-#             return self
-#
-#         return CompositionFunction(function=eval_function, entries=eval_entries)
-#
-#     # TODO: When simplifying arithmetic function, e.g. a + b, after simplifying both a and b,
-#     #       we should check if it has a new type of arithmetic function that we can call.
-#
-#     # Override when needed
-#     def _simplify_with_var_values2(self, var_dict: Optional[VarDict] = None) -> Optional[MapElement]:
-#         simplify_logger.log("Simplifying just the function")
-#         function: MapElement = self.function._simplify2()
-#         simplify_logger.log("Simplifying just the entries")
-#         simplified_entries = [entry._simplify2(var_dict) for entry in self.entries]
-#
-#         is_simpler = (function is not None) | any([entry is not None for entry in simplified_entries])
-#         function = function or self.function
-#         simplified_entries = [simp_entry or entry for simp_entry, entry in zip(simplified_entries, self.entries)]
-#
-#         # IMPORTANT! Use the self.function.vars and not the function.vars, as it might change (both as a set,
-#         # and the order)
-#         if self.function.vars != function.vars:
-#             simplify_logger.log(f'{red("WARNING")}: vars have changed from {self.function.vars} to {function.vars}')
-#         simplified_entries_dict = {v: entry for v, entry in zip(self.function.vars, simplified_entries)}
-#         simplify_logger.log("Simplifying function with entries")
-#         result = function._simplify2(simplified_entries_dict)
-#         if result is not None:
-#             return result
-#
-#         # TODO: consider moving it into a simplifier processor, since it is mainly used for arithmetics
-#         simplify_logger.log("Simplifying via positional entries")
-#         for position, v in enumerate(function.vars):
-#             pos_entry = simplified_entries_dict[v]
-#             log_title = f"Pos: [{cyan(pos_entry.__class__.__name__)}] {red(v)} <== {red(pos_entry)}"
-#             simplify_logger.log(log_title, TreeAction.GO_DOWN)
-#             result = pos_entry._simplify_caller_function2(function, position, simplified_entries_dict)
-#
-#             if result is not None:
-#                 simplify_logger.set_context_title(f"{log_title} => {green(result)}")
-#                 simplify_logger.log(f"Pos {green(result)}", TreeAction.GO_UP)
-#                 return result
-#             simplify_logger.set_context_title(f'{log_title} = {magenta("& & &")}')
-#             simplify_logger.log(f'Pos {magenta("& & &")}', TreeAction.GO_UP)
-#
-#         if is_simpler:
-#             return CompositionFunction(function, simplified_entries)
-#
-#         return None
-#
-#     def get_entries(self, as_function: Union[type['MapElement'], list[type['MapElement']]]) -> Optional[list['MapElement']]:
-#         if isinstance(self.function, as_function):
-#             return self.entries
-#         return None
-#
-#     def __eq__(self, other):
-#         if isinstance(other, CompositionFunction):
-#             if self.function == other.function and self.entries == other.entries:
-#                 return True
-#
-#         return super().__eq__(other)
 
 
 class MapElementConstant(MapElement, DefaultSerializable):
