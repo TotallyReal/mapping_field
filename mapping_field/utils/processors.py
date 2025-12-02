@@ -1,7 +1,7 @@
 import dataclasses
 import weakref
 
-from typing import Callable, Generic, TypeVar
+from typing import Callable, Generic, TypeVar, Iterator
 
 from colorama import Back, init
 
@@ -130,74 +130,68 @@ class ProcessorCollection(Generic[Elem]):
         ):
 
             # TODO: Maybe use __qualname__ instead?
-            message = f"Processing {processor.__qualname__} ( {red(elem)} )"
             title_start = f"Step: {processor.__qualname__} ( {red(elem)} )"
-            logger.log(message, action=TreeAction.GO_DOWN)
+            logger.log(title_start, action=TreeAction.GO_DOWN)
 
-            result = processor(elem)
+            result = processor(elem) or ProcessFailureReason("", False)
 
-            result = result or ProcessFailureReason("", False)
             if isinstance(result, ProcessFailureReason):
                 if result.reason != "" and not result.trivial:
                     logger.log(message=result.reason)
                     # print(f'Simplification failed because of {result.reason}')
-                logger.set_context_title(f'{title_start} = {magenta("- - -")}')
-                logger.log(message=f"{magenta('- - -')}", action=TreeAction.GO_UP, delete_context=result.trivial)
+                end_msg = magenta('- - -')
+                logger.set_context_title(f'{title_start} => {end_msg}')
+                logger.log(message=end_msg, action=TreeAction.GO_UP, delete_context=result.trivial)
                 continue
 
             # result is an Elem type
-            logger.set_context_title(f"{title_start} => {green(result)} [{cyan(result.__class__.__name__)}]")
-            logger.log(message=f"Produced {green(result)}", action=TreeAction.GO_UP)
+            end_msg = f"{green(result)} [{cyan(result.__class__.__name__)}]"
+            logger.set_context_title(f"{title_start} => {end_msg}")
+            logger.log(message=f"Produced {end_msg}", action=TreeAction.GO_UP)
             return result
 
         return None
 
-    def full_process(self, elem: Elem) -> Elem | None:
+    def full_process(self, elem: Elem) -> Iterator[Elem]:
         """
         Runs all the registered processes again and again until none of them changes the resulting element, and
         returns it. Returns None if there wasn't any change.
         """
-        if elem in self.final_version:
-            elem_final_version = self.final_version[elem]
-            return elem_final_version if (elem_final_version is not elem) else None
+        yield elem
 
         # Make sure not to go into simplification loops
         original_elem = elem
         if self._process_stage.get(original_elem, False):
             logger.log(f'{red("!!!")} looped back to processing {red(original_elem)}')
-            return None
+            return
         self._process_stage[original_elem] = True
 
         was_processed = False
 
         title_start = f"Full: [{cyan(elem.__class__.__name__)}] ( {red(elem)} )"
         message = f"Full Processing ( {red(elem)} ) , [{cyan(elem.__class__.__name__)}]"
-        logger.log(message=message, action=TreeAction.GO_DOWN, back=Back.LIGHTBLACK_EX)
+        logger.log(message=title_start, action=TreeAction.GO_DOWN, back=Back.LIGHTBLACK_EX)
 
-        # Run simplification steps
-        while True:
-            if elem in self.final_version:
-                result = self.final_version[elem]
-                was_processed = (result is not original_elem)
+        try:
+            # Run simplification steps
+            while True:
+                result = self.one_step_process(elem)
+                if result is None:
+                    break
                 elem = result
-                break
-            result = self.one_step_process(elem)
-            if result is None:
-                break
-            elem = result
-            was_processed = True
+                was_processed = True
+                yield result
 
-        self._process_stage[original_elem] = False
+        except GeneratorExit:
+            # break / .close()
+            pass
+        finally:
+            self._process_stage[original_elem] = False
+            if was_processed:
+                logger.set_context_title(f"{title_start} => {green(elem)}")
+                logger.log(f"Full Produced {green(elem)}", action=TreeAction.GO_UP)
+            else:
+                logger.set_context_title(f'{title_start} => {magenta("X X X")}')
+                logger.log(f'{magenta("X X X")} ', action=TreeAction.GO_UP)
 
-        if was_processed:
-            logger.set_context_title(f"{title_start} => {green(elem)}")
-            logger.log(f"Full Produced {green(elem)}", action=TreeAction.GO_UP)
-            self.final_version[original_elem] = elem
-            self.final_version[elem] = elem
-            return elem
-        else:
-            logger.set_context_title(f'{title_start} = {magenta("X X X")}')
-            logger.log(f'{magenta("X X X")} ', action=TreeAction.GO_UP)
-            self.final_version[original_elem] = elem
-            return None
 

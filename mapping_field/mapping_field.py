@@ -218,6 +218,7 @@ class MapElement:
         The 'variables' are the ordered list used when calling the function, as in f(a_1,...,a_n).
         """
         self.name = name or self.__class__.__name__
+        self._simplified_version = None if not simplified else self
         self._set_variables(variables)
         self.promises = OutputPromises() if promises is None else promises
         if simplified:
@@ -233,6 +234,7 @@ class MapElement:
             raise ConflictingVariables(f"Variables of functions must have distinct name, instead got: {variables}")
         self.vars = variables
         self.num_vars = len(variables)
+        self._simplified_version = None
         self._simplifier.reset_element(self)
         self.promises = OutputPromises()
     # def copy(self) -> "MapElement":
@@ -398,10 +400,29 @@ class MapElement:
     _simplifier = ProcessorCollection["MapElement"]()
 
     def _simplify2(self) -> Optional["MapElement"]:
-        return MapElement._simplifier.full_process(self)
+        if self._simplified_version is not None:
+            return None if (self._simplified_version is self) else self._simplified_version
+
+        path = []
+        for element in MapElement._simplifier.full_process(self):
+            path.append(element)
+            if element._simplified_version is not None:
+                if element._simplified_version is not element:
+                    path.append(element._simplified_version)
+                break
+
+        if len(path) == 1:
+            # The original element was already simplified
+            self._simplified_version = self
+            return None
+
+        for element in path:
+            element._simplified_version = path[-1]
+
+        return path[-1]
 
     def is_simplified(self) -> bool:
-        return self._simplifier.final_version.get(self, None) is self
+        return self._simplified_version is self
 
     # Override when needed
     def _simplify_with_var_values2(self) -> SimplifierOutput:
