@@ -2,7 +2,8 @@
 from mapping_field.binary_expansion import BinaryExpansion
 from mapping_field.conditions import TrueCondition
 from mapping_field.log_utils.tree_loggers import TreeLogger, blue
-from mapping_field.ranged_condition import BoolVar, IntervalRange
+from mapping_field.ranged_condition import IntervalRange
+from mapping_field.bool_vars import BoolVar
 
 simplify_logger = TreeLogger(__name__)
 

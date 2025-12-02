@@ -6,7 +6,8 @@ from mapping_field.conditions import FalseCondition, IntersectionCondition, True
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.mapping_field import MapElementConstant, Var, simplifier_context
 from mapping_field.property_engines import is_integral
-from mapping_field.ranged_condition import BoolVar, IntervalRange, RangeCondition, in_range
+from mapping_field.ranged_condition import IntervalRange, RangeCondition, in_range
+from mapping_field.bool_vars import BoolVar
 from mapping_field.tests.utils import DummyCondition, DummyConditionOn, DummyMap
 
 simplify_logger = TreeLogger(__name__)

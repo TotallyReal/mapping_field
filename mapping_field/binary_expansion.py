@@ -11,8 +11,8 @@ from mapping_field.mapping_field import (
 )
 from mapping_field.property_engines import is_condition, is_integral
 from mapping_field.ranged_condition import (
-    BoolVar, IntervalRange, RangeCondition, in_range, is_bool_var,
-)
+    IntervalRange, RangeCondition, in_range, )
+from mapping_field.bool_vars import BoolVar, is_bool_var
 from mapping_field.utils.processors import ProcessFailureReason
 from mapping_field.utils.serializable import DefaultSerializable
 

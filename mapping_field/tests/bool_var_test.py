@@ -3,7 +3,8 @@ from mapping_field.conditions import BinaryCondition, FalseCondition, TrueCondit
 from mapping_field.log_utils.tree_loggers import TreeLogger, blue
 from mapping_field.mapping_field import CompositeElement, MapElement
 from mapping_field.property_engines import is_condition
-from mapping_field.ranged_condition import BoolVar, IntervalRange, RangeCondition
+from mapping_field.ranged_condition import IntervalRange, RangeCondition
+from mapping_field.bool_vars import BoolVar
 
 simplify_logger = TreeLogger(__name__)
 

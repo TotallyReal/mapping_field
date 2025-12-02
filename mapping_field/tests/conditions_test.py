@@ -6,7 +6,7 @@ from mapping_field.conditions import (
     FalseCondition, IntersectionCondition, NotCondition, TrueCondition, UnionCondition,
     _ListCondition,
 )
-from mapping_field.ranged_condition import BoolVar
+from mapping_field.bool_vars import BoolVar
 from mapping_field.tests.utils import DummyCondition
 
 #       ╭─────────────────────────────────────────────────╮
