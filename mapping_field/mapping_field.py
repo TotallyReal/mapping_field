@@ -481,8 +481,9 @@ class MapElement:
         return ProcessFailureReason("Trivial empty implementation", trivial=True)
 
     @classmethod
-    def register_class_simplifier(cls, simplifier: ClassSimplifier):
+    def register_class_simplifier(cls, simplifier: ClassSimplifier) -> ClassSimplifier:
         MapElement._simplifier.register_class_processor(cls, simplifier)
+        return simplifier
 
     # </editor-fold>
 

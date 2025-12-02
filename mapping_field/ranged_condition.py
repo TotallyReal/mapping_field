@@ -486,6 +486,32 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
     @class_simplifier
     @staticmethod
+    def _linear_simplifier(element: MapElement) -> SimplifierOutput:
+        """
+            c*x + d < r     =>      x < (r-d)/c     (for c>0)
+        """
+        assert isinstance(element, RangeCondition)
+        c1, elem1, c2, elem2 = _as_combination(element.function)
+
+        if c1 == 1 and c2 == 0:
+            return ProcessFailureReason("Trivial combination", trivial=True)
+
+        if (c2 != 0) and (elem2 is not MapElementConstant.one):
+            # Too complicated combination
+            return None
+
+        # combination is c1*elem + c2.
+
+        if c1 == 0:
+            # Should have been caught in the _evaluated_simplifier, but just in case:
+            return TrueCondition if element.range.contains(c2) else FalseCondition
+
+        f_range = (element.range - c2) / c1
+
+        return RangeCondition(elem1, f_range)
+
+    @class_simplifier
+    @staticmethod
     def _condition_in_range_simplifier(element: MapElement) -> SimplifierOutput:
         """
                 cond == 1     =>      cond
@@ -521,32 +547,6 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
     @class_simplifier
     @staticmethod
-    def _linear_combination_simplifier(element: MapElement) -> SimplifierOutput:
-        """
-            c*x + d < r     =>      x < (r-d)/c     (for c>0)
-        """
-        assert isinstance(element, RangeCondition)
-        c1, elem1, c2, elem2 = _as_combination(element.function)
-
-        if c1 == 1 and c2 == 0:
-            return ProcessFailureReason("Trivial combination", trivial=True)
-
-        if (c2 != 0) and (elem2 is not MapElementConstant.one):
-            # Too complicated combination
-            return None
-
-        # combination is c1*elem + c2.
-
-        if c1 == 0:
-            # Should have been caught in the _evaluated_simplifier, but just in case:
-            return TrueCondition if element.range.contains(c2) else FalseCondition
-
-        f_range = (element.range - c2) / c1
-
-        return RangeCondition(elem1, f_range)
-
-    @class_simplifier
-    @staticmethod
     def _sum_equality_to_summands_equality_simplifier(ranged_cond: MapElement) -> SimplifierOutput:
         """
             if x_i in [a_i, b_i], then
@@ -576,17 +576,6 @@ class RangeCondition(CompositeElement, MapElementProcessor):
             )
 
         return None
-
-    @class_simplifier
-    @staticmethod
-    def _negation_in_range_simplification(ranged_cond: MapElement) -> SimplifierOutput:
-        """
-            -x in I     =>      x in -I
-        """
-        assert isinstance(ranged_cond, RangeCondition)
-        if not isinstance(ranged_cond.function, _Negative):
-            return ProcessFailureReason('Only works for Negation', trivial=True)
-        return RangeCondition(ranged_cond.function.operand, -ranged_cond.range)
 
     # </editor-fold>
 
@@ -637,7 +626,7 @@ def is_bool_var(v: MapElement) -> bool:
 
     return (f_range is not None) and IntervalRange[0,1].contains(f_range) and is_integral.compute(v, simplifier_context)
 
-
+@MapElement._simplifier.register_processor
 def two_bool_vars_simplifier(elem: MapElement) -> SimplifierOutput:
     # TODO: make sure that I don't call has_promise for an element that I am trying to simplify, since it might
     #       call simplify inside it, and then we ar off to the infinite loop races.
@@ -710,6 +699,7 @@ def two_bool_vars_simplifier(elem: MapElement) -> SimplifierOutput:
 
     return None
 
+@_Mult.register_class_simplifier
 def mult_binary_assignment_by_numbers(element: MapElement) -> SimplifierOutput:
     """
     change multiplications of (x << 1) * c into c * x for boolean variables x.
@@ -727,7 +717,3 @@ def mult_binary_assignment_by_numbers(element: MapElement) -> SimplifierOutput:
         if elem.range.is_point == 1 and value != 1:
             return value * elem.function
     return None
-
-MapElement._simplifier.register_processor(two_bool_vars_simplifier)
-
-_Mult.register_class_simplifier(mult_binary_assignment_by_numbers)

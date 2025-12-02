@@ -109,8 +109,9 @@ class ProcessorCollection(Generic[Elem]):
     def set_final_version(self, element: Elem, final_version_element: Elem):
         self.final_version[element] = final_version_element
 
-    def register_processor(self, processor: Processor) -> None:
+    def register_processor(self, processor: Processor) -> Processor:
         self.processors.append(processor)
+        return processor
 
     # TODO: make sure that the class processor corresponds to the given map_elem_class
     def register_class_processor(self, elem_class: type[Elem], processor: Processor) -> None:
