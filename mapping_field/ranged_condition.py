@@ -488,7 +488,7 @@ class InRange(OutputValidator[IntervalRange]):
 class RangeCondition(CompositeElement, MapElementProcessor):
 
     def __init__(self, function: MapElement, f_range: IntervalRange | tuple[float, float]):
-        super().__init__(operands=[function], output_properties={})
+        super().__init__(operands=[function])
         self.range = f_range if isinstance(f_range, IntervalRange) else IntervalRange(*f_range)
 
     @property
@@ -540,11 +540,14 @@ class RangeCondition(CompositeElement, MapElementProcessor):
         return None
 
     def or_(self, condition: MapElement) -> MapElement | None:
+        simplify_logger.log(f"Computing 'or' of {red(self)} with {red(condition)} [{cyan(self.__class__.__name__)}]")
         if isinstance(condition, RangeCondition) and condition.function == self.function:
             if is_integral.compute(condition.function, simplifier_context):
                 # Union works better for the integral version of ranges
+                simplify_logger.log(f"Trying to combine integral ranges")
                 f_range = self.range.integral_union(condition.range)
             else:
+                simplify_logger.log(f"Trying to combine ranges")
                 f_range = self.range.union(condition.range)
             return None if (f_range is None) else RangeCondition(condition.function, f_range)
 

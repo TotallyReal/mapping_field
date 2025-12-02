@@ -4,7 +4,7 @@ from abc import ABC
 from typing import Callable, Type
 
 from mapping_field.mapping_field import (
-    MapElement, PropertyEngine, SimplifierContext, simplifier_context, OutputValidator, Property,
+    MapElement, PropertyEngine, SimplifierContext, Property,
     CompositeElement,
 )
 from mapping_field.promises import IsIntegral, IsCondition
@@ -43,15 +43,11 @@ class PropertyByRulesEngine(PropertyEngine[Property], ABC):
 
 class BoolPropertyEngine(PropertyByRulesEngine[bool]):
 
-    def __init__(self, validator: OutputValidator):
+    def __init__(self):
         super().__init__()
-        self.validator = validator
 
         self.auto_classes: list[type[MapElement]] = []
         self.property_preserving_classes: list[type[CompositeElement]] = []
-
-    def __str__(self):
-        return str(self.validator)
 
     def compute(self, element: MapElement, context: SimplifierContext) -> bool | None:
         value = context.get_property(element, self)
@@ -106,9 +102,6 @@ class BoolPropertyEngine(PropertyByRulesEngine[bool]):
 
 class ConditionEngine(BoolPropertyEngine):
 
-    def __init__(self):
-        super().__init__(IsCondition)
-
     @staticmethod
     @property_rule
     def zero_one_is_condition(element: MapElement, context: SimplifierContext) -> bool | None:
@@ -132,9 +125,6 @@ is_condition = ConditionEngine()
 # <editor-fold desc="Integral">
 
 class IntegralEngine(BoolPropertyEngine):
-
-    def __init__(self):
-        super().__init__(IsIntegral)
 
     def __getitem__(self, value: bool):
         return {self: value}
