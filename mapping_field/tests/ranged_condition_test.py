@@ -102,6 +102,16 @@ def test_post_generation_independence():
     assert str(func) == "0<=x<1"
 
 
+def test_trivial_ranges():
+    dummy = DummyMap(0)
+
+    cond = RangeCondition(dummy, IntervalRange.empty()).simplify()
+    assert cond is FalseCondition
+
+    cond = RangeCondition(dummy, IntervalRange.all()).simplify()
+    assert cond is TrueCondition
+
+
 def test_comparison_operators():
     dummy = DummyMap(0)
 
@@ -147,6 +157,22 @@ def test_invert_range():
     condition1 = ~RangeCondition(dummy, (1, 3))
     condition2 = (dummy < 1) | (3 <= dummy)
     assert condition1 == condition2
+
+
+def test_range_boolean_derived_from_intervals(monkeypatch):
+    dummy = DummyMap(0)
+    cond1 = RangeCondition(dummy, (0, 10))
+    cond2 = RangeCondition(dummy, (5, 17))
+
+    range_union = IntervalRange[0,1]
+    monkeypatch.setattr(IntervalRange, "union", lambda self, other: range_union)
+    cond = cond1 | cond2
+    assert isinstance(cond, RangeCondition) and (cond.function is dummy) and (cond.range is range_union)
+
+    range_intersection = IntervalRange[1,2]
+    monkeypatch.setattr(IntervalRange, "intersection", lambda self, other: range_intersection)
+    cond = cond1 & cond2
+    assert isinstance(cond, RangeCondition) and (cond.function is dummy) and (cond.range is range_intersection)
 
 
 def test_range_condition_intersection():
