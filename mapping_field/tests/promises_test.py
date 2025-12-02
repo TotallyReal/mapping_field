@@ -2,9 +2,7 @@ import pytest
 
 from mapping_field.conditions import FalseCondition, TrueCondition
 from mapping_field.mapping_field import InvalidInput, simplifier_context, Var
-from mapping_field.promises import IntVar, IsIntegral
 from mapping_field.property_engines import is_integral, is_condition
-from mapping_field.ranged_condition import BoolVar
 from mapping_field.tests.utils import DummyMap
 
 

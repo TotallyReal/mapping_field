@@ -9,7 +9,6 @@ from mapping_field.mapping_field import (
     CompositeElementFromFunction, MapElement, MapElementProcessor, Var, class_simplifier, PropertyEngine,
     simplifier_context,
 )
-from mapping_field.promises import IsCondition
 from mapping_field.property_engines import is_condition
 from mapping_field.utils.serializable import DefaultSerializable
 
@@ -35,8 +34,8 @@ class BinaryCondition(Condition, DefaultSerializable):
         return condition
 
     def __init__(self, value: bool):
+        super().__init__(variables=[], simplified=True)
         self.value = value
-        super().__init__(variables=[], simplified=True, output_properties={is_condition: True})
 
     def to_string(self, vars_to_str: dict[Var, str]):
         return str(self.value)
@@ -52,7 +51,7 @@ class BinaryCondition(Condition, DefaultSerializable):
 
     def or_(self, condition: MapElement):
         return condition if (self is FalseCondition) else TrueCondition
-
+is_condition.add_auto_class(BinaryCondition)
 
 TrueCondition  = BinaryCondition(True)
 FalseCondition = BinaryCondition(False)
@@ -63,15 +62,14 @@ FalseCondition = BinaryCondition(False)
 
 class _NotCondition(CompositeElementFromFunction):
 
-    auto_promises = [IsCondition]
-
     def __init__(self, operand: MapElement | None = None):
         operands = [operand] if operand is not None else None
-        super().__init__(operands=operands, name="Not", function=lambda a: 1 - a, output_properties={is_condition: True})
+        super().__init__(operands=operands, name="Not", function=lambda a: 1 - a)
 
-        for v in self.vars:
-            # TODO: Maybe switch directly to BoolVars?
-            simplifier_context.set_property(v, is_condition, True)
+        # TODO: make sure that the variable is a condition variable
+        # for v in self.vars:
+        #     # TODO: Maybe switch directly to BoolVars?
+        #     v.promises.add_promise(IsCondition)
 
     @property
     def operand(self) -> MapElement:
@@ -102,6 +100,7 @@ class _NotCondition(CompositeElementFromFunction):
         assert isinstance(inversion_func, _NotCondition)
         return inversion_func.operand.invert()
 
+is_condition.add_auto_class(_NotCondition)
 NotCondition = _NotCondition()
 MapElement.inversion = NotCondition
 
@@ -131,8 +130,6 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
     method_names    = ["and_", "or_"]
     trivials        = [TrueCondition, FalseCondition]
     op_symbols      = ["&", "|"]
-
-    auto_promises = [IsCondition]
 
     def __init_subclass__(cls, op_type: int, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -172,6 +169,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
             simplified=simplified,
             output_properties=output_properties
         )
+
 
     @property
     def conditions(self) -> list[MapElement]:
@@ -475,6 +473,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
     #
     #     return None
 
+is_condition.add_auto_class(_ListCondition)
 
 def _binary_simplify(elem: MapElement) -> MapElement | None:
     assert isinstance(elem, _ListCondition)

@@ -47,6 +47,7 @@ class BoolPropertyEngine(PropertyByRulesEngine[bool]):
         super().__init__()
         self.validator = validator
 
+        self.auto_classes: list[type[MapElement]] = []
         self.property_preserving_classes: list[type[CompositeElement]] = []
 
     def __str__(self):
@@ -73,6 +74,18 @@ class BoolPropertyEngine(PropertyByRulesEngine[bool]):
 
     def is_stronger_property(self, strong_prop: bool, weak_prop: bool) -> bool:
         return strong_prop == weak_prop # TODO: This is not exactly true, but keep as is for now
+
+    def add_auto_class(self, cls: Type[MapElement] | list[Type[MapElement]]):
+        if not isinstance(cls, list):
+            cls = [cls]
+        self.auto_classes.extend(cls)
+
+    @property_rule
+    def check_auto_classes(self, element: MapElement, context: SimplifierContext) -> bool | None:
+        for cls in self.auto_classes:
+            if isinstance(element, cls):
+                return True
+        return None
 
     def add_property_preserving_class(self, cls: Type[MapElement] | list[Type[MapElement]]):
         if not isinstance(cls, list):

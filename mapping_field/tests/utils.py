@@ -2,7 +2,6 @@ from typing import Any
 
 from mapping_field.conditions import FalseCondition, TrueCondition
 from mapping_field.mapping_field import MapElement, Var, PropertyEngine
-from mapping_field.promises import IsCondition
 from mapping_field.property_engines import is_condition
 
 

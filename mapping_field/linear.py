@@ -7,7 +7,7 @@ from mapping_field.mapping_field import (
     CompositeElement, ExtElement, MapElement, MapElementConstant, SimplifierOutput, Var,
     class_simplifier, params_to_maps, simplifier_context,
 )
-from mapping_field.ranged_condition import InRange, IntervalRange, RangeCondition, Ranged, in_range
+from mapping_field.ranged_condition import IntervalRange, RangeCondition, Ranged, in_range
 from mapping_field.utils.processors import ProcessFailureReason
 from mapping_field.utils.serializable import DefaultSerializable
 

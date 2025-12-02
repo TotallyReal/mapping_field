@@ -14,7 +14,6 @@ from mapping_field.mapping_field import (
     CompositeElement, FuncDict, MapElement, MapElementConstant, MapElementProcessor, OutputPromises,
     OutputValidator, SimplifierOutput, Var, VarDict, class_simplifier, simplifier_context, SimplifierContext,
 )
-from mapping_field.promises import IsCondition, IsIntegral, register_promise_preserving_functions
 from mapping_field.property_engines import is_condition, is_integral, PropertyByRulesEngine, property_rule
 from mapping_field.utils.processors import ProcessFailureReason
 
@@ -491,8 +490,6 @@ class InRange(OutputValidator[IntervalRange]):
 
 class RangeCondition(CompositeElement, MapElementProcessor):
 
-    auto_promises = [IsCondition]
-
     def __init__(self, function: MapElement, f_range: IntervalRange | tuple[float, float]):
         super().__init__(operands=[function], output_properties={})
         self.range = f_range if isinstance(f_range, IntervalRange) else IntervalRange(*f_range)
@@ -740,6 +737,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
     # </editor-fold>
 
+is_condition.add_auto_class(RangeCondition)
 
 def _ranged(
     elem: MapElement, low: int, high: int, contains_low: bool = True, contains_high: bool = False

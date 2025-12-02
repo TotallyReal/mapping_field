@@ -10,10 +10,10 @@ from mapping_field.log_utils.tree_loggers import TreeLogger, red, yellow
 from mapping_field.mapping_field import (
     CompositeElement, MapElement, MapElementConstant, MapElementProcessor, OutputValidator,
     SimplifierOutput, Var, class_simplifier, convert_to_map, params_to_maps, PropertyEngine, simplifier_context,
+    SimplifierContext,
 )
-from mapping_field.promises import IsCondition, IsIntegral
-from mapping_field.property_engines import is_condition
-from mapping_field.ranged_condition import InRange, IntervalRange, RangeCondition, Ranged, in_range
+from mapping_field.property_engines import is_condition, is_integral
+from mapping_field.ranged_condition import IntervalRange, RangeCondition, Ranged, in_range
 from mapping_field.utils.processors import ProcessFailureReason
 
 simplify_logger = TreeLogger(__name__)
@@ -363,18 +363,19 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
         #     f"The assigned values should be 0 and 1, but instead got {assigned_value1} and {assigned_value2}"
         # )
 
+    @is_integral.register_rule
     @staticmethod
-    def promise_validate_conditional_function(validator: OutputValidator, elem: MapElement) -> bool | None:
+    def promise_validate_conditional_function(element: MapElement, context: SimplifierContext) -> bool | None:
         # TODO: This is not precise, because a function's promise can depend on where it is defined,
         #       but let's keep it simple for now...
-        if not isinstance(elem, ConditionalFunction):
+        if not isinstance(element, ConditionalFunction):
             return None
-        validations = [function.has_promise(validator) for _, function in elem.regions]
+        validations = [is_integral.compute(function, context) for _, function in element.regions]
+        if all(validations):
+            return True
         if any([validation is False for validation in validations]):
             return False
-        if any([validation is None for validation in validations]):
-            return None
-        return True
+        return None
 
     @class_simplifier
     @staticmethod
@@ -405,7 +406,7 @@ _Mult.register_class_simplifier(ConditionalFunction.mult_condition_by_element)
 RangeCondition.register_class_simplifier(ConditionalFunction.new_assignment_simplify)
 
 # TODO: Make it work for any validator in the future
-IsIntegral.register_validator(lambda elem: ConditionalFunction.promise_validate_conditional_function(IsIntegral, elem))
+# IsIntegral.register_validator(lambda elem: ConditionalFunction.promise_validate_conditional_function(IsIntegral, elem))
 # TODO: Don't think of ConditionalFunction as a condition for now
 # IsCondition.register_validator(lambda elem: promise_validate_conditional_function(IsCondition, elem))
 

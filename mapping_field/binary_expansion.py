@@ -10,9 +10,8 @@ from mapping_field.mapping_field import (
     CompositeElement, ExtElement, MapElement, MapElementConstant, SimplifierOutput, Var,
     convert_to_map, simplifier_context,
 )
-from mapping_field.promises import IsCondition, IsIntegral
-from mapping_field.property_engines import is_condition
-from mapping_field.ranged_condition import BoolVar, InRange, IntervalRange, RangeCondition, in_range, is_bool_var
+from mapping_field.property_engines import is_condition, is_integral
+from mapping_field.ranged_condition import BoolVar, IntervalRange, RangeCondition, in_range, is_bool_var
 from mapping_field.utils.processors import ProcessFailureReason
 from mapping_field.utils.serializable import DefaultSerializable
 
@@ -32,8 +31,6 @@ def _two_power(k):
 
 #
 class BinaryExpansion(CompositeElement, DefaultSerializable):
-
-    auto_promises = [IsIntegral]
 
     @classmethod
     def of(cls, map_elem: MapElement) -> Optional["BinaryExpansion"]:
@@ -925,6 +922,8 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
         return None
 
     # </editor-fold>
+
+is_integral.add_auto_class(BinaryExpansion)
 
 
 RangeCondition.register_class_simplifier(BinaryExpansion.transform_range)
