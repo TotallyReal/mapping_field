@@ -165,6 +165,8 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
 
         return True
 
+    __hash__ = MapElement.__hash__
+
     def get_range(self) -> IntervalRange | None:
         interval = IntervalRange.empty()
         for region in self.regions:

@@ -160,6 +160,8 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
             and all([c2 == 0 for c2 in coef2[n:]])
         )
 
+    __hash__ = MapElement.__hash__
+
     #
     #     def as_assignment(self, k: int) -> Condition:
     #         return RangeCondition(self, (k, k+1)).simplify()

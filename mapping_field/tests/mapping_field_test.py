@@ -142,6 +142,8 @@ class DummyMapWithVar(CompositeElement):
     def __eq__(self, other):
         return isinstance(other, DummyMap) and other.value == self.value
 
+    __hash__ = MapElement.__hash__
+
     # Override when needed
     def _simplify_with_var_values2(self) -> SimplifierOutput:
         return MapElementConstant.zero if (self.operands[0] == 0) else None

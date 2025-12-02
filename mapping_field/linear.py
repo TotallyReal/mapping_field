@@ -130,6 +130,8 @@ class Linear(CompositeElement, DefaultSerializable, Ranged):
             return self.evaluate() == 0
         return (self - Linear.of(other)).evaluate() == 0
 
+    __hash__ = MapElement.__hash__
+
     # <editor-fold desc=" ------------------------ Simplifiers ------------------------ ">
 
     def _simplify_with_var_values2(self) -> MapElement | None:

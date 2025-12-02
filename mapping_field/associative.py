@@ -50,6 +50,8 @@ class AssociativeListFunction(CompositeElement):
 
         return True
 
+    __hash__ = MapElement.__hash__
+
     @classmethod
     def is_trivial(cls, element: MapElement) -> bool:
         return element is cls.trivial_element

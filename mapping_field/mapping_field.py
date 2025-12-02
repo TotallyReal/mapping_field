@@ -5,6 +5,7 @@ import inspect
 
 from abc import abstractmethod, ABC
 from typing import Callable, Generic, Iterator, Optional, TypeVar, Union, Any
+from uuid import uuid4
 
 from mapping_field.field import ExtElement, FieldElement
 from mapping_field.log_utils.tree_loggers import TreeLogger
@@ -342,6 +343,7 @@ class MapElement:
         Should be called when copying this function, and want to reset it (in case you cannot go through the
         standard __init__ function).
         """
+        self._hash = uuid4().int
         var_names = set(v.name for v in variables)
         if len(variables) > len(var_names):
             raise ConflictingVariables(f"Variables of functions must have distinct name, instead got: {variables}")
@@ -354,6 +356,10 @@ class MapElement:
         if output_properties is not None:
             for engine, value in output_properties.items():
                 simplifier_context.set_user_property(self, engine, value)
+
+
+    def __hash__(self) -> int:
+        return self._hash
 
     # def copy(self) -> "MapElement":
     #     copied_version = copy.copy(self)
@@ -821,7 +827,7 @@ class CompositeElement(MapElement):
         # TODO: Note that this also copies the output promises in a shallow copy
         copy_version.operands = operands
         copy_version._reset(
-            Var.extract_variables(operands), output_properties={})#simplifier_context.get_user_properties(self))
+            Var.extract_variables(operands), output_properties=simplifier_context.get_user_properties(self))
         for promise in self.__class__.auto_promises:
             copy_version.promises.add_promise(promise)
         return copy_version
@@ -947,8 +953,7 @@ class Var(MapElement, DefaultSerializable):
     def __eq__(self, other):
         return isinstance(other, Var) and self.name == other.name
 
-    def __hash__(self):
-        return hash(("Var", self.name))
+    __hash__ = MapElement.__hash__
 
     def _simplify_with_var_values2(self) -> SimplifierOutput:
         return None
@@ -1226,6 +1231,8 @@ class MapElementConstant(MapElement, DefaultSerializable):
         if isinstance(other, MapElementConstant):
             return self.elem == other.elem
         return super().__eq__(other)
+
+    __hash__ = MapElement.__hash__
 
     def __call__(self, *args, **kwargs):
         return self

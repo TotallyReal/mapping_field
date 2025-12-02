@@ -15,6 +15,8 @@ class DummyMap(MapElement):
     def __eq__(self, other):
         return isinstance(other, DummyMap) and other.value == self.value
 
+    __hash__ = MapElement.__hash__
+
 
 class DummyCondition(MapElement):
     def __init__(self, type: int = 0, values: int | set[int] = 0):
@@ -45,6 +47,8 @@ class DummyCondition(MapElement):
             and len(self.values) == len(other.values)
             and all([v in other.values for v in self.values])
         )
+
+    __hash__ = MapElement.__hash__
 
 
 class DummyConditionOn(MapElement):
@@ -77,3 +81,5 @@ class DummyConditionOn(MapElement):
             and len(self.values) == len(other.values)
             and all([v in other.values for v in self.values])
         )
+
+    __hash__ = MapElement.__hash__

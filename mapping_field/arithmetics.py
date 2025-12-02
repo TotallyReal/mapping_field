@@ -58,6 +58,8 @@ class _Negative(CompositeElementFromFunction):
     def __eq__(self, other: MapElement):
         return isinstance(other, _Negative) and self.operand == other.operand
 
+    __hash__ = MapElement.__hash__
+
     def _simplify_with_var_values2(self) -> MapElement | None:
 
         operand = self.operand
@@ -237,6 +239,8 @@ class _Mult(CompositeElementFromFunction):
             return self.operands == other.operands or self.operands == list(reversed(other.operands))
         return False
 
+    __hash__ = MapElement.__hash__
+
     def _simplify_with_var_values2(self) -> MapElement | None:
         operands = self.operands
 
@@ -293,6 +297,8 @@ class _Div(CompositeElementFromFunction):
 
     def __eq__(self, other) -> bool:
         return isinstance(other, _Div) and self.operands == other.operands
+
+    __hash__ = MapElement.__hash__
 
     def _simplify_with_var_values2(self) -> MapElement | None:
         operands = self.operands

@@ -421,9 +421,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
             return self.function == condition.function and self.range == condition.range
         return super().__eq__(condition)
 
-    def __hash__(self) -> int:
-        # TODO: Maybe have a better hash?
-        return id(self)
+    __hash__ = MapElement.__hash__
 
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> MapElement:
         return RangeCondition(self.function._call_with_dict(var_dict, func_dict), self.range)
