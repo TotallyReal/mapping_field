@@ -296,19 +296,6 @@ class MapElement:
 
         self.vars = variables
 
-
-    # def has_promise(self, promise: OutputValidator) -> bool | None:
-    #     value = self.promises.has_promise(promise)
-    #     if value is not None:
-    #         return value
-    #
-    #     value = promise(self)
-    #     if value:
-    #         self.promises.add_promise(promise)
-    #     if value is False:  # can be None!
-    #         self.promises.add_invalid_promise(promise)
-    #     return value
-
     # <editor-fold desc=" ------------------------ String representation ------------------------">
 
     def __repr__(self):
