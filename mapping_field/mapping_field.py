@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from mapping_field.field import ExtElement, FieldElement
 from mapping_field.log_utils.tree_loggers import TreeLogger
+from mapping_field.utils.generic_properties import PropertyEngine, Property
 from mapping_field.utils.processors import ProcessFailureReason, Processor, ProcessorCollection
 from mapping_field.utils.serializable import DefaultSerializable
 from mapping_field.utils.validators import Context, MultiValidator
@@ -122,46 +123,22 @@ def extract_keyword(kwargs, key: str, value_type: type[KeywordValue]) -> Keyword
 
 SimplifierOutput = Union[ProcessFailureReason , 'MapElement' , None]
 
+ElemPropertyEngine = PropertyEngine['MapElement', 'SimplifierContext', Property]
 
-Property = TypeVar("Property")
+OutputProperties = dict[ElemPropertyEngine[Any], Any]
 
-
-class PropertyEngine(Generic[Property], ABC):
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    @abstractmethod
-    def compute(self, element: 'MapElement', context: 'SimplifierContext') -> Property | None:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def combine_properties(self, prop1: Property, prop2: Property) -> Property:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def is_stronger_property(self, strong_prop: Property, weak_prop: Property) -> bool:
-        """
-        Checks whether the strong_prop is stronger than (namely, implying the) weak_prop.
-
-        Example:
-             in_range[3,6] is stronger than in_range[1,10].
-        """
-        raise NotImplementedError()
-
-# engine_to_promise: dict['PropertyEngine', OutputValidator] = {}
 
 class SimplifierContext:
     def __init__(self, name: str | None = None):
         # id(map_element) ->  {prop_engine: prop_value}
-        self.property_table = GenericWeakKeyDictionary['MapElement', dict[PropertyEngine[Any], Any]]()
-        self.user_property_table = GenericWeakKeyDictionary['MapElement', dict[PropertyEngine[Any], Any]]()
-        self.engines: list[PropertyEngine[Any]] = []
+        self.property_table = GenericWeakKeyDictionary['MapElement', dict[ElemPropertyEngine[Any], Any]]()
+        self.user_property_table = GenericWeakKeyDictionary['MapElement', dict[ElemPropertyEngine[Any], Any]]()
+        self.engines: list[ElemPropertyEngine[Any]] = []
 
-    def register_engine(self, engine: PropertyEngine[Any]) -> None:
+    def register_engine(self, engine: ElemPropertyEngine[Any]) -> None:
         self.engines.append(engine)
 
-    def set_property(self, element: 'MapElement', engine: PropertyEngine[Property], prop_value: Property):
+    def set_property(self, element: 'MapElement', engine: ElemPropertyEngine[Property], prop_value: Property):
         if element not in self.property_table:
             self.property_table[element] = {}
         properties = self.property_table[element]
@@ -172,16 +149,16 @@ class SimplifierContext:
         # if engine in engine_to_promise:
         #     element.promises.add_promise(engine_to_promise[engine])
 
-    def get_property(self, element: 'MapElement', engine: PropertyEngine[Property]) -> Property | None:
+    def get_property(self, element: 'MapElement', engine: ElemPropertyEngine[Property]) -> Property | None:
         if element not in self.property_table:
             return None
         properties = self.property_table[element]
         return properties.get(engine, None)
 
-    def get_properties(self, element: 'MapElement') -> dict[PropertyEngine[Any], Any]:
+    def get_properties(self, element: 'MapElement') -> OutputProperties:
         return self.property_table.get(element, {}).copy()
 
-    def set_user_property(self, element: 'MapElement', engine: PropertyEngine[Property], prop_value: Property):
+    def set_user_property(self, element: 'MapElement', engine: ElemPropertyEngine[Property], prop_value: Property):
         if element not in self.user_property_table:
             self.user_property_table[element] = {}
         properties = self.user_property_table[element]
@@ -191,7 +168,7 @@ class SimplifierContext:
 
         self.set_property(element, engine, prop_value)
 
-    def get_user_property(self, element: 'MapElement', engine: PropertyEngine[Property]) -> Property | None:
+    def get_user_property(self, element: 'MapElement', engine: ElemPropertyEngine[Property]) -> Property | None:
         if element not in self.user_property_table:
             return None
         properties = self.user_property_table[element]
@@ -219,8 +196,8 @@ class SimplifierContext:
                 self.property_table[to_key][engine] = engine.combine_properties(from_prop_value, to_prop_value)
 
     def clear(self):
-        self.property_table : dict[int, dict[PropertyEngine[Any], Any]] = {}
-        self.user_property_table : dict[int, dict[PropertyEngine[Any], Any]] = {}
+        self.property_table : dict[int, dict[ElemPropertyEngine[Any], Any]] = {}
+        self.user_property_table : dict[int, dict[ElemPropertyEngine[Any], Any]] = {}
 
 
 # TODO: get rid of all of these global variables
@@ -269,7 +246,7 @@ class MapElement:
             cls.register_class_simplifier(simplifier)
 
     def __init__(self, variables: list['Var'], name: str | None = None,
-                 simplified: bool = False, output_properties: dict[PropertyEngine[Any], Any] | None = None):
+                 simplified: bool = False, output_properties: OutputProperties | None = None):
         """
         The 'variables' are the ordered list used when calling the function, as in f(a_1,...,a_n).
         """
@@ -279,7 +256,7 @@ class MapElement:
 
 
 
-    def _reset(self, variables: list["Var"], output_properties: dict[PropertyEngine[Any], Any] | None = None):
+    def _reset(self, variables: list["Var"], output_properties: OutputProperties | None = None):
         """
         Should be called when copying this function, and want to reset it (in case you cannot go through the
         standard __init__ function).
@@ -753,7 +730,7 @@ class CompositeElement(MapElement):
 
     def __init__(
             self, operands: list[MapElement], name: str | None = None, simplified: bool = False,
-            output_properties: dict[PropertyEngine[Any], Any] | None = None) -> None:
+            output_properties: OutputProperties | None = None) -> None:
 
         self.operands = operands
         super().__init__(variables=Var.extract_variables(operands), name=name, simplified=simplified, output_properties=output_properties)
@@ -849,7 +826,7 @@ class Var(MapElement, DefaultSerializable):
             seen.update(element.vars)
         return variables
 
-    def __init__(self, name: str, output_properties: dict[PropertyEngine[Any], Any] | None = None):
+    def __init__(self, name: str, output_properties: OutputProperties | None = None):
         """
         Initializes the Variable. If a Variable with the given name already exists, will not create a
         second object, and instead returns the existing variable.
@@ -1033,7 +1010,7 @@ class CompositeElementFromFunction(CompositeElement):
     def __init__(
             self, name: str, function: Callable[[list[ExtElement]], ExtElement],
             operands: list[MapElement] | None = None, simplified: bool = False,
-            output_properties: dict[PropertyEngine[Any], Any] | None = None):
+            output_properties: OutputProperties | None = None):
         """
         A map defined by a callable python function.
         The number of parameters to this function is the number of standard variables for this MapElement,

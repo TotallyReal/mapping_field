@@ -276,7 +276,7 @@ class Ranged:
     def get_range(self) -> IntervalRange | None:
         raise NotImplementedError()
 
-class RangeEngine(PropertyByRulesEngine[IntervalRange]):
+class RangeEngine(PropertyByRulesEngine[MapElement, SimplifierContext, IntervalRange]):
 
     def __init__(self):
         super().__init__()

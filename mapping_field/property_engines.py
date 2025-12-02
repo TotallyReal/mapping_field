@@ -7,40 +7,10 @@ from mapping_field.mapping_field import (
     MapElement, PropertyEngine, SimplifierContext, Property,
     CompositeElement,
 )
-
-PropertyRule = Callable[[MapElement, SimplifierContext], Property | None]
-
-def property_rule(method) -> Callable:
-    params = list(inspect.signature(method).parameters.values())
-    assert len(params) in (2,3)
-
-    if params[0].name == "self":
-        # standardmethod:   (self, element, context)
-        method._compute_type = "bound"
-    else:
-        # staticmethod:     (element, context)
-        method._compute_type = "static"
-    return method
-
-class PropertyByRulesEngine(PropertyEngine[Property], ABC):
-
-    def __init__(self):
-        self._rules = []
-
-        cls = self.__class__
-        for name in dir(cls):  # walks superclasses automatically
-            attr = getattr(cls, name)
-            mode = getattr(attr, "_compute_type", None)
-            if mode == "bound":
-                self.register_rule(types.MethodType(attr, self))
-            elif mode == "static":
-                self.register_rule(attr)
-
-    def register_rule(self, method: PropertyRule[bool]):
-        self._rules.append(method)
+from mapping_field.utils.generic_properties import PropertyByRulesEngine, property_rule
 
 
-class BoolPropertyEngine(PropertyByRulesEngine[bool]):
+class BoolPropertyEngine(PropertyByRulesEngine[MapElement, SimplifierContext, bool]):
 
     def __init__(self):
         super().__init__()

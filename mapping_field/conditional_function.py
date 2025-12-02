@@ -10,7 +10,7 @@ from mapping_field.log_utils.tree_loggers import TreeLogger, red, yellow
 from mapping_field.mapping_field import (
     CompositeElement, MapElement, MapElementConstant, MapElementProcessor,
     SimplifierOutput, Var, class_simplifier, convert_to_map, params_to_maps, PropertyEngine, simplifier_context,
-    SimplifierContext,
+    SimplifierContext, OutputProperties,
 )
 from mapping_field.property_engines import is_condition, is_integral
 from mapping_field.ranged_condition import IntervalRange, RangeCondition, Ranged, in_range
@@ -121,7 +121,7 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
         return ConditionalFunction([(TrueCondition, map)])
 
     def __init__(self, regions: list[tuple[MapElement, MapElement] | SingleRegion],
-            output_properties: dict[PropertyEngine[Any], Any] | None = None):
+            output_properties: OutputProperties | None = None):
         true_regions = [SingleRegion.of(region) for region in regions]
         assert None not in true_regions, f'Could not convert the regions {regions} into SingleRegions.'
 

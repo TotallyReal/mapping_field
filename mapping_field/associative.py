@@ -4,6 +4,7 @@ from typing import Any
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
 from mapping_field.mapping_field import (
     CompositeElement, MapElement, SimplifierOutput, Var, convert_to_map, PropertyEngine, simplifier_context,
+    ElemPropertyEngine, OutputProperties,
 )
 from mapping_field.utils.processors import ProcessFailureReason
 
@@ -74,7 +75,7 @@ class AssociativeListFunction(CompositeElement):
         return all_elements
 
     def __init__(self, operands: list[MapElement], simplified: bool = False,
-            output_properties: dict[PropertyEngine[Any], Any] | None = None):
+            output_properties: OutputProperties | None = None):
         super().__init__(operands=self.__class__.unpack_list(operands), simplified=simplified, output_properties=output_properties)
 
     def to_string(self, vars_to_str: dict[Var, str]):

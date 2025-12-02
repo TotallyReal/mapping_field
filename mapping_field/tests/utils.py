@@ -1,12 +1,12 @@
 from typing import Any
 
 from mapping_field.conditions import FalseCondition, TrueCondition
-from mapping_field.mapping_field import MapElement, Var, PropertyEngine
+from mapping_field.mapping_field import MapElement, Var, PropertyEngine, OutputProperties
 from mapping_field.property_engines import is_condition
 
 
 class DummyMap(MapElement):
-    def __init__(self, value=0, output_properties: dict[PropertyEngine[Any], Any] | None = None):
+    def __init__(self, value=0, output_properties: OutputProperties | None = None):
         self.value = value
         super().__init__([], f"DummyMap({value})", output_properties=output_properties)
 
