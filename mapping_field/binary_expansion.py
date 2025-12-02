@@ -8,9 +8,10 @@ from mapping_field.linear import Linear
 from mapping_field.log_utils.tree_loggers import TreeLogger, red
 from mapping_field.mapping_field import (
     CompositeElement, ExtElement, MapElement, MapElementConstant, SimplifierOutput, Var,
-    convert_to_map,
+    convert_to_map, simplifier_context,
 )
 from mapping_field.promises import IsCondition, IsIntegral
+from mapping_field.property_engines import is_condition
 from mapping_field.ranged_condition import BoolVar, InRange, IntervalRange, RangeCondition
 from mapping_field.utils.processors import ProcessFailureReason
 from mapping_field.utils.serializable import DefaultSerializable
@@ -65,7 +66,7 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
                 converted_coefficients.append(MapElementConstant.zero if c == 0 else MapElementConstant.one)
                 continue
 
-            assert c.has_promise(IsCondition), (
+            assert is_condition.compute(c, simplifier_context), (
                 f"Coefficients for Binary expansion must be conditions (0\\1 valued). "
                 f"Instead got {c} of type {c.__class__}"
             )
@@ -436,7 +437,7 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
         value = self.evaluate()
         assert value is None  # if this binary expansion is constant, there is nothing really to do
 
-        assert condition.has_promise(IsCondition)
+        assert is_condition.compute(condition, simplifier_context)
         condition = condition.simplify2()
 
         if condition is TrueCondition:

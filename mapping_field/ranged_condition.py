@@ -11,9 +11,10 @@ from mapping_field.conditions import (
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
 from mapping_field.mapping_field import (
     CompositeElement, FuncDict, MapElement, MapElementConstant, MapElementProcessor, OutputPromises,
-    OutputValidator, SimplifierOutput, Var, VarDict, class_simplifier,
+    OutputValidator, SimplifierOutput, Var, VarDict, class_simplifier, simplifier_context,
 )
 from mapping_field.promises import IsCondition, IsIntegral, register_promise_preserving_functions
+from mapping_field.property_engines import is_condition, is_integral
 from mapping_field.utils.processors import ProcessFailureReason
 
 simplify_logger = TreeLogger(__name__)
@@ -281,7 +282,7 @@ class InRange(OutputValidator[IntervalRange]):
         if isinstance(elem, MapElementConstant):
             value = elem.evaluate()
             return IntervalRange.of_point(value)
-        if elem.has_promise(IsCondition):
+        if is_condition.compute(elem, simplifier_context):
             return IntervalRange[0,1]
         if isinstance(elem, Ranged):
             return elem.get_range()
@@ -455,7 +456,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
     def or_(self, condition: MapElement) -> MapElement | None:
         if isinstance(condition, RangeCondition) and condition.function == self.function:
-            if condition.function.has_promise(IsIntegral):
+            if is_integral.compute(condition.function, simplifier_context):
                 # Union works better for the integral version of ranges
                 f_range = self.range.integral_union(condition.range)
             else:
@@ -473,7 +474,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
             # See if it extends the range to an interval.
             interval = IntervalRange.of_point(value)
-            if self.function.has_promise(IsIntegral):
+            if is_integral.compute(self.function, simplifier_context):
                 interval = self.range.integral_union(interval)
             else:
                 interval = self.range.union(interval)
@@ -515,7 +516,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
         #       However, if I now try to set x = 1, instead of getting TrueCondition, I will get 1. And while they are
         #       the same, it is easier to think about them (and view them on screen) differently.
         assert isinstance(element, RangeCondition)
-        if not element.function.has_promise(IsCondition):
+        if not is_condition.compute(element.function, simplifier_context):
             return ProcessFailureReason("Only applicable for ranges on conditions")
         if isinstance(element.function, BoolVar): # TODO: Only Var?
             return None
@@ -561,7 +562,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
             (f integral) < 5.4      =>      (f integral) <= 5
         """
         assert isinstance(range_cond, RangeCondition)
-        if range_cond.function.has_promise(IsIntegral):
+        if is_integral.compute(range_cond.function, simplifier_context):
             f_range = range_cond.range.as_integral()
             if f_range != range_cond.range:
                 return RangeCondition(range_cond.function, f_range)
@@ -681,8 +682,8 @@ class BoolVar(Var):
 def two_bool_vars_simplifier(elem: MapElement) -> SimplifierOutput:
     # TODO: make sure that I don't call has_promise for an element that I am trying to simplify, since it might
     #       call simplify inside it, and then we ar off to the infinite loop races.
-    # if not elem.has_promise(IsCondition):
-    if not elem.promises.has_promise(IsCondition):
+    # if not is_condition.compute(elem, simplifier_context):
+    if not is_condition.compute(elem.promises, simplifier_context):
         return ProcessFailureReason("Not a Condition", trivial=True)
     # if len(var_dict) > 0:
     #     return ProcessFailureReason("Only applicable with no var_dict", trivial=True)

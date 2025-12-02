@@ -7,8 +7,10 @@ from mapping_field.field import ExtElement
 from mapping_field.log_utils.tree_loggers import TreeLogger, yellow
 from mapping_field.mapping_field import (
     CompositeElementFromFunction, MapElement, MapElementProcessor, Var, class_simplifier, PropertyEngine,
+    simplifier_context,
 )
 from mapping_field.promises import IsCondition
+from mapping_field.property_engines import is_condition
 from mapping_field.utils.serializable import DefaultSerializable
 
 simplify_logger = TreeLogger(__name__)
@@ -164,7 +166,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
     def __init__(self, operands: list[MapElement], simplified: bool = False,
             output_properties: dict[PropertyEngine[Any], Any] | None = None):
         for operand in operands:
-            assert operand.has_promise(IsCondition)
+            assert is_condition.compute(operand, simplifier_context)
 
         super().__init__(
             operands=self.__class__._unpack_list(operands),

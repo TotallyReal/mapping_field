@@ -4,8 +4,9 @@ from mapping_field.binary_expansion import BinaryExpansion
 from mapping_field.conditional_function import ConditionalFunction, ReLU
 from mapping_field.conditions import FalseCondition, TrueCondition
 from mapping_field.linear import Linear
-from mapping_field.mapping_field import MapElementConstant, Var
+from mapping_field.mapping_field import MapElementConstant, Var, simplifier_context
 from mapping_field.promises import IsIntegral
+from mapping_field.property_engines import is_integral
 from mapping_field.ranged_condition import BoolVar, InRange, IntervalRange, RangeCondition
 from mapping_field.tests.utils import DummyCondition, DummyConditionOn, DummyMap
 
@@ -290,7 +291,7 @@ def test_output_promise():
     cond_func = ConditionalFunction([
         (dummy_cond[i], dummy_func[i]) for i in range(2)
     ])
-    assert not cond_func.has_promise(IsIntegral)
+    assert not is_integral.compute(cond_func, simplifier_context)
 
     # TODO: Promises right now can update the function. Think to make it frozen and instead create a new function,
     #       since it might already "know" that it doesn't have an output promise, and composition with it might fail
@@ -305,7 +306,7 @@ def test_output_promise():
     cond_func = ConditionalFunction([
         (dummy_cond[i], dummy_func[i]) for i in range(2)
     ])
-    assert not cond_func.has_promise(IsIntegral)
+    assert not is_integral.compute(cond_func, simplifier_context)
 
     # All region have the output promise
     dummy_cond = [DummyCondition(values={i}) for i in range(2)]
@@ -317,7 +318,7 @@ def test_output_promise():
     cond_func = ConditionalFunction([
         (dummy_cond[i], dummy_func[i]) for i in range(2)
     ])
-    assert cond_func.has_promise(IsIntegral)
+    assert is_integral.compute(cond_func, simplifier_context)
 
 
 def test_mul_generation():

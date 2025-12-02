@@ -19,6 +19,8 @@ class ImprovedDummyMap(MapElement):
             return len(self.value) == 1 and self.value[0] == other.value
         return isinstance(other, ImprovedDummyMap) and set(self.value) == set(other.value)
 
+    __hash__ = MapElement.__hash__
+
     def _op(self, elem2: MapElement) -> MapElement | None:
         if isinstance(elem2, DummyMap):
             return ImprovedDummyMap(self.value + (elem2.value,))
