@@ -227,7 +227,7 @@ def bool_var_simplifier(map_elem: MapElement, var_dict: VarDict) -> Optional[Map
 
     v1 = cond1.var
     v2 = cond2.var
-    if not (isinstance(v1, BoolVar) and v1 is v2):
+    if not (is_bool_var(v1) and v1 is v2):
         return None
 
     assigned_value1 = cond1.value

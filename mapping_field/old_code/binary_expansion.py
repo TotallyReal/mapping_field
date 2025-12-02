@@ -99,7 +99,7 @@ def _range_sum_bools_simplifier(function: MapElement, f_range: Range) -> Optiona
             element = element.elem
         if isinstance(element, BinaryExpansion) and all([v==0 for v in element.coefficients[1:]]):
             element = element.coefficients[0]
-        if isinstance(element, BoolVar):
+        if is_bool_var(element):
             return element
         return None
 
@@ -151,7 +151,7 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer, Condition
     def of(cls, map_elem: MapElement) -> Optional['BinaryExpansion']:
         if isinstance(map_elem, BinaryExpansion):
             return map_elem
-        if isinstance(map_elem, BoolVar):
+        if is_bool_var(map_elem):
             return BinaryExpansion([map_elem])
         # if isinstance(map_elem, BoundedIntVar) and map_elem.max_value - map_elem.min_value == 2:
         #     return BinaryExpansion([BoolVar(f'{map_elem.name}_bool')]), map_elem.min_value
@@ -183,11 +183,11 @@ class BinaryExpansion(MapElement, RangeTransformer, LinearTransformer, Condition
                 # TODO: maybe remove the 1 as coefficient?
                 self.coefficients.append(c)
                 continue
-            assert isinstance(c, BoolVar), (f'Coefficients for Binary expansion can only be BoolVar, 0 or 1.'
+            assert is_bool_var(c), (f'Coefficients for Binary expansion can only be BoolVar, 0 or 1.'
                                             f'Instead got {c} of type {c.__class__}')
             self.coefficients.append(c)
 
-        super().__init__([c for c in coefficients if isinstance(c, BoolVar)])
+        super().__init__([c for c in coefficients if is_bool_var(c)])
 
         self._constant = 0                  # The value of this map element without the bool variables
         self._bool_max_value = [0]          # max value of only bool variables, up to position i-1

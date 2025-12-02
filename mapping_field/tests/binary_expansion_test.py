@@ -1,5 +1,6 @@
 
 from mapping_field.binary_expansion import BinaryExpansion
+from mapping_field.mapping_field import Var
 from mapping_field.ranged_condition import BoolVar
 
 
@@ -9,7 +10,7 @@ def test_simple_construction():
 
 
 def test_post_generation_independence():
-    v: list[BoolVar | int] = [BoolVar(f"v_{i}") for i in range(4)]
+    v: list[Var | int] = [BoolVar(f"v_{i}") for i in range(4)]
 
     v_copy = v.copy()
     func = BinaryExpansion(v_copy)

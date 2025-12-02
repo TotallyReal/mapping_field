@@ -1,6 +1,6 @@
 from typing import Optional
 
-from mapping_field.arithmetics import BinaryCombination, as_neg
+from mapping_field.arithmetics import BinaryCombination, as_neg, _as_combination
 from mapping_field.conditions import (
     FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
 )
@@ -12,7 +12,7 @@ from mapping_field.mapping_field import (
 )
 from mapping_field.promises import IsCondition, IsIntegral
 from mapping_field.property_engines import is_condition
-from mapping_field.ranged_condition import BoolVar, InRange, IntervalRange, RangeCondition, in_range
+from mapping_field.ranged_condition import BoolVar, InRange, IntervalRange, RangeCondition, in_range, is_bool_var
 from mapping_field.utils.processors import ProcessFailureReason
 from mapping_field.utils.serializable import DefaultSerializable
 
@@ -39,8 +39,33 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
     def of(cls, map_elem: MapElement) -> Optional["BinaryExpansion"]:
         if isinstance(map_elem, BinaryExpansion):
             return map_elem
-        if isinstance(map_elem, BoolVar):
+        if is_bool_var(map_elem):
             return BinaryExpansion([map_elem])
+
+        value = map_elem.evaluate()
+        if value is not None:
+            coefficients = []
+            while value > 0:
+                value, r = divmod(value, 2)
+                coefficients.append(r)
+            # TODO: add test
+            return BinaryExpansion(coefficients)
+
+        # TODO: make this function public?
+        c1, elem1, c2, elem2 = _as_combination(map_elem)
+        if (c2 == 0 and c1 == 1) or (c2 == 1 and c1 == 0):
+            return None
+        # Neither elem1 nor elem2 is elem (we don't get convex combination)
+
+        elem1 = BinaryExpansion.of(elem1)
+        elem2 = BinaryExpansion.of(elem2)
+        if elem1 is None or elem2 is None:
+            return None
+        result = BinaryExpansion.linear_combination(c1, elem1, c2, elem2)
+        if result is not None:
+            coef, elem = result
+            if coef == 1 and isinstance(elem, BinaryExpansion):
+                return elem
         # if isinstance(map_elem, BoundedIntVar) and map_elem.max_value - map_elem.min_value == 2:
         #     return BinaryExpansion([BoolVar(f'{map_elem.name}_bool')]), map_elem.min_value
 
@@ -55,7 +80,7 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
         return BinaryExpansion([BoolVar(f"{var_name}_{i}") for i in range(num_digits)])
 
     @staticmethod
-    def convert_coefficients(coefficients: list) -> list[MapElementConstant | BoolVar]:
+    def convert_coefficients(coefficients: list) -> list[MapElement]:
         converted_coefficients = []
         for c in coefficients:
             c = convert_to_map(c)
@@ -73,7 +98,7 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
             converted_coefficients.append(c)
         return converted_coefficients
 
-    def __init__(self, coefficients: list[int | MapElementConstant | BoolVar]):
+    def __init__(self, coefficients: list[int | MapElementConstant | Var]):
         """
         Represents an integer number in a binary expansion:
 
@@ -83,6 +108,12 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
         # For now, each bool variable can appear at most once
         super().__init__(operands=BinaryExpansion.convert_coefficients(coefficients))
         self._compute_range()
+
+    def is_pure(self) -> bool:
+        """
+        returns True if all the coefficients are either 0, 1, or bool vars.
+        """
+        return all(c in (0,1) or is_bool_var(c) for c in self.operands)
 
     def _compute_range(self):
 
@@ -400,14 +431,18 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
     #             return a, elem, b
     #
 
-    def _min_max_assignment_in_range(self, low: int, high: int) -> tuple[dict[BoolVar, int], dict[BoolVar, int]]:
+    def _min_max_assignment_in_range(self, low: int, high: int) -> tuple[dict[Var, int], dict[Var, int]]:
+        """
+        returns the assignments for variables in this BinaryExpansion corresponding to the lowest and highest
+        possible value in the range [low, high]
+        """
         # TODO: this has similar logic to transform_range method. Avoid it!
         low -= self._constant
         high -= self._constant
         assert 0 <= high and low <= self._bool_max_value[-1]
 
-        low_dict: dict[BoolVar, int] = dict()
-        high_dict: dict[BoolVar, int] = dict()
+        low_dict: dict[Var, int] = dict()
+        high_dict: dict[Var, int] = dict()
 
         two_power = 2 ** len(self.coefficients)
         for i in range(len(self.coefficients) - 1, -1, -1):
@@ -415,6 +450,8 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
             two_power //= 2
             if isinstance(c, int):
                 continue
+
+            assert is_bool_var(c)
 
             # BoolVar
             if self._bool_max_value[i] < low:

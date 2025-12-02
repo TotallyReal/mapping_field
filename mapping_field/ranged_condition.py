@@ -618,7 +618,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
         assert isinstance(element, RangeCondition)
         if not is_condition.compute(element.function, simplifier_context):
             return ProcessFailureReason("Only applicable for ranges on conditions")
-        if isinstance(element.function, BoolVar): # TODO: Only Var?
+        if is_bool_var(element.function): # TODO: Only Var?
             return None
         if element.range == IntervalRange.of_point(1):
             return element.function
@@ -773,17 +773,28 @@ MapElement.where = lambda self: WhereFunction(self)
 # </editor-fold>
 
 
-class BoolVar(Var):
+def BoolVar(name: str) -> Var:
+    return Var(name=name, output_properties={is_condition: True})
 
-    # TODO: change into a method, so no one will use isinstance(v, BoolVar), as this is equivalent to checking
-    #       the conditions.
+def is_bool_var(v: MapElement) -> bool:
+    if not isinstance(v, Var):
+        return False
+    if is_condition.compute(v, simplifier_context):
+        return True
 
-    def __new__(cls, var_name: str):
-        return super(BoolVar, cls).__new__(cls, var_name)
+    f_range = in_range.compute(v, simplifier_context)
 
-    def __init__(self, name: str):
-        super().__init__(name, output_properties={is_condition: True, is_integral: True})
-        simplifier_context.set_property(self, in_range, IntervalRange[0, 1])
+    return (f_range is not None) and IntervalRange[0,1].contains(f_range) and is_integral.compute(v, simplifier_context)
+
+
+# class BoolVar(Var):
+#
+#     def __init__(self, name: str):
+#         super().__init__(name)
+#         self.promises.add_promise(IsIntegral)
+#         in_range.add_range(self, IntervalRange[0, 1])
+#         # self.promises.add_promise(InRange(IntervalRange[0, 1]))
+#         self.promises.add_promise(IsCondition)
 
 def two_bool_vars_simplifier(elem: MapElement) -> SimplifierOutput:
     # TODO: make sure that I don't call has_promise for an element that I am trying to simplify, since it might
@@ -793,7 +804,7 @@ def two_bool_vars_simplifier(elem: MapElement) -> SimplifierOutput:
         return ProcessFailureReason("Not a Condition", trivial=True)
     # if len(var_dict) > 0:
     #     return ProcessFailureReason("Only applicable with no var_dict", trivial=True)
-    if len(elem.vars) > 2 or (not all(isinstance(v, BoolVar) for v in elem.vars)):
+    if len(elem.vars) > 2 or (not all(is_bool_var(v) for v in elem.vars)):
         return ProcessFailureReason("Only applicable with at most 2 bool vars", trivial=True)
 
     if len(elem.vars) == 1:
@@ -870,7 +881,7 @@ def mult_binary_assignment_by_numbers(element: MapElement) -> SimplifierOutput:
 
     value = value0 or value1
     elem = operands[1] if value1 is None else operands[0]
-    if isinstance(elem, RangeCondition) and isinstance(elem.function, BoolVar):
+    if isinstance(elem, RangeCondition) and is_bool_var(elem.function):
         if elem.range.is_point == 1 and value != 1:
             return value * elem.function
     return None
