@@ -116,9 +116,9 @@ class OutputValidator(MultiValidator["MapElement", Context], Generic[Context]):
 OutputValidatorType = TypeVar("OutputValidatorType", bound=OutputValidator)
 
 
-class InvalidInput(Exception):
-    pass
-
+class InvalidInput(Exception): pass
+class ConflictingVariables(Exception): pass
+class InvalidVariableOrder(Exception): pass
 
 def validate_promises_var_dict(var_dict: VarDict):
     # TODO: Do I really need this, or should I validate the promises inside Var?
@@ -223,6 +223,18 @@ class MapElement:
         if simplified:
             self._simplifier.set_final_version(self, self)
 
+    def _set_variables(self, variables: list["Var"]):
+        """
+        Should be called when copying this function, and want to reset it (in case you cannot go through the
+        standard __init__ function).
+        """
+        var_names = set(v.name for v in variables)
+        if len(variables) > len(var_names):
+            raise ConflictingVariables(f"Variables of functions must have distinct name, instead got: {variables}")
+        self.vars = variables
+        self.num_vars = len(variables)
+        self._simplifier.reset_element(self)
+        self.promises = OutputPromises()
     # def copy(self) -> "MapElement":
     #     copied_version = copy.copy(self)
     #     copied_version.promises = self.promises.copy()
@@ -234,25 +246,13 @@ class MapElement:
         """
         # TODO: update the entries in CompositionFunction
         if len(variables) > len(set(variables)):
-            raise Exception(f"Function must have distinct variables")
+            raise ConflictingVariables(f"Variables of functions must have distinct name, instead got: {variables}")
 
         if collections.Counter(variables) != collections.Counter(self.vars):
-            raise Exception(f"New variables order {variables} have to be on the function's variables {self.vars}")
+            raise InvalidVariableOrder(f"New variables order {variables} have to be on the function's variables {self.vars}")
 
         self.vars = variables
 
-    def _set_variables(self, variables: list["Var"]):
-        """
-        Should be called when copying this function, and want to reset it (in case you cannot go through the
-        standard __init__ function).
-        """
-        var_names = set(v.name for v in variables)
-        if len(variables) > len(var_names):
-            raise Exception(f"Function must have distinct variables: {variables}")
-        self.vars = variables
-        self.num_vars = len(variables)
-        self._simplifier.reset_element(self)
-        self.promises = OutputPromises()
 
 
     def has_promise(self, promise: OutputValidator) -> bool | None:

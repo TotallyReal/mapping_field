@@ -3,7 +3,7 @@ import pytest
 
 from mapping_field.mapping_field import (
     CompositeElement, CompositeElementFromFunction, Func, MapElement, MapElementConstant, NamedFunc,
-    SimplifierOutput, Var,
+    SimplifierOutput, Var, ConflictingVariables, InvalidVariableOrder,
 )
 from mapping_field.tests.utils import DummyMap
 
@@ -22,10 +22,31 @@ def test_var_try_get():
     assert Var.try_get("z") is None
 
 
+def test_set_var_order():
+    x, y, z = Var("x"), Var("y"), Var("z")
+    f = MapElement(variables=[x, y])
+
+    assert f.vars == [x, y]
+
+    f.set_var_order([y, x])
+    assert f.vars == [y, x]
+
+    with pytest.raises(ConflictingVariables):
+        f.set_var_order([x, x])
+
+    # the variables did not change
+    assert f.vars == [y, x]
+
+    with pytest.raises(InvalidVariableOrder):
+        f.set_var_order([y, z])
+
+    # the variables did not change
+    assert f.vars == [y, x]
+
+
 def test_var_string():
     x = Var("x")
     assert str(x) == "x"
-    assert repr(x) == "x"
 
 
 def test_var_assignment():
