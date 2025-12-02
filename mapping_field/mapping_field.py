@@ -199,6 +199,8 @@ class MapElement:
     the _call_with_dict(var_dict, func_dict) method instead. (see description below)
     """
 
+    _class_simplifiers = {}
+
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
 
@@ -207,10 +209,23 @@ class MapElement:
             processor.__name__ = f"{cls.__name__}_simplify_with_var_values"
             MapElement._simplifier.register_class_processor(cls, processor)
 
-        # auto-register methods decorated with @class_simplifier
-        for attr in cls.__dict__.values():
-            if callable(attr) and getattr(attr, "_is_simplifier", False):
-                cls.register_class_simplifier(attr)
+        # Start with all parent rules
+        cls._class_simplifiers = collections.OrderedDict()
+
+        for base in cls.__bases__:
+            if issubclass(base, MapElement):
+                # copy so subclasses don’t mutate parent dict
+                cls._class_simplifiers.update(base._class_simplifiers)
+
+        # Add rules defined in this class (overriding parent rules)
+        for name, obj in cls.__dict__.items():
+            if getattr(obj, "_is_simplifier", False):
+                cls._class_simplifiers[name] = obj
+
+        # print(f'\nIn class {cls.__name__}')
+        for simplifier in cls._class_simplifiers.values():
+            # print(f'New Registering simplifier {simplifier.__qualname__}')
+            cls.register_class_simplifier(simplifier)
 
     def __init__(self, variables: list['Var'], name: str | None = None, promises: OutputPromises | None = None,
                  simplified: bool = False):
@@ -689,11 +704,6 @@ class CompositeElement(MapElement):
 
     auto_promises: list[OutputValidator] = []
 
-    def __init_subclass__(cls, **kwargs):
-        # TODO: Simplifier mechanism should be able to see super classes, then we can register this only once.
-        cls.register_class_simplifier(CompositeElement._entries_simplifier)
-        super().__init_subclass__(**kwargs)
-
     def __init__(self, operands: list[MapElement], name: str | None = None, simplified: bool = False) -> None:
 
         self.operands = operands
@@ -733,6 +743,7 @@ class CompositeElement(MapElement):
 
         return self.copy_with_operands(operands=new_operands)
 
+    @class_simplifier
     @staticmethod
     def _entries_simplifier(elem: 'CompositeElement') -> SimplifierOutput:
         assert isinstance(elem, CompositeElement)
