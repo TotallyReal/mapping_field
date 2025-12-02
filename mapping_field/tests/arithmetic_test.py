@@ -142,18 +142,17 @@ def test_neg_distributive():
 def test_addition_rules():
     x, y = DummyMap(0), DummyMap(1)
     assert str(x + y) == "(DummyMap(0) + DummyMap(1))"
-    assert str(x + (-y)) == "(-DummyMap(1) + DummyMap(0))"
-    assert str((-x) + y) == "(-DummyMap(0) + DummyMap(1))"
-    assert str((-x) + (-y)) == "(-(DummyMap(0) + DummyMap(1)))"
+    assert x + (-y) == x - y
+    assert (-x) + y == y - x
+    assert ((-x) + (-y)) == - (x+y)
 
 
 def test_subtraction_rules():
     x, y = DummyMap(0), DummyMap(1)
     assert str(x - y) == "(-DummyMap(1) + DummyMap(0))"
-    assert str(x - (-y)) == "(DummyMap(0) + DummyMap(1))"
-
-    assert str((-x) - y) == "(-(DummyMap(0) + DummyMap(1)))"
-    assert str((-x) - (-y)) == "(-DummyMap(0) + DummyMap(1))"
+    assert x - (-y) == x + y
+    assert (-x) - y == -(x+y)
+    assert (-x) - (-y) == y-x
 
 
 # ----------------- General Multiplication Rules -----------------

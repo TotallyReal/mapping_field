@@ -54,6 +54,9 @@ class _Negative(CompositeElementFromFunction):
     def to_string(self, vars_to_str: dict[Var, str]):
         return f"(-{self.operand.to_string(vars_to_str)})"
 
+    def __eq__(self, other: MapElement):
+        return isinstance(other, _Negative) and self.operand == other.operand
+
     def _simplify_with_var_values2(self) -> MapElement | None:
 
         operand = self.operand
@@ -227,6 +230,11 @@ class _Mult(CompositeElementFromFunction):
         assert operands is None or len(operands) == 2
         super().__init__(operands=operands, name="Mult", function=lambda a, b: a * b)
 
+    def __eq__(self, other) -> bool:
+        if isinstance(other, _Mult):
+            return self.operands == other.operands or self.operands == list(reversed(other.operands))
+        return False
+
     def _simplify_with_var_values2(self) -> MapElement | None:
         operands = self.operands
 
@@ -280,6 +288,9 @@ class _Div(CompositeElementFromFunction):
     def __init__(self, operands: list[MapElement] | None = None) -> None:
         assert operands is None or len(operands) == 2
         super().__init__(operands=operands, name="Div", function=lambda a, b: a / b)
+
+    def __eq__(self, other) -> bool:
+        return isinstance(other, _Div) and self.operands == other.operands
 
     def _simplify_with_var_values2(self) -> MapElement | None:
         operands = self.operands
