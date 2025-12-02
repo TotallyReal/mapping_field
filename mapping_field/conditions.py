@@ -81,7 +81,7 @@ class _NotCondition(CompositeElementFromFunction):
     def to_string(self, vars_to_str: dict[Var, str]):
         return f"~({self.operand.to_string(vars_to_str)})"
 
-    def _simplify_with_var_values2(self) -> MapElement | None:
+    def _simplify_with_var_values(self) -> MapElement | None:
         operand = self.operand
 
         if isinstance(operand, BinaryCondition):
@@ -91,7 +91,7 @@ class _NotCondition(CompositeElementFromFunction):
 
         # TODO: simplify formulas like ~(a and ~b) -> ~a or b, which have fewer "not"s ?
 
-        return super()._simplify_with_var_values2()
+        return super()._simplify_with_var_values()
 
     @class_simplifier
     @staticmethod
@@ -179,11 +179,11 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
         self.operands = value
 
     def serialization_name_conversion(self):
-        return {"simplified": self._simplify_with_var_values2}
+        return {"simplified": self._simplify_with_var_values}
 
     @classmethod
     def _op_between(cls, condition1: MapElement, condition2: MapElement) -> MapElement | None:
-        return cls.bin_condition[cls.type](condition1, condition2, simplify=False)._simplify2()
+        return cls.bin_condition[cls.type](condition1, condition2, simplify=False)._simplify()
 
     @classmethod
     def _rev_op_between(cls, condition1: MapElement, condition2: MapElement) -> MapElement | None:
@@ -209,7 +209,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
 
         if isinstance(condition, BinaryCondition):
             # quick shortcut
-            return cls._rev_op_between(condition, self)._simplify2()
+            return cls._rev_op_between(condition, self)._simplify()
 
         if len(self.conditions) == 0:
             return condition
@@ -285,7 +285,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
         # Remark: In case (remaining_cond = list_cond1), the following call should not loop back here,
         #         because this function should only be called when the two side are lists. Unless of course
         #         someone decides to wrap special_condition into a 1 element list_cond...
-        prod = cls._rev_op_between(special_condition, remaining_cond)._simplify2()
+        prod = cls._rev_op_between(special_condition, remaining_cond)._simplify()
         if prod is not None:
             return cls(used_conditions + [prod]) if len(used_conditions) > 0 else prod
 
@@ -340,7 +340,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
 
         for cond in conditions:
             prod = cls._rev_op_between(cond, sp_condition)      # (A & D)
-            simplified_prod = prod._simplify2()                 # a simplification of (A & D), or none if there is one.
+            simplified_prod = prod._simplify()                 # a simplification of (A & D), or none if there is one.
 
             # In case where D <= A, ( iff D = A & D ) we have that (A | B | C) & D = D.
             if simplified_prod is sp_condition or simplified_prod == sp_condition:
@@ -469,7 +469,7 @@ class IntersectionCondition(_ListCondition, MapElementProcessor, op_type=_ListCo
 
 IntersectionCondition.register_class_simplifier(_binary_simplify)
 
-MapElement.intersection = lambda cond1, cond2: IntersectionCondition([cond1, cond2]).simplify2()
+MapElement.intersection = lambda cond1, cond2: IntersectionCondition([cond1, cond2]).simplify()
 
 
 class UnionCondition(_ListCondition, op_type=_ListCondition.OR):
@@ -478,4 +478,4 @@ class UnionCondition(_ListCondition, op_type=_ListCondition.OR):
 
 UnionCondition.register_class_simplifier(_binary_simplify)
 
-MapElement.union = lambda cond1, cond2: UnionCondition([cond1, cond2]).simplify2()
+MapElement.union = lambda cond1, cond2: UnionCondition([cond1, cond2]).simplify()

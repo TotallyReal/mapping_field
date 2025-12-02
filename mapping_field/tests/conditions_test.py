@@ -136,7 +136,7 @@ def dual_case(request):
 
 
 # With the following fixtures we have that:
-# list_class([weak_dummy, strong_dummy]).simplify2() = bin_op(weak, strong) = strong_dummy
+# list_class([weak_dummy, strong_dummy]).simplify() = bin_op(weak, strong) = strong_dummy
 
 
 @pytest.fixture
@@ -217,7 +217,7 @@ def test_simplify_trivial_condition(list_class: type[_ListCondition]):
     trivial_condition = list_class.trivials[list_class.type]
 
     cond1 = list_class([trivial_condition, dummies[0], dummies[1], dummies[2], trivial_condition])
-    cond1 = cond1.simplify2()
+    cond1 = cond1.simplify()
     cond2 = list_class([dummies[2], dummies[0], dummies[1]])
     assert cond1 == cond2
 
@@ -230,7 +230,7 @@ def test_simplify_final_condition(list_class: type[_ListCondition]):
 
     # Controlled by final_condition
     cond1 = list_class([final_condition, dummies[0], dummies[1], dummies[2], trivial_condition])
-    cond1 = cond1.simplify2()
+    cond1 = cond1.simplify()
     cond2 = final_condition
     assert cond1 == cond2
 
@@ -239,7 +239,7 @@ def test_simplify_repeating_conditions(list_class: type[_ListCondition]):
     dummies = [DummyCondition(type=i) for i in range(5)]
 
     cond1 = list_class([dummies[0], dummies[1], dummies[1], dummies[0], dummies[2]])
-    cond1 = cond1.simplify2()
+    cond1 = cond1.simplify()
     cond2 = list_class([dummies[2], dummies[0], dummies[1]])
     assert cond1 == cond2
 
@@ -248,7 +248,7 @@ def test_simplify_unwrapping(list_class: type[_ListCondition]):
     dummies = [DummyCondition(type=i) for i in range(5)]
 
     cond1 = list_class([dummies[0]])
-    cond1 = cond1.simplify2()
+    cond1 = cond1.simplify()
     cond2 = dummies[0]
     assert cond1 == cond2
 
@@ -260,7 +260,7 @@ def test_simplify_list_of_lists(list_class: type[_ListCondition]):
         list_class([dummies[0], dummies[1], dummies[2]]),
         list_class([dummies[0], dummies[1], dummies[3]])
     ])
-    cond1 = cond1.simplify2()
+    cond1 = cond1.simplify()
     cond2 = list_class([dummies[0], dummies[1], dummies[2], dummies[3]])
     assert cond1 == cond2
 
@@ -272,7 +272,7 @@ def test_simplify_list_of_lists(list_class: type[_ListCondition]):
         list_class([dummies[1]]),
         list_class([])
     ])
-    cond1 = cond1.simplify2()
+    cond1 = cond1.simplify()
     cond2 = list_class([dummies[0], dummies[1], dummies[2], dummies[3], dummies[4]])
     assert cond1 == cond2
 
@@ -414,4 +414,4 @@ def test_small_big_condition_switch():
     cond1 = BoolVar('x')<<0
     cond = ( ( cond1 & cond_big ) | cond_small )
 
-    cond.simplify2()
+    cond.simplify()

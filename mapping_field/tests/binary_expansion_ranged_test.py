@@ -12,29 +12,29 @@ def test_simplify_range():
     x = BinaryExpansion(vv)
     x3 = BinaryExpansion(vv[:3])
 
-    cond1 = (x <= 7).simplify2()
-    cond2 = (vv[3] << 0).simplify2()
+    cond1 = (x <= 7).simplify()
+    cond2 = (vv[3] << 0).simplify()
     assert cond1 == cond2
 
-    cond1 = (x <= 6).simplify2()
-    cond2 = ((vv[3] << 0) & (x3 <= 6)).simplify2()
+    cond1 = (x <= 6).simplify()
+    cond2 = ((vv[3] << 0) & (x3 <= 6)).simplify()
     assert cond1 == cond2
 
-    cond1 = (x >= 8).simplify2()
-    cond2 = (vv[3] << 1).simplify2()
+    cond1 = (x >= 8).simplify()
+    cond2 = (vv[3] << 1).simplify()
     assert cond1 == cond2
 
-    cond1 = (x >= 9).simplify2()
-    cond2 = ((vv[3] << 1) & (1 <= x3)).simplify2()
+    cond1 = (x >= 9).simplify()
+    cond2 = ((vv[3] << 1) & (1 <= x3)).simplify()
     assert cond1 == cond2
 
     # TODO: The following doesn't work. Think if I should and then how to implement it.
-    # cond1 = (x <= 8).simplify2()
-    # cond2 = ((vv[3] << 0) | (x << 8)).simplify2()
+    # cond1 = (x <= 8).simplify()
+    # cond2 = ((vv[3] << 0) | (x << 8)).simplify()
     # assert cond1 == cond2
 
-    # cond1 = (x >= 7).simplify2()
-    # cond2 = ((vv[3] << 1) | (x << 7)).simplify2()
+    # cond1 = (x >= 7).simplify()
+    # cond2 = ((vv[3] << 1) | (x << 7)).simplify()
     # assert cond1 == cond2
 
 
@@ -62,16 +62,16 @@ def test_extend_range_to_full():
     vv = [BoolVar(f"x_{i}") for i in range(3)]
     x = BinaryExpansion(vv)
 
-    cond1 = (x < 8).simplify2()
-    cond2 = (x >= 0).simplify2()
+    cond1 = (x < 8).simplify()
+    cond2 = (x >= 0).simplify()
     assert cond1 is TrueCondition
     assert cond2 is TrueCondition
 
     for k in range(0, 8):
         simplify_logger.tree.reset()
         simplify_logger.log(f"Running test on {blue(k)}")
-        cond1 = (x < k).simplify2()
-        cond2 = (k <= x).simplify2()
+        cond1 = (x < k).simplify()
+        cond2 = (k <= x).simplify()
         assert cond1 | cond2 is TrueCondition, f"Could not combine Bin<{k} | {k}<=Bin"
 
 

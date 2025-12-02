@@ -85,7 +85,7 @@ class AssociativeListFunction(CompositeElement):
         operands_str = op_symbol.join(operand.to_string(vars_to_str) for operand in self.operands)
         return f"{cls.left_bracket}{operands_str}{cls.right_bracket}"
 
-    def _simplify_with_var_values2(self) -> MapElement | None:
+    def _simplify_with_var_values(self) -> MapElement | None:
         if self.__class__.is_binary(self):
             simplify_logger.log("is binary special - avoid simplifying here.")
             return None
@@ -100,7 +100,7 @@ class AssociativeListFunction(CompositeElement):
         while queue:
             operand = queue.popleft()
 
-            simplified_condition = operand._simplify2()
+            simplified_condition = operand._simplify()
             if simplified_condition is not None:
                 is_whole_simpler = True
             operand = simplified_condition or operand
@@ -133,7 +133,7 @@ class AssociativeListFunction(CompositeElement):
                 binary_op = cls.binary_class([existing_operand, operand], output_properties=user_properties)
 
                 AssociativeListFunction.binary_constructs.add(id(binary_op))
-                simplified_binary_op = binary_op._simplify2()
+                simplified_binary_op = binary_op._simplify()
                 AssociativeListFunction.binary_constructs.remove(id(binary_op))
 
                 if simplified_binary_op is not None:

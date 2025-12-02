@@ -449,7 +449,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
             # See if it exactly what was missing:
             at_value_cond = (self.function << value)
             simplify_logger.log(f'Check if {red(condition)} == {red(at_value_cond)}')
-            at_value_cond = at_value_cond.simplify2()
+            at_value_cond = at_value_cond.simplify()
             if at_value_cond == condition:
                 return RangeCondition(self.function, interval)
 
@@ -459,7 +459,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
 
     # <editor-fold desc=" ======= Simplifiers ======= ">
 
-    def _simplify_with_var_values2(self) -> SimplifierOutput:
+    def _simplify_with_var_values(self) -> SimplifierOutput:
         if self.range.is_empty:
             return FalseCondition
         if self.range.is_all:
@@ -652,8 +652,8 @@ def two_bool_vars_simplifier(elem: MapElement) -> SimplifierOutput:
         # TODO: The following two calls are problematics. They can generate composition function with 'elem'
         #       as the top function, so when we call simplify on it, it tries to simplify the top function
         #       by itself, which can loop back here.
-        value0 = elem({v: 0}).simplify2()
-        value1 = elem({v: 1}).simplify2()
+        value0 = elem({v: 0}).simplify()
+        value1 = elem({v: 1}).simplify()
         if not (isinstance(value0, BinaryCondition) and isinstance(value1, BinaryCondition)):
             simplify_logger.log(red(f"The values {value0}, {value1} should be binary."))
             return None
@@ -667,7 +667,7 @@ def two_bool_vars_simplifier(elem: MapElement) -> SimplifierOutput:
         x, y = elem.vars
         simplify_logger.log(f"Looking for simpler condition on {red(x)}, {red(y)}")
         assignments = [(0, 0), (0, 1), (1, 0), (1, 1)]
-        values = [[elem({x: x0, y: y0}).simplify2() for y0 in (0, 1)] for x0 in (0, 1)]
+        values = [[elem({x: x0, y: y0}).simplify() for y0 in (0, 1)] for x0 in (0, 1)]
         if not all(isinstance(value, BinaryCondition) for value in values[0] + values[1]):
             values_str = ", ".join(str(value) for value in values[0] + values[1])
             simplify_logger.log(red(f"The values {values_str} should be binary."))

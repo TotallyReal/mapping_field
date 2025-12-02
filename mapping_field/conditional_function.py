@@ -71,7 +71,7 @@ class SingleRegion(CompositeElement, Ranged):
     def get_range(self) -> IntervalRange | None:
         return in_range.compute(self.function, simplifier_context)
 
-    def _simplify_with_var_values2(self) -> MapElement | None:
+    def _simplify_with_var_values(self) -> MapElement | None:
         if not isinstance(self.condition, MapElementProcessor):
             return None
 
@@ -82,7 +82,7 @@ class SingleRegion(CompositeElement, Ranged):
             return None
 
         function = simplified_func
-        function = function._simplify2() or function
+        function = function._simplify() or function
 
         return SingleRegion(self.condition, function)
 
@@ -157,7 +157,7 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
         if self is other:
             return True
         if isinstance(other, ConditionalFunction):
-            return self._op(other, operator.sub).simplify2().is_zero()
+            return self._op(other, operator.sub).simplify().is_zero()
 
         for cond, func in self.regions:
             if isinstance(cond, MapElementProcessor):
@@ -196,13 +196,13 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
         for cond1, elem1 in self.regions:
             for cond2, elem2 in other.regions:
                 simplify_logger.log(f"check if the regions {red(cond1)}, {red(cond2)} intersect.")
-                cond_prod = (cond1 & cond2).simplify2()
+                cond_prod = (cond1 & cond2).simplify()
                 if cond_prod is not FalseCondition:
                     simplify_logger.log(
                         f'Regions intersect - apply "{yellow(op_func.__name__)}" on the functions {red(elem1)}, {red(elem2)}.'
                     )
                     regions.append((cond_prod, op_func(elem1, elem2)))
-        return ConditionalFunction(regions).simplify2()
+        return ConditionalFunction(regions).simplify()
 
     def add(self, other: MapElement) -> "ConditionalFunction":
         return self._op(other, operator.add)
@@ -279,7 +279,7 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
         if len(element.operands) != 1:
             return ProcessFailureReason('Only applicable to single region', trivial=True)
         region: SingleRegion = element.operands[0]
-        assert region.condition.simplify2() is TrueCondition, f'single condition must be True, instead got {region.condition}'
+        assert region.condition.simplify() is TrueCondition, f'single condition must be True, instead got {region.condition}'
         return region.function
 
     @staticmethod
@@ -328,7 +328,7 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
             return None
 
         simplify_logger.log(f'Verify that the 2 regions combine to the whole space.')
-        if (cond1 | cond2).simplify2() is not TrueCondition:
+        if (cond1 | cond2).simplify() is not TrueCondition:
             return ProcessFailureReason(
                 "Conditional Function on two regions should have complement conditions, "
                 "instead got {red(cond1)}, {red(cond2)}",
@@ -391,10 +391,10 @@ def ReLU(map_elem: MapElement) -> MapElement:
     if isinstance(map_elem, ConditionalFunction):
         regions = []
         for condition, func in map_elem.regions:
-            if (func >= 0).simplify2() is TrueCondition:
+            if (func >= 0).simplify() is TrueCondition:
                 # Make your and my life a little bit simpler
                 regions.append((condition, func))
-            elif (func <= 0).simplify2() is TrueCondition:
+            elif (func <= 0).simplify() is TrueCondition:
                 regions.append((condition, zero))
             else:
                 regions.append((condition & (func > 0), func))

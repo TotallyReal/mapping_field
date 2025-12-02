@@ -60,13 +60,13 @@ class _Negative(CompositeElementFromFunction):
 
     __hash__ = MapElement.__hash__
 
-    def _simplify_with_var_values2(self) -> MapElement | None:
+    def _simplify_with_var_values(self) -> MapElement | None:
 
         operand = self.operand
         if isinstance(operand, _Negative):
             return operand.operand
 
-        return super()._simplify_with_var_values2()
+        return super()._simplify_with_var_values()
 
     @class_simplifier
     @staticmethod
@@ -240,7 +240,7 @@ class _Mult(CompositeElementFromFunction):
 
     __hash__ = MapElement.__hash__
 
-    def _simplify_with_var_values2(self) -> MapElement | None:
+    def _simplify_with_var_values(self) -> MapElement | None:
         operands = self.operands
 
         # Multiplication by 0 and 1
@@ -262,12 +262,12 @@ class _Mult(CompositeElementFromFunction):
         sign0, numerator0, denominator0 = _as_rational(operands[0])
         sign1, numerator1, denominator1 = _as_rational(operands[1])
         if operands[0] is numerator0 and operands[1] is numerator1:
-            return super()._simplify_with_var_values2()
+            return super()._simplify_with_var_values()
 
         numerator = numerator0 * numerator1
         denominator = denominator0 * denominator1
         abs_value = numerator / denominator
-        return abs_value.simplify2() if sign0 * sign1 == 1 else (-abs_value).simplify2()
+        return abs_value.simplify() if sign0 * sign1 == 1 else (-abs_value).simplify()
 
     def to_string(self, vars_to_str: dict[Var, str]):
         return f"({self.operands[0]}*{self.operands[1]})"
@@ -299,7 +299,7 @@ class _Div(CompositeElementFromFunction):
 
     __hash__ = MapElement.__hash__
 
-    def _simplify_with_var_values2(self) -> MapElement | None:
+    def _simplify_with_var_values(self) -> MapElement | None:
         operands = self.operands
 
         if operands[1] == 0:
@@ -313,7 +313,7 @@ class _Div(CompositeElementFromFunction):
         sign0, numerator0, denominator0 = _as_rational(operands[0])
         sign1, numerator1, denominator1 = _as_rational(operands[1])
         if operands[0] is numerator0 and operands[1] is numerator1:
-            return super()._simplify_with_var_values2()
+            return super()._simplify_with_var_values()
 
         abs_value = (numerator0 * denominator1) / (denominator0 * numerator1)
         return abs_value if sign0 * sign1 == 1 else -abs_value
@@ -438,14 +438,14 @@ class BinaryCombination(MapElement):
     def to_string(self, vars_to_str: dict[Var, str]):
         return f"Comb[{self.c1}*{self.elem1.to_string(vars_to_str)}+{self.c2}*{self.elem2.to_string(vars_to_str)}]"
 
-    def _simplify_with_var_values2(self) -> MapElement | None:
+    def _simplify_with_var_values(self) -> MapElement | None:
         if self.c1 == 0:
             return self.c2 * self.elem2
         if self.c2 == 0:
             return self.c1 * self.elem1
 
-        elem1 = self.elem1._simplify2()
-        elem2 = self.elem2._simplify2()
+        elem1 = self.elem1._simplify()
+        elem2 = self.elem2._simplify()
         if elem1 is not None or elem2 is not None:
             elem1 = elem1 or self.elem1
             elem2 = elem2 or self.elem2
@@ -462,7 +462,7 @@ def _binary_combination_simplifier(function: MapElement) -> SimplifierOutput:
     c1, elem1, c2, elem2 = _as_combination(function)
     if c2 == 0:
         return None
-    result = BinaryCombination(c1, elem1, c2, elem2)._simplify2()
+    result = BinaryCombination(c1, elem1, c2, elem2)._simplify()
     if result is None or isinstance(result, BinaryCombination):
         return None
     return result

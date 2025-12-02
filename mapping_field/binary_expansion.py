@@ -677,7 +677,7 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
         assert is_condition.compute(condition, simplifier_context)
 
         # Some trivial result for constant conditions
-        condition = condition.simplify2()
+        condition = condition.simplify()
         if condition is TrueCondition:
             return in_range.compute(self, simplifier_context)
         if condition is FalseCondition:
@@ -711,7 +711,7 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
 
     # <editor-fold desc=" ------------------------ Simplifiers ------------------------ ">
 
-    def _simplify_with_var_values2(self) -> MapElement | None:
+    def _simplify_with_var_values(self) -> MapElement | None:
         elem, constant = self.split_constant()
         if constant == 0:
             return None

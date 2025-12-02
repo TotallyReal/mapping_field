@@ -102,7 +102,7 @@ def test_equality_to_standard_function():
         (dummy_conditions[2], dummy),
     ])
 
-    assert cond_func.simplify2() is dummy
+    assert cond_func.simplify() is dummy
 
     cond_func = ConditionalFunction([
         (dummy_conditions[0], dummy),
@@ -110,7 +110,7 @@ def test_equality_to_standard_function():
         (dummy_conditions[2], 0),
     ])
 
-    assert cond_func.simplify2() != dummy
+    assert cond_func.simplify() != dummy
 
 
 def test_equality_to_conditional_function():
@@ -141,7 +141,7 @@ def test_combining_regions():
             ((y << 1), x),
     ])
 
-    func = func.simplify2()
+    func = func.simplify()
     assert func is x
 
 
@@ -183,7 +183,7 @@ def test_addition():
         (dummies[3], MapElementConstant(-20)),
     ])
 
-    result = result.simplify2()
+    result = result.simplify()
 
     assert result == cond_add, f"could not match:\n{result}\n{cond_add}"
 
@@ -231,7 +231,7 @@ def test_simplification():
         (dummy_cond[1], dummy_func[1]),
         (dummy_cond[2], dummy_func[0]),
     ])
-    cond_func = cond_func.simplify2()
+    cond_func = cond_func.simplify()
 
     simplified_version = ConditionalFunction([
         (dummy_cond[0] | dummy_cond[2], dummy_func[0]),
@@ -248,7 +248,7 @@ def test_simplification():
         (x << 10, MapElementConstant(13)),
     ])
 
-    cond_func = cond_func.simplify2()
+    cond_func = cond_func.simplify()
 
     assert cond_func == x + 3
 
@@ -261,7 +261,7 @@ def test_linear_ranged_condition_subtraction():
     v2 = ReLU(x - 8)
     # Full Processing ( 0 < Lin[Bin[x_0, x_1, x_2, x_3] - 8] < inf , {} ) , [RangeCondition]
     v = v1 - v2
-    v = v.simplify2()
+    v = v.simplify()
 
     # TODO: improve union \ intersection of conditions
 
@@ -283,21 +283,21 @@ def test_ranges_over_conditional_function():
         (x>=0, x)
     ])
 
-    condition1 = (func < -10).simplify2()
+    condition1 = (func < -10).simplify()
     assert condition1 is FalseCondition
 
-    condition1 = (func > -10).simplify2()
+    condition1 = (func > -10).simplify()
     assert condition1 is TrueCondition
 
-    condition1 = (func < 10).simplify2()
+    condition1 = (func < 10).simplify()
     condition2 = (-10 < x) & (x < 10)
     assert condition1 == condition2
 
-    condition1 = (func > 10).simplify2()
+    condition1 = (func > 10).simplify()
     condition2 = (x < -10) | (10 < x)
     assert condition1 == condition2
 
-    condition1 = (func << 10).simplify2()
+    condition1 = (func << 10).simplify()
     condition2 = (x << -10) | (x << 10)
     assert condition1 == condition2
 
@@ -336,7 +336,7 @@ def test_output_promise():
     cond_func = ConditionalFunction([
         (dummy_cond[i], dummy_func[i]) for i in range(2)
     ])
-    cond_func = cond_func.simplify2()
+    cond_func = cond_func.simplify()
     assert is_integral.compute(cond_func, simplifier_context)
 
 
@@ -360,6 +360,6 @@ def test_sum_of_conditions():
     elem = sum([x[i]<<2*i for i in range(n)], 1-n)
     elem = ReLU(elem)
     # simplify_logger.tree.set_active(True)
-    cond1 = elem.simplify2()
+    cond1 = elem.simplify()
     cond2 = IntersectionCondition([x[i]<<2*i for i in range(n)])
     assert cond1 == cond2

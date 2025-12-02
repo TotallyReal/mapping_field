@@ -221,7 +221,7 @@ class MapElement:
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
 
-        processor = getattr(cls, "_simplify_with_var_values2")
+        processor = getattr(cls, "_simplify_with_var_values")
         if processor is not None:
             processor.__name__ = f"{cls.__name__}_simplify_with_var_values"
             MapElement._simplifier.register_class_processor(cls, processor)
@@ -403,7 +403,7 @@ class MapElement:
             if len(func_dict) > 0 or any([v in var_dict for v in self.vars]):
                 result = self._call_with_dict(var_dict, func_dict)
 
-        return result.simplify2() if simplify else result
+        return result.simplify() if simplify else result
 
     # Override when needed
     def _call_with_dict(self, var_dict: VarDict, func_dict: FuncDict) -> "MapElement":
@@ -424,7 +424,7 @@ class MapElement:
         """
         # TODO: This call to simplify can be a problem, if when simplifying we call evaluate.
         #       Think of a way to avoid this.
-        map_elem = self.simplify2()
+        map_elem = self.simplify()
         return map_elem.evaluate() if isinstance(map_elem, MapElementConstant) else None
 
     def is_zero(self) -> bool:
@@ -434,12 +434,12 @@ class MapElement:
 
     # <editor-fold desc=" ------------------------ Simplify 2 ------------------------">
 
-    def simplify2(self) -> "MapElement":
-        return self._simplify2() or self
+    def simplify(self) -> "MapElement":
+        return self._simplify() or self
 
     _simplifier = ProcessorCollection["MapElement"]()
 
-    def _simplify2(self) -> Optional["MapElement"]:
+    def _simplify(self) -> Optional["MapElement"]:
         if self._simplified_version is not None:
             return None if (self._simplified_version is self) else self._simplified_version
 
@@ -465,7 +465,7 @@ class MapElement:
         return self._simplified_version is self
 
     # Override when needed
-    def _simplify_with_var_values2(self) -> SimplifierOutput:
+    def _simplify_with_var_values(self) -> SimplifierOutput:
         """
         --------------- Override when needed ---------------
         Try to simplify the given function, given assignment of variables.
@@ -769,7 +769,7 @@ class CompositeElement(MapElement):
     @staticmethod
     def _entries_simplifier(elem: 'CompositeElement') -> SimplifierOutput:
         assert isinstance(elem, CompositeElement)
-        simplified_entries = [entry._simplify2() for entry in elem.operands]
+        simplified_entries = [entry._simplify() for entry in elem.operands]
         if all(entry is None for entry in simplified_entries):
             return None
         simplified_entries = [simp_entry or entry for simp_entry, entry in zip(simplified_entries, elem.operands)]
@@ -855,7 +855,7 @@ class Var(MapElement, DefaultSerializable):
 
     __hash__ = MapElement.__hash__
 
-    def _simplify_with_var_values2(self) -> SimplifierOutput:
+    def _simplify_with_var_values(self) -> SimplifierOutput:
         return None
 
 
@@ -1025,7 +1025,7 @@ class CompositeElementFromFunction(CompositeElement):
         super().__init__(operands=operands, name=name, simplified=simplified, output_properties = output_properties)
 
     # Override when needed
-    def _simplify_with_var_values2(self) -> MapElement | None:
+    def _simplify_with_var_values(self) -> MapElement | None:
 
         values = [operand.evaluate() for operand in self.operands]
         if any(value is None for value in values):

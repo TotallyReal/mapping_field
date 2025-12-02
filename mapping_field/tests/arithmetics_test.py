@@ -187,7 +187,7 @@ def test_simplification_after_assignment():
     assigned_addition = x + y
 
     assigned_addition = assigned_addition({x: ImprovedDummyMap((1,))})
-    assigned_addition = assigned_addition.simplify2()
+    assigned_addition = assigned_addition.simplify()
     assert assigned_addition == result
 
 
@@ -277,7 +277,7 @@ def test_associative_addition_creation():
 
     assert str(elem2) == "(1 + 2 + 3 + 4 + 1 + 2 + 3 + 4 + 5)"
 
-    elem2 = elem2.simplify2()
+    elem2 = elem2.simplify()
 
     assert elem2 == 25
 
@@ -285,7 +285,7 @@ def test_associative_addition_creation():
 
     assert str(elem3) == "(DummyMap(0) + DummyMap(1) - DummyMap(0))"
 
-    elem3 = elem3.simplify2()
+    elem3 = elem3.simplify()
 
     assert elem3 is dummy1
 

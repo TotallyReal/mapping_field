@@ -22,31 +22,31 @@ def test_post_generation_independence():
     v_copy[2] = 0
     func00 = BinaryExpansion(v_copy)
 
-    assert func.simplify2() != func00.simplify2()
+    assert func.simplify() != func00.simplify()
     assert str(func) == "Bin[v_0, v_1, v_2, v_3]"
     assert str(func00) == "Bin[v_0, 0, 0, v_3]"
 
     # Calling the function
     assigned = func({v[1]: 0, v[2]: 0})
 
-    assert assigned.simplify2() == func00.simplify2()
+    assert assigned.simplify() == func00.simplify()
     assert str(assigned) == "Bin[v_0, 0, 0, v_3]"
     # Some indication that func is frozen
     assert str(func) == "Bin[v_0, v_1, v_2, v_3]"
 
 
 def test_equality_constant():
-    x1 = BinaryExpansion([1, 0, 1, 1]).simplify2()
+    x1 = BinaryExpansion([1, 0, 1, 1]).simplify()
     assert x1 == 13
 
 
 def test_equality():
     v = BoolVar("v1")
-    x1 = BinaryExpansion([v, 0, 1]).simplify2()
-    x2 = BinaryExpansion([v, 0, 1]).simplify2()
+    x1 = BinaryExpansion([v, 0, 1]).simplify()
+    x2 = BinaryExpansion([v, 0, 1]).simplify()
     assert x1 == x2
 
-    x2 = BinaryExpansion([v, 0, 1, 0, 0]).simplify2()
+    x2 = BinaryExpansion([v, 0, 1, 0, 0]).simplify()
     assert x1 == x2
     assert x2 == x1
 
@@ -70,9 +70,9 @@ def test_constant_split():
 
 def addition_test(x, y, x_plus_y):
     result = x + y
-    assert result == x_plus_y.simplify2()
-    assert result - x == y.simplify2()
-    assert result - y == x.simplify2()
+    assert result == x_plus_y.simplify()
+    assert result - x == y.simplify()
+    assert result - y == x.simplify()
 
 
 def test_arithmetic_constant():
@@ -165,23 +165,23 @@ def test_simplify_range_condition():
     v = [BoolVar(f"v_{i}") for i in range(4)]
     x = BinaryExpansion(v)  # A number in [0,16)
 
-    condition1 = ((3 <= x) & (x < 100)).simplify2()
-    condition2 = ((3 <= x) & (x < 16)).simplify2()
+    condition1 = ((3 <= x) & (x < 100)).simplify()
+    condition2 = ((3 <= x) & (x < 16)).simplify()
     assert condition1 == condition2
 
     x = BinaryExpansion([1] + v)  # A number in [1,32), but only odd numbers
 
-    condition1 = ((0 <= x) & (x < 10)).simplify2()
-    condition2 = ((1 <= x) & (x < 10)).simplify2()
+    condition1 = ((0 <= x) & (x < 10)).simplify()
+    condition2 = ((1 <= x) & (x < 10)).simplify()
     assert condition1 == condition2
 
     # Only odd number in [16, 19) is 17, which is the only integer in [17,18)
-    condition1 = ((16 <= x) & (x < 19)).simplify2()
-    condition2 = (x << 17).simplify2()
+    condition1 = ((16 <= x) & (x < 19)).simplify()
+    condition2 = (x << 17).simplify()
     assert condition1 == condition2
 
-    condition1 = ((17 <= x) & (x < 100)).simplify2()
-    condition2 = (v[3] << 1).simplify2()
+    condition1 = ((17 <= x) & (x < 100)).simplify()
+    condition2 = (v[3] << 1).simplify()
     assert condition1 == condition2
 
 

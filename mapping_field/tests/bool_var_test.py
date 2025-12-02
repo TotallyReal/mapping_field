@@ -29,7 +29,7 @@ def test_union_assignment():
     cond = (x << 0) & (y << 0)
     simplify_logger.tree.set_active(True)
     cond = cond({x: 0, y: 0})
-    cond = cond.simplify2()
+    cond = cond.simplify()
     assert cond is TrueCondition
 
 
@@ -54,8 +54,8 @@ def test_two_var_simplifier():
             super().__init__(operands=[x, y], output_properties={is_condition: True})
             self.function = function
 
-        def _simplify_with_var_values2(self) -> MapElement | None:
-            output_value = self.function({x:self.operands[0], y:self.operands[1]}).simplify2()
+        def _simplify_with_var_values(self) -> MapElement | None:
+            output_value = self.function({x:self.operands[0], y:self.operands[1]}).simplify()
             if isinstance(output_value, BinaryCondition):
                 return output_value
             return None
@@ -64,7 +64,7 @@ def test_two_var_simplifier():
         simplify_logger.tree.reset()
         simplify_logger.log(f"Running test on {blue(function)}")
         two_var = TwoVar(function)
-        assert function == two_var.simplify2(), f"Failed with the function {function}"
+        assert function == two_var.simplify(), f"Failed with the function {function}"
 
 
 def test_two_var_simplifier2():
@@ -72,7 +72,7 @@ def test_two_var_simplifier2():
     x, y = BoolVar("x"), BoolVar("y")
 
     cond = (x << 0) & ((x << 0) | (y << 0))
-    cond = cond.simplify2()
+    cond = cond.simplify()
     assert cond == (x << 0)
 
 
@@ -99,12 +99,12 @@ def test_bool_simplification():
 
     func = x * x
     # It equals to x, but there is no simplification for this (yet)
-    func = func.simplify2()
+    func = func.simplify()
     assert x != func
     assert str(func) == "(x*x)"
 
     # We can however simplify condition functions over booleans
-    cond1 = (func << 1).simplify2()
+    cond1 = (func << 1).simplify()
     cond2 = x << 1
     assert cond1 == cond2
 
@@ -113,7 +113,7 @@ def test_two_bool_simplification():
     x, y = BoolVar("x"), BoolVar("y")
 
     cond1 = (x + y) << 0
-    cond1 = cond1.simplify2()
+    cond1 = cond1.simplify()
     cond2 = (x << 0) & (y << 0)
     assert cond1 == cond2
 

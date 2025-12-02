@@ -124,7 +124,7 @@ def test_named_function_generation():
 #     assert str(x) == "x"
 #     assert str(comp_function) == "DummyMap(0)"
 #
-#     assert comp_function.simplify2() is dummy
+#     assert comp_function.simplify() is dummy
 
 
 # ----------------- simplify test -----------------
@@ -148,7 +148,7 @@ class DummyMapWithVar(CompositeElement):
     __hash__ = MapElement.__hash__
 
     # Override when needed
-    def _simplify_with_var_values2(self) -> SimplifierOutput:
+    def _simplify_with_var_values(self) -> SimplifierOutput:
         return MapElementConstant.zero if (self.operands[0] == 0) else None
 
     @staticmethod
@@ -172,7 +172,7 @@ class SpecialDummyVar(MapElement):
         return None
 
 
-def test_simplify2():
+def test_simplify():
     dummy = DummyMapWithVar()
     assert str(dummy) == "DummyMap_0(x)"
 
@@ -272,7 +272,7 @@ def test_double_simplification():
             super().__init__()
             self.simplified_counter = 0
 
-        def _simplify_with_var_values2(self) -> SimplifierOutput:
+        def _simplify_with_var_values(self) -> SimplifierOutput:
             self.simplified_counter += 1
             return MapElementConstant(5)
 
@@ -281,12 +281,12 @@ def test_double_simplification():
     assert dummy.simplified_counter == 0
 
     # First simplification:
-    assert dummy.simplify2() == 5
+    assert dummy.simplify() == 5
     assert dummy.simplified_counter == 1
 
     # Second simplification:
     assert dummy != 5
-    assert dummy.simplify2() == 5
+    assert dummy.simplify() == 5
     assert dummy.simplified_counter == 1  # did not go up to 2
 
 
@@ -297,7 +297,7 @@ def test_double_simplification_assignment():
             super().__init__()
             self.simplified_counter = 0
 
-        def _simplify_with_var_values2(self) -> SimplifierOutput:
+        def _simplify_with_var_values(self) -> SimplifierOutput:
             self.simplified_counter += 1
             return None
 
@@ -305,12 +305,12 @@ def test_double_simplification_assignment():
 
     assert dummy.simplified_counter == 0
 
-    dummy.simplify2()
+    dummy.simplify()
 
     assert dummy.simplified_counter == 1
 
     function = MapElement.multiplication(MapElementConstant.one, dummy, simplify = False)
-    function.simplify2()
+    function.simplify()
 
     # The simplification process here is :
     #   1 * dummy   ->   dummy  ->   simplified

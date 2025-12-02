@@ -52,7 +52,7 @@ Note that the positional way only work for variable assignments. See `MapElement
 and a bit more keywords you can use when calling a function.
 
 ### Simplifying the function
-Calling `f.simplify2()` (where the `2` will be removed eventually...) will return a simplified version of the function
+Calling `f.simplify()` will return a simplified version of the function
 (and in general should not change `f` itself).
 When creating new types of simplifications, the main mechanism uses `Processor` simplifier methods:
 
@@ -61,7 +61,7 @@ When creating new types of simplifications, the main mechanism uses `Processor` 
 ```
 
 It get the function `f` to be simplified, an assignment of variables `var_dict`, and returns the simplified version, 
-or `None` if the simplifier couldn't find any. In particular, each `MapElement` class has such a method under `f._simplify2()`.
+or `None` if the simplifier couldn't find any. In particular, each `MapElement` class has such a method under `f._simplify()`.
 
 You can register new simplifiers directly into functions (in which case, we don't need the `f` variables), 
 or to classes. For example, we can add a $\cos^2(t) + \sin^2(t) = 1$ simplification to the `Add` function. Suppose
