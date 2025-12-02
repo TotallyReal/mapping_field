@@ -67,7 +67,7 @@ class _NotCondition(CompositeElementFromFunction):
 
     def __init__(self, operand: MapElement | None = None):
         operands = [operand] if operand is not None else None
-        super().__init__(operands=operands, name="Not", function=lambda a: 1 - a)
+        super().__init__(operands=operands, name="Not", function=lambda a: 1 - a, output_properties={is_condition: True})
 
         for v in self.vars:
             # TODO: Maybe switch directly to BoolVars?
@@ -165,7 +165,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
     def __init__(self, operands: list[MapElement], simplified: bool = False,
             output_properties: dict[PropertyEngine[Any], Any] | None = None):
         for operand in operands:
-            assert is_condition.compute(operand, simplifier_context)
+            assert is_condition.compute(operand, simplifier_context), f"{operand} is not a condition"
 
         super().__init__(
             operands=self.__class__._unpack_list(operands),

@@ -153,6 +153,8 @@ class ConditionalFunction(AssociativeListFunction, Ranged):
 
     @params_to_maps
     def __eq__(self, other: MapElement) -> bool:
+        if self is other:
+            return True
         if isinstance(other, ConditionalFunction):
             return self._op(other, operator.sub).simplify2().is_zero()
 

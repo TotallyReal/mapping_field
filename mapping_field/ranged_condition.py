@@ -681,7 +681,7 @@ def two_bool_vars_simplifier(elem: MapElement) -> SimplifierOutput:
     # TODO: make sure that I don't call has_promise for an element that I am trying to simplify, since it might
     #       call simplify inside it, and then we ar off to the infinite loop races.
     # if not is_condition.compute(elem, simplifier_context):
-    if not is_condition.compute(elem.promises, simplifier_context):
+    if not is_condition.compute(elem, simplifier_context):
         return ProcessFailureReason("Not a Condition", trivial=True)
     # if len(var_dict) > 0:
     #     return ProcessFailureReason("Only applicable with no var_dict", trivial=True)

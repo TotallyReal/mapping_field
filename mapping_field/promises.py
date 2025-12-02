@@ -37,14 +37,14 @@ def register_promise_preserving_functions(promise: OutputValidator, elem_classes
 IsCondition = OutputValidator("Condition")
 
 
-def validate_constant_condition(elem: MapElement) -> bool | None:
-    value = elem.evaluate()
-    if value is None:
-        return None
-    return value in (0, 1)
-
-
-IsCondition.register_validator(validate_constant_condition)
+# def validate_constant_condition(elem: MapElement) -> bool | None:
+#     value = elem.evaluate()
+#     if value is None:
+#         return None
+#     return value in (0, 1)
+#
+#
+# IsCondition.register_validator(validate_constant_condition)
 
 # </editor-fold>
 

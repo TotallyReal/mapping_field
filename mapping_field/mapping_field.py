@@ -951,9 +951,9 @@ class Var(MapElement, DefaultSerializable):
         value = var_dict.get(self, None)
         if value is None:
             return self
-        for promise in self.promises.output_promises():
-            if not value.has_promise(promise):
-                raise InvalidInput(f"{self}={value} does not satisfy the promise of {promise}")
+        # for promise in self.promises.output_promises():
+        #     if not value.has_promise(promise):
+        #         raise InvalidInput(f"{self}={value} does not satisfy the promise of {promise}")
 
         for engine, prop_value in simplifier_context.get_properties(self).items():
             assigned_prop = engine.compute(value, simplifier_context)
@@ -1260,7 +1260,8 @@ class CompositeElementFromFunction(CompositeElement):
 
     def __init__(
             self, name: str, function: Callable[[list[ExtElement]], ExtElement],
-            operands: list[MapElement] | None = None, simplified: bool = False):
+            operands: list[MapElement] | None = None, simplified: bool = False,
+            output_properties: dict[PropertyEngine[Any], Any] | None = None):
         """
         A map defined by a callable python function.
         The number of parameters to this function is the number of standard variables for this MapElement,
@@ -1273,7 +1274,7 @@ class CompositeElementFromFunction(CompositeElement):
             operands = [Var(f"X_{name}_{i}") for i in range(self.num_parameters)]
         else:
             assert len(operands) == self.num_parameters
-        super().__init__(operands=operands, name=name, simplified=simplified)
+        super().__init__(operands=operands, name=name, simplified=simplified, output_properties = output_properties)
 
     # Override when needed
     def _simplify_with_var_values2(self) -> MapElement | None:

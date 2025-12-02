@@ -90,8 +90,34 @@ class BoolPropertyEngine(PropertyByRulesEngine[bool]):
 
         return None
 
-is_condition = BoolPropertyEngine(IsCondition)
+
+# <editor-fold desc="Condition">
+
+class ConditionEngine(BoolPropertyEngine):
+
+    def __init__(self):
+        super().__init__(IsCondition)
+
+    @staticmethod
+    @property_rule
+    def zero_one_is_condition(element: MapElement, context: SimplifierContext) -> bool | None:
+        value = element.evaluate()
+        if value is None:
+            return None
+
+        if isinstance(value, int):
+            return value in (0, 1)
+
+        if isinstance(value, float):
+            return value == int(value) and int(value) in (0, 1)
+
+        return None
+
+is_condition = ConditionEngine()
 engine_to_promise[is_condition] = IsCondition
+
+# </editor-fold>
+
 
 # <editor-fold desc="Integral">
 
