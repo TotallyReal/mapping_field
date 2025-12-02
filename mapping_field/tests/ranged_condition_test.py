@@ -1,3 +1,7 @@
+import operator
+
+import pytest
+
 from mapping_field.arithmetics import Add
 from mapping_field.conditional_function import ReLU
 from mapping_field.conditions import (
@@ -6,7 +10,7 @@ from mapping_field.conditions import (
 from mapping_field.log_utils.tree_loggers import TreeLogger, blue
 from mapping_field.mapping_field import MapElementConstant, Var, simplifier_context
 from mapping_field.property_engines import is_integral
-from mapping_field.ranged_condition import IntervalRange, RangeCondition, in_range
+from mapping_field.ranged_condition import IntervalRange, RangeCondition, in_range, XX
 from mapping_field.tests.utils import DummyMap
 from itertools import product
 
@@ -73,6 +77,16 @@ def test_interval_equality():
     # Point interval
     assert IntervalRange.of_point(5) == IntervalRange[5, 5]
 
+
+def test_interval_xx_construction():
+    assert (XX < 5)  == IntervalRange(float("-inf"), 5, False, False)
+    assert (XX <= 5) == IntervalRange(float("-inf"), 5, False, True)
+    assert (5 < XX)  == IntervalRange(5, float("inf"), False, False)
+    assert (5 <= XX) == IntervalRange(5, float("inf"), True, False)
+
+    assert (5 <= XX) & (XX < 10) == IntervalRange(5, 10, True, False)
+    assert (XX << 5) == IntervalRange.of_point(5)
+
 #       ╭─────────────────────────────────────────────────╮
 #       │               Ranged Condition                  │
 #       ╰─────────────────────────────────────────────────╯
@@ -112,35 +126,20 @@ def test_trivial_ranges():
     assert cond is TrueCondition
 
 
-def test_comparison_operators():
+def test_ranged_comparison_from_interval_comparison():
     dummy = DummyMap(0)
 
-    cond = dummy < 10
-    assert cond == RangeCondition(dummy, IntervalRange(float("-inf"), 10, False, False))
-
-    cond = dummy <= 10
-    assert cond == RangeCondition(dummy, IntervalRange(float("-inf"), 10, False, True))
-
-    cond = 10 <= dummy
-    assert cond == RangeCondition(dummy, IntervalRange(10, float("inf"), True, False))
-
-    cond = 10 < dummy
-    assert cond == RangeCondition(dummy, IntervalRange(10, float("inf"), False, False))
+    for op in (operator.lt, operator.le, operator.gt, operator.ge, operator.lshift):
+        assert op(dummy, 5) == RangeCondition(dummy, op(XX, 5)), \
+            f"{op} does not transform from RangedCondition to Interval"
 
     # Unfortunately, python is terrible, and I can't use 2-sided comparisons like:
     #   cond = (10 <= dummy < 20)
     cond = (10 <= dummy) & (dummy < 20)
-    assert cond == RangeCondition(dummy, IntervalRange(10, 20, True, False))
+    assert cond == RangeCondition(dummy, (10 <= XX) & (XX < 20))
 
-
-def test_lshift_operator():
-    dummy = DummyMap(0)
-
-    cond1 = dummy << 5
-    cond2 = RangeCondition(dummy, IntervalRange.of_point(5))
-    cond3 = dummy.where() == 5
-
-    assert cond1 == cond2 == cond3
+    cond = dummy << 10
+    assert cond == RangeCondition(dummy, XX << 10) == (dummy.where() == 10)
 
 
 def test_invert_range():
@@ -383,10 +382,7 @@ def test_integral_product():
     assert cond1 == cond2
     assert cond1 != cond3
 
-    dummy = DummyMap(output_properties={
-        is_integral: True,
-        in_range: IntervalRange(5, float("inf"), True, False)
-    })
+    dummy = DummyMap(output_properties={is_integral: True, in_range: 5 <= XX})
     dummy2 = 2 * dummy
 
     # Now dummy is an integer >=5, so that dummy2 is an even integer >= 10
@@ -404,7 +400,7 @@ def test_simplify_on_ranged_promised_functions():
     assert condition is None
 
     # Add to dummy a nonnegative output assumption
-    dummy = DummyMap(output_properties={in_range: IntervalRange[0, float("inf")]})
+    dummy = DummyMap(output_properties={in_range: 0 <= XX})
 
     condition = (-5 <= dummy)
     condition = condition.simplify()

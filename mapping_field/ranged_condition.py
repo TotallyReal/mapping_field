@@ -135,7 +135,7 @@ class IntervalRange:
         return (IntervalRange(low=float('-inf'), high=self.low, contain_low=False, contain_high=not self.contain_low) ,
                 IntervalRange(low=self.high, high=float('inf'), contain_low=not self.contain_high, contain_high=False))
 
-    def intersection(self, other: "IntervalRange") -> Optional["IntervalRange"]:
+    def intersection(self, other: "IntervalRange") -> "IntervalRange":
         """
         Returns the intersection interval if not empty, otherwise return None.
         """
@@ -159,6 +159,9 @@ class IntervalRange:
             return IntervalRange.of_point(low)
 
         return IntervalRange(low, high, contain_low, contain_high)
+
+    def __and__(self, other: "IntervalRange") -> "IntervalRange":
+        return self.intersection(other)
 
     def union_fill(self, other: "IntervalRange") -> "IntervalRange":
         """
@@ -200,6 +203,9 @@ class IntervalRange:
         contain_true_high = range1.contains(true_high) or range2.contains(true_high)
 
         return IntervalRange(true_low, true_high, contain_true_low, contain_true_high)
+
+    def __or__(self, other: "IntervalRange") -> Optional["IntervalRange"]:
+        return self.union(other)
 
     def integral_union(self, other: "IntervalRange") -> Optional["IntervalRange"]:
         """
@@ -285,6 +291,31 @@ class IntervalRange:
         if high == self.high and not self.contain_high:
             high -= 1
         return IntervalRange[low, high]
+
+
+class _IntervalRangeConstructor:
+
+    def __lshift__(self, value):
+        assert isinstance(value, (int, float))
+        return IntervalRange.of_point(value)
+
+    def __lt__(self, value):
+        assert isinstance(value, (int, float))
+        return IntervalRange(float("-inf"), value, False, False)
+
+    def __le__(self, value):
+        assert isinstance(value, (int, float))
+        return IntervalRange(float("-inf"), value, False, True)
+
+    def __gt__(self, value):
+        assert isinstance(value, (int, float))
+        return IntervalRange(value, float("inf"),False, False)
+
+    def __ge__(self, value):
+        assert isinstance(value, (int, float))
+        return IntervalRange(value, float("inf"),True, False)
+
+XX = _IntervalRangeConstructor()
 
 
 class RangeEngine(PropertyByRulesEngine[MapElement, SimplifierContext, IntervalRange]):
