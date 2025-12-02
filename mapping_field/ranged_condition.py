@@ -92,17 +92,20 @@ class IntervalRange:
         return self.contain_low and self.contain_high
 
     def is_open(self) -> bool:
-        return ~self.contain_low and ~self.contain_high
+        return not (self.contain_low or self.contain_high)
 
     def __eq__(self, other):
         if not isinstance(other, IntervalRange):
             return False
 
-        if not self.is_empty and not other.is_empty:
-            return (( self.low,  self.high,  self.contain_low,  self.contain_high) ==
-                    (other.low, other.high, other.contain_low, other.contain_high))
+        if (self.is_all and other.is_all) or (self.is_empty and other.is_empty):
+            return True
 
-        return self.is_empty == other.is_empty
+        if self.is_empty or other.is_empty:
+            return False
+
+        return (( self.low,  self.high,  self.contain_low,  self.contain_high) ==
+                (other.low, other.high, other.contain_low, other.contain_high))
 
     def contains(self, other: Union[int, float, "IntervalRange"]) -> bool:
         if not isinstance(other, IntervalRange):
@@ -553,6 +556,27 @@ class RangeCondition(CompositeElement, MapElementProcessor):
                 [RangeCondition(summand, IntervalRange.of_point(f_range.high)) for summand, f_range in zip(elem.operands, ranges)],
             )
 
+        return None
+
+    @class_simplifier
+    @staticmethod
+    def _condition_in_range_simplifier(element: MapElement) -> SimplifierOutput:
+        """
+                cond == 1     =>      cond
+        """
+        # TODO: add tests.
+        #       I don't like this step too much. If I start with (x << 1) for bool var, it will become just x.
+        #       However, if I now try to set x = 1, instead of getting TrueCondition, I will get 1. And while they are
+        #       the same, it is easier to think about them (and view them on screen) differently.
+        assert isinstance(element, RangeCondition)
+        if not is_condition.compute(element.function, simplifier_context):
+            return ProcessFailureReason("Only applicable for ranges on conditions")
+        if isinstance(element.function, Var):
+            return None
+        if element.range == IntervalRange.of_point(1):
+            return element.function
+        if element.range == IntervalRange.of_point(0):
+            return ~element.function
         return None
 
     # </editor-fold>

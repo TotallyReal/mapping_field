@@ -23,26 +23,6 @@ def is_bool_var(v: MapElement) -> bool:
     return (f_range is not None) and IntervalRange[0,1].contains(f_range) and is_integral.compute(v, simplifier_context)
 
 
-@RangeCondition.register_class_simplifier
-def _condition_in_range_simplifier(element: MapElement) -> SimplifierOutput:
-    """
-            cond == 1     =>      cond
-    """
-    # TODO: add tests.
-    #       I don't like this step too much. If I start with (x << 1) for bool var, it will become just x.
-    #       However, if I now try to set x = 1, instead of getting TrueCondition, I will get 1. And while they are
-    #       the same, it is easier to think about them (and view them on screen) differently.
-    assert isinstance(element, RangeCondition)
-    if not is_condition.compute(element.function, simplifier_context):
-        return ProcessFailureReason("Only applicable for ranges on conditions")
-    if is_bool_var(element.function): # TODO: Only Var?
-        return None
-    if element.range == IntervalRange.of_point(1):
-        return element.function
-    if element.range == IntervalRange.of_point(0):
-        return ~element.function
-    return None
-
 @MapElement._simplifier.register_processor
 def two_bool_vars_simplifier(elem: MapElement) -> SimplifierOutput:
     # TODO: make sure that I don't call has_promise for an element that I am trying to simplify, since it might
