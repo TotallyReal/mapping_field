@@ -5,7 +5,7 @@ from mapping_field.conditions import (
     FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
 )
 from mapping_field.linear import Linear
-from mapping_field.log_utils.tree_loggers import TreeLogger, red
+from mapping_field.log_utils.tree_loggers import TreeLogger, red, TreeAction, green, magenta
 from mapping_field.mapping_field import (
     CompositeElement, ExtElement, MapElement, MapElementConstant, SimplifierOutput, Var,
     convert_to_map, simplifier_context,
@@ -468,66 +468,198 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
 
         return low_dict, high_dict
 
-    def _as_binary_range_data(
-        self, condition: MapElement
-    ) -> dict[Var, tuple[dict[Var, int], dict[Var, int]]] | None:
+    def _get_extreme_interval(self, condition: MapElement, largest: bool) -> IntervalRange | None:
+        """
+            Assumption: self is a pure BinaryExpansion, and the variables of condition are contained in
+            the variables of self.
 
-        # TODO: hate this together with me...
-        value = self.evaluate()
-        assert value is None  # if this binary expansion is constant, there is nothing really to do
+            Every condition on the boolean variables of this pure BinaryExpansion, can be viewed as union of
+            RangedConditions over this BinaryExpansion. Try to find and return the largest\lowest such interval
+            according to the parameter.
+            If cannot compute it, returns None.
+        """
 
-        assert is_condition.compute(condition, simplifier_context)
-        condition = condition.simplify2()
+        direction = 1 if largest else 0
 
-        if condition is TrueCondition:
-            return in_range.compute(self, simplifier_context)
-        if condition is FalseCondition:
-            return IntervalRange.empty()
-        if len(condition.vars) == 0:
-            # Usually if the function doesn't depend on anything, it is a constant, and for conditions it should be
-            # either True\False conditions. But some dummy conditions in test don't have variables as well, so
-            # don't try to process them.
+        f_range = in_range.compute(self, simplifier_context)
+        low, high = f_range.low, f_range.high
+
+        # Find the extreme point at the given direction (0 - smallest, 1 - largest)
+        extreme_point_values = {}
+        assigned_condition = condition
+        reversed_vars = list(reversed(self.vars))
+        for v in reversed_vars:
+            if assigned_condition is TrueCondition:
+                extreme_point_values[v] = direction
+                continue
+
+            next_assigned_condition = assigned_condition({v: direction})
+            if next_assigned_condition is FalseCondition:
+                next_assigned_condition = assigned_condition({v: 1 - direction})
+                extreme_point_values[v] = 1 - direction
+            else:
+                # Note that we might get here even if the condition is False, but cannot be simplified enough to
+                # check it, so this extreme_point_values is a lower (for 0) or upper (for 1) bound to the
+                # corresponding extreme point.
+                extreme_point_values[v] = direction
+            assigned_condition = next_assigned_condition
+
+        if assigned_condition is not TrueCondition:
             return None
+
+        extreme_point = self(extreme_point_values).evaluate()
+        if extreme_point is None:
+            return None
+
+        # Use binary tree shenanigans to find the biggest interval [bound, extreme_point] ending with the
+        # extreme point.
+        # Considering the extreme_point_values as path leading to a subtree, the (bound+1) for 0 (resp.
+        # (bound-1) for 1) point is right of that tree (resp. left).
+        sub_tree_path = extreme_point_values.copy()
+        for v in self.vars:
+            value = sub_tree_path[v]
+            del sub_tree_path[v]
+            if value == 1 - direction:
+                continue
+            if condition({v: 1 - direction, **sub_tree_path}) is not TrueCondition:
+                sub_tree_path[v] = 1 - direction
+                break
+        else:
+            if largest:
+                return IntervalRange[low, extreme_point]
+            else:
+                return IntervalRange[extreme_point, high]
+
+        # now the sub_tree_path contains (low-1)
+        for v in reversed_vars[len(sub_tree_path):]:
+            if condition({v: direction, **sub_tree_path}) is TrueCondition:
+                sub_tree_path[v] = 1 - direction
+            else:
+                # We might get here even if the assigned condition is true, but cannot be simplified to true.
+                # Hence, low-1 might be left of this tree.
+                sub_tree_path[v] = direction
+
+            # sub_tree_path should point to low-1
+        if condition(sub_tree_path) is TrueCondition:
+            return None
+
+        other_bound = self(sub_tree_path).evaluate()
+        if other_bound is None:
+            return None
+        if largest:
+            return IntervalRange[other_bound + 1, extreme_point]
+        else:
+            return IntervalRange[extreme_point, other_bound - 1]
+
+
+    def _as_binary_range_data(self, condition: MapElement) -> dict[Var, tuple[dict[Var, int], dict[Var, int]]] | None:
+        """
+            Every condition on the boolean variables of this BinaryExpansion, can be viewed as union of
+            RangedConditions over this BinaryExpansion. Try to find and return the lowest and highest such
+            intervals, or None if could not.
+
+            Assumption: self is a pure binary expansion.
+        """
 
         if not (set(condition.vars) <= set(self.vars)):
             return None
-        vars_order = {v: i for i, v in enumerate(self.vars)}
 
-        if isinstance(condition, RangeCondition):
-            condition = IntersectionCondition([condition])
+        intervals = []
+        for direction in (0,1):
+            # Find the extreme point at the given direction (0 - smallest, 1 - largest)
+            extreme_point_values = {}
+            assigned_condition = condition
+            reversed_vars = list(reversed(self.vars))
+            for v in reversed_vars:
+                if assigned_condition is TrueCondition:
+                    extreme_point_values[v] = direction
+                    continue
 
-        if not isinstance(condition, IntersectionCondition):
+                next_assigned_condition = assigned_condition({v: direction})
+                if next_assigned_condition is FalseCondition:
+                    next_assigned_condition = assigned_condition({v: 1-direction})
+                    extreme_point_values[v] = 1 - direction
+                else:
+                    # Note that we might get here even if the condition is False, but cannot be simplified enough to
+                    # check it, so this extreme_point_values is a lower (for 0) or upper (for 1) bound to the
+                    # corresponding extreme point.
+                    extreme_point_values[v] = direction
+                assigned_condition = next_assigned_condition
+
+            if assigned_condition is not TrueCondition:
+                return None
+
+            # Use binary tree shenanigans to find the biggest interval [bound, extreme_point] ending with the
+            # extreme point.
+            # Considering the extreme_point_values as path leading to a subtree, the (bound+1) for 0 (resp.
+            # (bound-1) for 1) point is right of that tree (resp. left).
+            sub_tree_path = extreme_point_values.copy()
+            for v in self.vars:
+                value = sub_tree_path[v]
+                del sub_tree_path[v]
+                if value == 1-direction:
+                    continue
+                if condition({v: 1-direction, **sub_tree_path}) is not TrueCondition:
+                    sub_tree_path[v] = 1-direction
+                    break
+            else:
+                # interval starts at 0
+                intervals.append(None)
+                continue
+
+            # now the sub_tree_path contains (low-1)
+            for v in reversed_vars[len(sub_tree_path):]:
+                if condition({v: direction, **sub_tree_path}) is TrueCondition:
+                    sub_tree_path[v] = 1-direction
+                else:
+                    # We might get here even if the assigned condition is true, but cannot be simplified to true.
+                    # Hence, low-1 might be left of this tree.
+                    sub_tree_path[v] = direction
+
+        # sub_tree_path should point to low-1
+        if condition(sub_tree_path) is TrueCondition:
             return None
 
+        low = self(sub_tree_path)
+        high = self(extreme_point_values)
+        return IntervalRange[low, high]
+
+
+        # This computation is only applicable for ranged conditions
+        conditions = condition.conditions if isinstance(condition, IntersectionCondition) else [condition]
+        if not all(isinstance(sub_cond, RangeCondition) for sub_cond in conditions):
+            return None
+        conditions = cast(list[RangeCondition], conditions)
+
+
+
+        # TODO: hate this together with me...
         # Only accept RangeConditions(BinaryExpansion) here (which include assignments), on disjoint sets of vars.
-        # Also, to make my life much more simple, assumer that the vars are consecutive.
+        # Also, to make my life much more simple, assume that the vars are consecutive.
+        vars_order = {v: i for i, v in enumerate(self.vars)}
         used_vars: dict[Var, tuple[dict[Var, int], dict[Var, int]]] = {v: (dict(), dict()) for v in self.vars}
-        conditions = condition.conditions
-        for sub_cond in conditions:
-            if not isinstance(sub_cond, RangeCondition):
+        for ranged_cond in conditions:
+            # have not used the variables from this ranged_cond yet
+            if not all(len(used_vars[v][0]) == 0 for v in ranged_cond.vars):
                 return None
-            if not all(len(used_vars[v][0]) == 0 for v in sub_cond.vars):
-                return None
-            elem = BinaryExpansion.of(sub_cond.function)
+            elem = BinaryExpansion.of(ranged_cond.function)
             if elem is None:
                 return None
 
-            elem_vars_indices = [vars_order[v] for v in sub_cond.vars]
+            # The variables of this sub condition must appear as consecutive variables in this BinaryExpansion object.
+            elem_vars_indices = [vars_order[v] for v in elem.vars]
             sorted_elem_vars_indices = sorted(elem_vars_indices)
             if elem_vars_indices != list(range(sorted_elem_vars_indices[0], sorted_elem_vars_indices[-1] + 1)):
                 return None
 
-            other_range = in_range.compute(elem, simplifier_context)
+            # Get minimum and maximum value of elem
+            other_range = in_range.compute(elem, simplifier_context).intersection(ranged_cond.range)
             if other_range is None:
                 return None
             other_range = other_range.as_integral()
             if other_range is None:
                 return None
             cur_low_dict, cur_high_dict = elem._min_max_assignment_in_range(other_range.low, other_range.high)
-            # bin_exp = BinaryExpansion(sub_cond.vars)
-            # if not (bin_exp(cur_low_dict).evaluate() <= bin_exp(point).evaluate() <= bin_exp(
-            #         cur_high_dict).evaluate()):
-            #     return None
 
             for v in reversed(elem.vars):
                 if cur_low_dict[v] == cur_high_dict[v]:
@@ -555,46 +687,86 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
 
         return used_vars
 
-    def as_binary_range_containing(self, condition: MapElement, low: int, high: int) -> tuple[int, int] | None:
+    def as_binary_range_containing(self, condition: MapElement, low: int, high: int) -> IntervalRange | None:
         """
-        Tries to view the condition as a ranged condition on this BinaryExpansion (not necessarily interval range).
-        If possible look for the interval containing the point, and return its upper or lower bound depending on
-        the 'upper_bound' argument.
-        If it could not do any of the steps above, return None.
+        Check if the given condition can be viewed as a condition on the range of this Binary expansion, such that
+        its union with the range [low, high] produces an interval range. If true, return this new interval as
+        (low, high) points (including both), otherwise return None.
         """
-        used_vars = self._as_binary_range_data(condition)
-        if used_vars is None:
+        if not self.is_pure():
+            return None
+        if not (set(condition.vars) <= set(self.vars)):
             return None
 
-        low_point, high_point = self._min_max_assignment_in_range(low - 1, high + 1)
-        var_order = {v: i for i, v in enumerate(self.vars)}
+        assert is_condition.compute(condition, simplifier_context)
 
-        check_low = True
-        check_high = True
-        # TODO: possibly repeat some validations here. Unfortunately, the dict validations are unhashable to be put in a set.
-        for cur_low_dict, cur_high_dict in used_vars.values():
-            var_keys = sorted(cur_low_dict.keys(), key=lambda v: var_order[v])
-            bin_exp = BinaryExpansion(var_keys)
-            lower_bound = bin_exp(cur_low_dict).evaluate()
-            upper_bound = bin_exp(cur_high_dict).evaluate()
-            if check_low and not (lower_bound <= bin_exp(low_point).evaluate() <= upper_bound):
-                check_low = False
-            if check_high and not (lower_bound <= bin_exp(high_point).evaluate() <= upper_bound):
-                check_high = False
-            if not (check_low or check_high):
-                return None
+        # Some trivial result for constant conditions
+        condition = condition.simplify2()
+        if condition is TrueCondition:
+            return in_range.compute(self, simplifier_context)
+        if condition is FalseCondition:
+            return IntervalRange.empty()
+        if len(condition.vars) == 0:
+            # Usually if the function doesn't depend on anything, it is a constant, and for conditions it should be
+            # either True\False conditions. But some dummy conditions in tests don't have variables as well, so
+            # don't try to process them.
+            return None
 
-        for v in self.vars:
-            cur_low_dict, cur_high_dict = used_vars[v]
-            if len(cur_low_dict) == 1 and cur_low_dict[v] < cur_high_dict[v]:
-                high_point[v] = 1
-                low_point[v] = 0
-                continue
-            high_point.update(cur_high_dict)
-            low_point.update(cur_low_dict)
-            break
+        # if this binary expansion is constant, there is nothing really to do
+        value = self.evaluate()
+        assert value is None
 
-        return self(low_point).evaluate() if check_low else low, (self(high_point).evaluate() if check_high else high)
+        lowest_interval = self._get_extreme_interval(condition, False)
+        if lowest_interval is None:
+            return None
+        if lowest_interval.high < low - 1:
+            return None
+
+        highest_interval = self._get_extreme_interval(condition, True)
+        if highest_interval is None:
+            return None
+        if highest_interval.low > high + 1:
+            return None
+
+        low = min(low, int(lowest_interval.low))
+        high = max(high, int(highest_interval.high))
+        return IntervalRange[low, high]
+
+
+
+        # used_vars = self._as_binary_range_data(condition)
+        # if used_vars is None:
+        #     return None
+        #
+        # low_point, high_point = self._min_max_assignment_in_range(low - 1, high + 1)
+        # var_order = {v: i for i, v in enumerate(self.vars)}
+        #
+        # check_low = True
+        # check_high = True
+        # # TODO: possibly repeat some validations here. Unfortunately, the dict validations are unhashable to be put in a set.
+        # for cur_low_dict, cur_high_dict in used_vars.values():
+        #     var_keys = sorted(cur_low_dict.keys(), key=lambda v: var_order[v])
+        #     bin_exp = BinaryExpansion(var_keys)
+        #     lower_bound = bin_exp(cur_low_dict).evaluate()
+        #     upper_bound = bin_exp(cur_high_dict).evaluate()
+        #     if check_low and not (lower_bound <= bin_exp(low_point).evaluate() <= upper_bound):
+        #         check_low = False
+        #     if check_high and not (lower_bound <= bin_exp(high_point).evaluate() <= upper_bound):
+        #         check_high = False
+        #     if not (check_low or check_high):
+        #         return None
+        #
+        # for v in self.vars:
+        #     cur_low_dict, cur_high_dict = used_vars[v]
+        #     if len(cur_low_dict) == 1 and cur_low_dict[v] < cur_high_dict[v]:
+        #         high_point[v] = 1
+        #         low_point[v] = 0
+        #         continue
+        #     high_point.update(cur_high_dict)
+        #     low_point.update(cur_low_dict)
+        #     break
+        #
+        # return self(low_point).evaluate() if check_low else low, (self(high_point).evaluate() if check_high else high)
 
     # <editor-fold desc=" ------------------------ Simplifiers ------------------------ ">
 
@@ -688,22 +860,43 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
         as another RangedCondition over the same BinaryExpansion.
         """
         assert isinstance(union_elem, UnionCondition)
-        if len(union_elem.conditions) != 2:
-            return None
 
-        cond1, cond2 = union_elem.conditions
-        if isinstance(cond1, RangeCondition) and isinstance(cond1.function, BinaryExpansion):
-            simplify_logger.log(f"1st condition is ranged binary expansion: {red(cond1)}")
-            c_range = cond1.range.as_integral()
-            interval = cond1.function.as_binary_range_containing(cond2, c_range.low, c_range.high)
+        # if len(union_elem.conditions) == 2:
+        #     cond1, cond2 = union_elem.conditions
+        #     if isinstance(cond1, RangeCondition) and isinstance(cond1.function, BinaryExpansion):
+        #         simplify_logger.log(f"1st condition is ranged binary expansion: {red(cond1)}")
+        #         c_range = cond1.range.as_integral()
+        #         interval = cond1.function.as_binary_range_containing(cond2, c_range.low, c_range.high)
+        #         if interval is not None:
+        #             return RangeCondition(cond1.function, interval)
+        #     if isinstance(cond2, RangeCondition) and isinstance(cond2.function, BinaryExpansion):
+        #         simplify_logger.log(f"2nd condition is ranged binary expansion: {red(cond2)}")
+        #         c_range = cond2.range.as_integral()
+        #         interval = cond2.function.as_binary_range_containing(cond1, c_range.low, c_range.high)
+        #         if interval is not None:
+        #             return RangeCondition(cond2.function, interval)
+
+        conditions = union_elem.conditions
+        num_conditions = len(conditions)
+        if num_conditions <= 1:
+            return None
+        simplify_logger.log(f"Trying to form a binary expansion ranged function from {red(union_elem)}")
+        for i, condition in enumerate(conditions):
+            if not (isinstance(condition, RangeCondition) and isinstance(condition.function, BinaryExpansion)):
+                continue
+            c_range = condition.range.as_integral()
+            rest = UnionCondition(conditions[:i]+conditions[i+1:]) if num_conditions > 2 else conditions[1-i]
+
+            title_start = f"{i}: {red(condition)} || [{red(rest)}]"
+            simplify_logger.log(title_start, action=TreeAction.GO_DOWN)
+            interval = condition.function.as_binary_range_containing(rest, c_range.low, c_range.high)
             if interval is not None:
-                return RangeCondition(cond1.function, IntervalRange[*interval])
-        if isinstance(cond2, RangeCondition) and isinstance(cond2.function, BinaryExpansion):
-            simplify_logger.log(f"2nd condition is ranged binary expansion: {red(cond2)}")
-            c_range = cond2.range.as_integral()
-            interval = cond2.function.as_binary_range_containing(cond1, c_range.low, c_range.high)
-            if interval is not None:
-                return RangeCondition(cond2.function, IntervalRange[*interval])
+                simplify_logger.set_context_title(f"{title_start} => {green(interval)}")
+                simplify_logger.log(message=f"Transform into interval {green(interval)}", action=TreeAction.GO_UP)
+                return RangeCondition(condition.function, interval)
+
+            simplify_logger.set_context_title(f"{title_start} => {magenta(' X X X ')}")
+            simplify_logger.log(message=magenta(' X X X '), action=TreeAction.GO_UP)
 
         return None
 
