@@ -142,8 +142,8 @@ def test_neg_distributive():
 def test_addition_rules():
     x, y = DummyMap(0), DummyMap(1)
     assert str(x + y) == "(DummyMap(0) + DummyMap(1))"
-    assert str(x + (-y)) == "(DummyMap(0)-DummyMap(1))"
-    assert str((-x) + y) == "(DummyMap(1)-DummyMap(0))"
+    assert str(x + (-y)) == "(-DummyMap(1) + DummyMap(0))"
+    assert str((-x) + y) == "(-DummyMap(0) + DummyMap(1))"
     assert str((-x) + (-y)) == "(-(DummyMap(0) + DummyMap(1)))"
 
 
@@ -282,7 +282,7 @@ def test_associative_addition_creation():
 
     elem3 = MultiAdd([dummy0, dummy1, -dummy0])
 
-    assert str(elem3) == "(DummyMap(0) + DummyMap(1) + (-DummyMap(0)))"
+    assert str(elem3) == "(DummyMap(0) + DummyMap(1) - DummyMap(0))"
 
     elem3 = elem3.simplify2()
 

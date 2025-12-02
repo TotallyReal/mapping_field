@@ -140,25 +140,56 @@ class MultiAdd(AssociativeListFunction, binary_class=_Add):
     trivial_element = MapElementConstant.zero
     op_symbol = "+"
 
+    def to_string(self, vars_to_str: dict[Var, str]):
+        op0 = self.operands[0]
+        s = f'-{op0.operand}' if isinstance(op0, _Negative) else str(op0)
+        for operand in self.operands[1:]:
+            s += f' - {operand.operand}' if isinstance(operand, _Negative) else f' + {operand}'
+        return f"{self.__class__.left_bracket}{s}{self.__class__.right_bracket}"
+
+    def neg(self) -> MapElement | None:
+        """
+                - (x-y) => -x+y
+            Only works if this doesn't increase the total number of minus signs.
+        """
+        neg_counter = sum([isinstance(operand, _Negative) for operand in self.operands],0)
+        if len(self.operands)-1 <= 2*neg_counter:
+            return MultiAdd([-operand for operand in self.operands])
+        return None
+
     @class_simplifier
     @staticmethod
-    def _to_sub_simplifier(add_func: MapElement) -> SimplifierOutput:
+    def _neg_extractor_simplifier(multi_add: MapElement) -> SimplifierOutput:
         """
-                   x + (-y)  =>  x - y
-                (-x) + (-y)  =>  - (x + y)
+                (x - y - z - w) => -(-x+y+z+w)
+            Only works if this strictly reduces the total number of minus signs.
         """
-        assert isinstance(add_func, MultiAdd)
-        if AssociativeListFunction.is_binary(add_func) or len(add_func.operands) != 2:
-            return ProcessFailureReason("Not applicable", trivial = True)
+        assert isinstance(multi_add, MultiAdd)
+        neg_counter = sum([isinstance(operand, _Negative) for operand in multi_add.operands],0)
+        if len(multi_add.operands)+1 < 2*neg_counter:
+            return Neg(MultiAdd([-operand for operand in multi_add.operands]))
+        return ProcessFailureReason('Not enough negations to extract', trivial = True)
 
-        sign0, map0 = as_neg(add_func.operands[0])
-        sign1, map1 = as_neg(add_func.operands[1])
-        if sign0 != sign1:
-            return Sub(map0, map1) if sign0 == 1 else Sub(map1, map0)
-
-        if sign0 == sign1 == -1 and id(add_func) not in AssociativeListFunction.binary_constructs:
-            return -Add(map0, map1)
-        return ProcessFailureReason("Simplified in the binary addition version", trivial = True)
+    @class_simplifier
+    @staticmethod
+    def _unpack_minus_summand(multi_add: MapElement) -> SimplifierOutput:
+        """
+                x - (y+z)   =>      x + (-y) + (-z)
+            Unlike just negation of MultiAdd, where we simplify only when the number of minus signs decrease,
+            as a partial sum we always open the brackets.
+        """
+        assert isinstance(multi_add, MultiAdd)
+        non_minus_summands = []
+        minus_summands = []
+        for summand in multi_add.operands:
+            if isinstance(summand, _Negative) and isinstance(summand.operand, MultiAdd):
+                for sub_summand in summand.operand.operands:
+                    minus_summands.append(-sub_summand)
+            else:
+                non_minus_summands.append(summand)
+        if len(minus_summands) > 0:
+            return MultiAdd(non_minus_summands + minus_summands)
+        return ProcessFailureReason('No minus signs', trivial = True)
 
 Add = MultiAdd([Var(f"X_Add_1"), Var(f"X_Add_2")])
 MapElement.addition = Add
@@ -176,6 +207,13 @@ class _Sub(CompositeElementFromFunction):
     def __init__(self, operands: list[MapElement] | None = None):
         assert operands is None or len(operands) == 2
         super().__init__(operands=operands, name="Sub", function=lambda a, b: a - b)
+
+    def __eq__(self, other):
+        if self is other:
+            return True
+        if not isinstance(other, _Sub):
+            return False
+        return self.operands == other.operands
 
     def _simplify_with_var_values2(self) -> MapElement | None:
         operands = self.operands
