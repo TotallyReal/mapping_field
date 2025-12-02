@@ -6,6 +6,7 @@ from mapping_field.mapping_field import (
     CompositeElement, CompositeElementFromFunction, MapElement, MapElementConstant,
     SimplifierOutput, Var, class_simplifier, PropertyEngine,
 )
+from mapping_field.property_engines import is_integral
 from mapping_field.utils.processors import ProcessFailureReason
 
 simplify_logger = TreeLogger(__name__)
@@ -333,6 +334,8 @@ Div = _Div()
 MapElement.division = Div
 
 # </editor-fold>
+
+is_integral.add_property_preserving_class([_Add, MultiAdd, _Mult, _Negative])
 
 
 # Arithmetic decompositions

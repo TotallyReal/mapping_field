@@ -1,4 +1,3 @@
-from mapping_field.arithmetics import _Add, _Mult, _Negative
 from mapping_field.log_utils.tree_loggers import TreeLogger, green
 from mapping_field.mapping_field import (
     CompositeElement, MapElement, OutputValidator, SimplifierOutput, Var,
@@ -65,12 +64,9 @@ def validate_constant_integral(elem: MapElement) -> bool | None:
     return int(value) == value
 
 
-@IsIntegral.register_validator
-def condition_is_integral(elem: MapElement) -> bool | None:
-    return True if elem.has_promise(IsCondition) else None
-
-
-register_promise_preserving_functions(IsIntegral, (_Add, _Mult, _Negative))
+# @IsIntegral.register_validator
+# def condition_is_integral(elem: MapElement) -> bool | None:
+#     return True if elem.has_promise(IsCondition) else None
 
 
 class IntVar(Var, DefaultSerializable):
