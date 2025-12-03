@@ -13,7 +13,7 @@ from mapping_field.property_engines import is_condition, is_integral
 from mapping_field.ranged_condition import (
     IntervalRange, RangeCondition, in_range, )
 from mapping_field.bool_vars import BoolVar, is_bool_var
-from mapping_field.utils.processors import ProcessFailureReason
+from mapping_field.utils.processors import ProcessFailureReason, log_context
 from mapping_field.utils.serializable import DefaultSerializable
 
 # from mapping_field.new_code.linear import LinearTransformer, Linear
@@ -812,16 +812,13 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
             c_range = condition.range.as_integral()
             rest = UnionCondition(conditions[:i]+conditions[i+1:]) if num_conditions > 2 else conditions[1-i]
 
-            title_start = f"{i}: {red(condition)} || [{red(rest)}]"
-            simplify_logger.log(title_start, action=TreeAction.GO_DOWN)
-            interval = condition.function.as_binary_range_containing(rest, c_range.low, c_range.high)
-            if interval is not None:
-                simplify_logger.set_context_title(f"{title_start} => {green(interval)}")
-                simplify_logger.log(message=f"Transform into interval {green(interval)}", action=TreeAction.GO_UP)
-                return RangeCondition(condition.function, interval)
+            with log_context(simplify_logger, start_msg=f"{i}: {red(condition)} || [{red(rest)}]") as log_result:
+                interval = condition.function.as_binary_range_containing(rest, c_range.low, c_range.high)
+                if interval is not None:
+                    log_result.set(green(interval))
+                    return RangeCondition(condition.function, interval)
 
-            simplify_logger.set_context_title(f"{title_start} => {magenta(' X X X ')}")
-            simplify_logger.log(message=magenta(' X X X '), action=TreeAction.GO_UP)
+                log_result.set(magenta(' X X X '))
 
         return None
 

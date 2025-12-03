@@ -4,11 +4,13 @@ from typing import Optional, cast
 
 from mapping_field.associative import AssociativeListFunction
 from mapping_field.field import ExtElement
-from mapping_field.log_utils.tree_loggers import TreeLogger, yellow
+from mapping_field.log_utils.tree_loggers import TreeLogger, yellow, green, magenta
 from mapping_field.mapping_field import (
-    CompositeElementFromFunction, MapElement, MapElementProcessor, OutputProperties, Var, class_simplifier, simplifier_context,
+    CompositeElementFromFunction, MapElement, MapElementProcessor, OutputProperties, Var,
+    class_simplifier, simplifier_context,
 )
 from mapping_field.property_engines import is_condition
+from mapping_field.utils.processors import log_context
 from mapping_field.utils.serializable import DefaultSerializable
 
 simplify_logger = TreeLogger(__name__)
@@ -432,13 +434,22 @@ def _binary_simplify(elem: MapElement) -> MapElement | None:
         return cls.zero_condition
 
     method_name = cls.method_names[cls.type]
-    simplify_logger.log(f"Simplify '{method_name}' via 1st parameter")
-    result = getattr(cond1, method_name)(cond2)
-    if result is not None:
-        return result
 
-    simplify_logger.log(f"Simplify '{method_name}' via 2nd parameter")
-    return getattr(cond2, method_name)(cond1)
+    with log_context(simplify_logger, start_msg=f"Simplify '{method_name}' via 1st parameter") as log_result:
+        result = getattr(cond1, method_name)(cond2)
+        if result is not None:
+            log_result.set(green(result))
+            return result
+        log_result.set(magenta(' # # # '))
+
+    with log_context(simplify_logger, start_msg=f"Simplify '{method_name}' via 2st parameter") as log_result:
+        result = getattr(cond2, method_name)(cond1)
+        if result is not None:
+            log_result.set(green(result))
+            return result
+        log_result.set(magenta(' # # # '))
+
+    return None
 
 
 class IntersectionCondition(_ListCondition, MapElementProcessor, op_type=_ListCondition.AND):

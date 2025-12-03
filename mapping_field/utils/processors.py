@@ -6,6 +6,7 @@ from typing import Callable, Generic, Iterator, TypeVar
 from colorama import Back, init
 
 from mapping_field.log_utils.tree_loggers import TreeAction, TreeLogger, cyan, green, magenta, red
+from contextlib import contextmanager
 
 init(autoreset=True)
 logger = TreeLogger(__name__)
@@ -63,7 +64,25 @@ class WeakContextDictionary(Generic[K, V]):
     def __repr__(self) -> str:
         return f"WeakContextDictionary({self._data})"
 
+@dataclasses.dataclass
+class LogResult:
+    message: str = ''
+    delete_context: bool = False
 
+    def set(self, message: str, delete_context: bool | None = None) -> None:
+        self.message = message
+        if delete_context is not None:
+            self.delete_context = delete_context
+
+@contextmanager
+def log_context(tree_logger: TreeLogger, start_msg: str):
+    tree_logger.log(message=start_msg, action=TreeAction.GO_DOWN, back=Back.LIGHTBLACK_EX)
+    result = LogResult()
+    try:
+        yield result
+    finally:
+        tree_logger.set_context_title(f"{start_msg} => {result.message}")
+        tree_logger.log(result.message, action=TreeAction.GO_UP)
 
 Elem = TypeVar("Elem")
 
@@ -130,26 +149,18 @@ class ProcessorCollection(Generic[Elem]):
             self.processors + self.class_processors.get(type(elem), [])
         ):
 
-            # TODO: Maybe use __qualname__ instead?
-            title_start = f"Step: {processor.__qualname__} ( {red(elem)} )"
-            logger.log(title_start, action=TreeAction.GO_DOWN)
+            with log_context(logger, start_msg=f"Step: {processor.__qualname__} ( {red(elem)} )") as log_result:
 
-            result = processor(elem) or ProcessFailureReason("", False)
+                result = processor(elem) or ProcessFailureReason("", False)
 
-            if isinstance(result, ProcessFailureReason):
-                if result.reason != "" and not result.trivial:
-                    logger.log(message=result.reason)
-                    # print(f'Simplification failed because of {result.reason}')
-                end_msg = magenta('- - -')
-                logger.set_context_title(f'{title_start} => {end_msg}')
-                logger.log(message=end_msg, action=TreeAction.GO_UP, delete_context=result.trivial)
-                continue
+                if isinstance(result, ProcessFailureReason):
+                    if result.reason != "" and not result.trivial:
+                        logger.log(message=result.reason)
+                    log_result.set(magenta('- - -'), delete_context=result.trivial)
+                    continue
 
-            # result is an Elem type
-            end_msg = f"{green(result)} [{cyan(result.__class__.__name__)}]"
-            logger.set_context_title(f"{title_start} => {end_msg}")
-            logger.log(message=f"Produced {end_msg}", action=TreeAction.GO_UP)
-            return result
+                log_result.set(green(result))
+                return result
 
         return None
 
@@ -169,30 +180,23 @@ class ProcessorCollection(Generic[Elem]):
 
         was_processed = False
 
-        title_start = f"Full: [{cyan(elem.__class__.__name__)}] ( {red(elem)} )"
-        message = f"Full Processing ( {red(elem)} ) , [{cyan(elem.__class__.__name__)}]"
-        logger.log(message=title_start, action=TreeAction.GO_DOWN, back=Back.LIGHTBLACK_EX)
+        with log_context(logger, start_msg=f"Full: [{cyan(elem.__class__.__name__)}] ( {red(elem)} )") as log_result:
 
-        try:
-            # Run simplification steps
-            while True:
-                result = self.one_step_process(elem)
-                if result is None:
-                    break
-                elem = result
-                was_processed = True
-                yield result
+            try:
+                # Run simplification steps
+                while True:
+                    result = self.one_step_process(elem)
+                    if result is None:
+                        break
+                    elem = result
+                    was_processed = True
+                    yield result
 
-        except GeneratorExit:
-            # break / .close()
-            pass
-        finally:
-            self._process_stage[original_elem] = False
-            if was_processed:
-                logger.set_context_title(f"{title_start} => {green(elem)}")
-                logger.log(f"Full Produced {green(elem)}", action=TreeAction.GO_UP)
-            else:
-                logger.set_context_title(f'{title_start} => {magenta("X X X")}')
-                logger.log(f'{magenta("X X X")} ', action=TreeAction.GO_UP)
+            except GeneratorExit:
+                # break / .close()
+                pass
+            finally:
+                self._process_stage[original_elem] = False
+                log_result.set( green(elem) if was_processed else magenta("X X X") )
 
 
