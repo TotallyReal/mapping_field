@@ -2,7 +2,7 @@ import operator
 
 import pytest
 
-from mapping_field.arithmetics import Add
+from mapping_field.bool_vars import BoolVar
 from mapping_field.conditional_function import ReLU
 from mapping_field.conditions import (
     FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
@@ -11,7 +11,7 @@ from mapping_field.log_utils.tree_loggers import TreeLogger, blue
 from mapping_field.mapping_field import MapElementConstant, Var, simplifier_context
 from mapping_field.property_engines import is_integral
 from mapping_field.ranged_condition import IntervalRange, RangeCondition, in_range, XX
-from mapping_field.tests.utils import DummyMap
+from mapping_field.tests.utils import DummyMap, DummyCondition
 from itertools import product
 
 simplify_logger = TreeLogger(__name__)
@@ -114,16 +114,6 @@ def test_post_generation_independence():
     assert str(assigned_func) == "0<=DummyMap(0)<1"
     # Some indication that func is frozen
     assert str(func) == "0<=x<1"
-
-
-def test_trivial_ranges():
-    dummy = DummyMap(0)
-
-    cond = RangeCondition(dummy, IntervalRange.empty()).simplify()
-    assert cond is FalseCondition
-
-    cond = RangeCondition(dummy, IntervalRange.all()).simplify()
-    assert cond is TrueCondition
 
 
 def test_ranged_comparison_from_interval_comparison():
@@ -231,64 +221,123 @@ def test_range_condition_union():
     # assert cond1 | cond2 == cond12
 
 
-def test_simplify_all_or_nothing_range():
-    dummy_map = DummyMap(0)
+class TestRangedConditionSimplifiers:
 
-    cond = RangeCondition(dummy_map, (10, 10))
-    assert cond is not FalseCondition
-    assert cond.simplify() is FalseCondition
+    def test_simplify_trivial_ranges(self):
+        dummy = DummyMap(0)
 
-    cond = RangeCondition(dummy_map, (20, 10))
-    assert cond is not FalseCondition
-    assert cond.simplify() is FalseCondition
+        cond = RangeCondition(dummy, IntervalRange.empty())
+        assert cond is not FalseCondition
+        assert cond.simplify() is FalseCondition
 
-    cond = RangeCondition(dummy_map, (float("-inf"), float("+inf")))
-    assert cond is not TrueCondition
-    assert cond.simplify() is TrueCondition
+        cond = RangeCondition(dummy, IntervalRange.all())
+        assert cond is not TrueCondition
+        assert cond.simplify() is TrueCondition
 
+    def test_simplify_evaluated(self):
+        dummy = DummyMap(0, output_properties={in_range: IntervalRange[5,8]})
+        c5 = MapElementConstant(5)
 
-def test_simplify_evaluated():
-    c = Add(MapElementConstant(3), MapElementConstant(2), simplify=False)
-    assert str(c) != str(MapElementConstant(5))
-    # c is not by itself a constant, but can be evaluated into a constant
+        assert (dummy < 10).simplify() == TrueCondition
+        assert (1 <= dummy).simplify() == TrueCondition
+        assert (c5 << 5).simplify() == TrueCondition
+        assert (RangeCondition(dummy, (1, 10))).simplify() == TrueCondition
 
-    assert (c < 10).simplify() == TrueCondition
-    assert (1 <= c).simplify() == TrueCondition
-    assert (c << 5).simplify() == TrueCondition
-    assert (RangeCondition(c, (1, 10))).simplify() == TrueCondition
+        assert (dummy > 10).simplify() == FalseCondition
+        assert (1 >= dummy).simplify() == FalseCondition
+        assert (dummy << 9).simplify() == FalseCondition
+        assert (RangeCondition(dummy, (10, 100))).simplify() == FalseCondition
 
-    assert (c > 10).simplify() == FalseCondition
-    assert (1 >= c).simplify() == FalseCondition
-    assert (c << 8).simplify() == FalseCondition
-    assert (RangeCondition(c, (10, 100))).simplify() == FalseCondition
+    def test_simplify_intersection(self):
+        dummy = DummyMap(0, output_properties={in_range: IntervalRange[5,13]})
+        cond = (8 <= dummy).simplify()
+        result = ( (8 <= dummy) & (dummy <= 13) )
 
+        assert cond == result
 
-def test_simplify_linear_ranged_condition():
-    dummy = DummyMap(0)
+    def test_simplify_linear_ranged_condition(self):
+        dummy = DummyMap(0)
 
-    def inner_test(a, b, low, high) -> None:
-        cond1 = RangeCondition(dummy, (low, high))
-        low, high = a * low + b, a * high + b
-        if a < 0:
-            cond2 = RangeCondition(a * dummy + b, IntervalRange(high, low, False, True))
-        else:
-            cond2 = RangeCondition(a * dummy + b, (low, high))
+        def inner_test(a, b, low, high) -> None:
+            cond1 = RangeCondition(dummy, (low, high))
+            low, high = a * low + b, a * high + b
+            if a < 0:
+                cond2 = RangeCondition(a * dummy + b, IntervalRange(high, low, False, True))
+            else:
+                cond2 = RangeCondition(a * dummy + b, (low, high))
 
-        cond2 = cond2.simplify()
+            cond2 = cond2.simplify()
+            assert cond1 == cond2
+
+        inner_test(a=2, b=3, low=1, high=6)
+        inner_test(a=-2, b=3, low=-5, high=0)
+
+        # test zero coefficient - False
+        condition = RangeCondition(0 * dummy + 3, (5, 15))
+        condition = condition.simplify()
+        assert condition == FalseCondition
+
+        # test zero coefficient - False
+        condition = RangeCondition(0 * dummy + 7, (5, 15))
+        condition = condition.simplify()
+        assert condition == TrueCondition
+
+    def test_simplify_integral_functions(self):
+        dummy = DummyMap(0)
+
+        cond1 = (4 < dummy) & (dummy <= 10.2)
+        cond2 = (4.8 <= dummy) & (dummy <= 10.4)
+        assert cond1 != cond2
+
+        dummy = DummyMap(output_properties={is_integral: True})
+
+        cond1 = (4 < dummy) & (dummy <= 10.2)
+        cond2 = (4.8 <= dummy) & (dummy <= 10.4)
+        cond3 = RangeCondition(dummy, IntervalRange[5,10])
+        assert cond1 == cond2 == cond3
+
+        cond1 = (4 < dummy) & (dummy <= 5.2)
+        cond2 = dummy << 5
         assert cond1 == cond2
 
-    inner_test(a=2, b=3, low=1, high=6)
-    inner_test(a=-2, b=3, low=-5, high=0)
+    def test_simplify_extreme_sum_of_ranged_functions(self):
+        dummy1 = DummyMap(0, output_properties={in_range: IntervalRange[1,2]})
+        dummy2 = DummyMap(0, output_properties={in_range: IntervalRange[2,3]})
+        dummy3 = DummyMap(0, output_properties={in_range: IntervalRange[3,5]})
 
-    # test zero coefficient - False
-    condition = RangeCondition(0 * dummy + 3, (5, 15))
-    condition = condition.simplify()
-    assert condition == FalseCondition
+        dummy = dummy1 + dummy2 + dummy3
 
-    # test zero coefficient - False
-    condition = RangeCondition(0 * dummy + 7, (5, 15))
-    condition = condition.simplify()
-    assert condition == TrueCondition
+        cond_max = (dummy << (2+3+5)).simplify()
+        cond_max_and = (dummy1 << 2) & (dummy2 << 3) & (dummy3 << 5)
+        assert cond_max == cond_max_and
+
+        cond_min = (dummy << (1+2+3)).simplify()
+        cond_min_and = (dummy1 << 1) & (dummy2 << 2) & (dummy3 << 3)
+        assert cond_min == cond_min_and
+
+    def test_simplify_condition_equality(self):
+        dummy_cond = DummyCondition()
+
+        cond = (dummy_cond << 1).simplify()
+        assert cond is dummy_cond
+
+        cond = (dummy_cond << 0).simplify()
+        assert cond == ~dummy_cond
+
+        cond = (dummy_cond << 5).simplify()
+        assert cond is FalseCondition
+
+        # Doesn't simplify simple var conditions
+        v = BoolVar("v")
+
+        cond = (v << 1)
+        assert cond.simplify() is cond
+
+        cond = (v << 0)
+        assert cond.simplify() is cond
+
+        cond = (v << 5).simplify()
+        assert cond is FalseCondition
 
 
 def test_ranged_condition_as_input():
@@ -324,24 +373,6 @@ def test_sum_of_conditions():
 #       ╰─────────────────────────────────────────────────╯
 
 
-def test_equality_as_integral():
-    dummy = DummyMap(0)
-
-    cond1 = (4 < dummy) & (dummy <= 10.2)
-    cond2 = (4.8 <= dummy) & (dummy <= 10.4)
-    assert cond1 != cond2
-
-    dummy = DummyMap(output_properties={is_integral: True})
-
-    cond1 = (4 < dummy) & (dummy <= 10.2)
-    cond2 = (4.8 <= dummy) & (dummy <= 10.4)
-    assert cond1 == cond2
-
-    cond1 = (4 < dummy) & (dummy <= 5.2)
-    cond2 = dummy << 5
-    assert cond1 == cond2
-
-
 def test_union_for_integral_functions():
     dummy = DummyMap(0)
 
@@ -370,7 +401,6 @@ def test_union_of_integral_points():
 #       ╭─────────────────────────────────────────────────╮
 #       │               Ranged Condition                  │
 #       ╰─────────────────────────────────────────────────╯
-
 
 def test_integral_product():
     dummy = DummyMap(output_properties={is_integral: True})

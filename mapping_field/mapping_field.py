@@ -690,19 +690,19 @@ class MapElement:
     For now, these are only defined for comparison with an integer.
     """
 
-    def __le__(self, n: int) -> "MapElement":
+    def __le__(self, n: float) -> "MapElement":
         raise NotImplementedError()
 
-    def __lt__(self, n: int) -> "MapElement":
+    def __lt__(self, n: float) -> "MapElement":
         raise NotImplementedError()
 
-    def __ge__(self, n: int) -> "MapElement":
+    def __ge__(self, n: float) -> "MapElement":
         raise NotImplementedError()
 
-    def __gt__(self, n: int) -> "MapElement":
+    def __gt__(self, n: float) -> "MapElement":
         raise NotImplementedError()
 
-    def __lshift__(self, n: int) -> "MapElement":
+    def __lshift__(self, n: float) -> "MapElement":
         raise NotImplementedError()
 
     # </editor-fold>

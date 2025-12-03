@@ -612,14 +612,14 @@ class RangeCondition(CompositeElement, MapElementProcessor):
             return element.function
         if element.range == IntervalRange.of_point(0):
             return ~element.function
-        return None
+        return FalseCondition
 
     # </editor-fold>
 
 is_condition.add_auto_class(RangeCondition)
 
 def _ranged(
-    elem: MapElement, low: int, high: int, contains_low: bool = True, contains_high: bool = False
+    elem: MapElement, low: float, high: float, contains_low: bool = True, contains_high: bool = False
 ) -> RangeCondition:
     if isinstance(low, (int, float)) and isinstance(high, (int, float)):
         return RangeCondition(elem, IntervalRange(low, high, contains_low, contains_high))

@@ -81,6 +81,11 @@ class _NotCondition(CompositeElementFromFunction):
     def to_string(self, vars_to_str: dict[Var, str]):
         return f"~({self.operand.to_string(vars_to_str)})"
 
+    def __eq__(self, other):
+        return isinstance(other, _NotCondition) and self.operand == other.operand
+
+    __hash__ = MapElement.__hash__
+
     def _simplify_with_var_values(self) -> MapElement | None:
         operand = self.operand
 
