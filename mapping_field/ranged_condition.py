@@ -3,7 +3,7 @@ import math
 from functools import cache
 from typing import Optional, Union
 
-from mapping_field.arithmetics import MultiAdd, _as_combination, _Negative
+from mapping_field.arithmetics import MultiAdd, _as_combination, _as_scalar_mult
 from mapping_field.conditions import (
     FalseCondition, IntersectionCondition, TrueCondition, )
 from mapping_field.log_utils.tree_loggers import TreeLogger, cyan, green, red
@@ -323,7 +323,7 @@ class RangeEngine(PropertyByRulesEngine[MapElement, SimplifierContext, IntervalR
     def __init__(self):
         super().__init__()
 
-    def compute(self, element: 'MapElement', context: 'SimplifierContext') -> IntervalRange | None:
+    def compute(self, element: MapElement, context: SimplifierContext) -> IntervalRange | None:
 
         value = context.get_property(element, self)
         if value is not None:
@@ -337,7 +337,6 @@ class RangeEngine(PropertyByRulesEngine[MapElement, SimplifierContext, IntervalR
         for interval in intervals:
             final_interval = final_interval.intersection(interval)
         if not final_interval.is_all:
-            # simplify_logger.log(f"Setting range of {red(element)} to {final_interval}")
             context.set_property(element, self, final_interval)
 
         return final_interval
@@ -347,6 +346,8 @@ class RangeEngine(PropertyByRulesEngine[MapElement, SimplifierContext, IntervalR
 
     def is_stronger_property(self, strong_prop: IntervalRange, weak_prop: IntervalRange) -> bool:
         return weak_prop.contains(strong_prop)
+
+    # <editor-fold desc=" ------------------ Rules ------------------">
 
     @staticmethod
     @property_rule
@@ -365,15 +366,16 @@ class RangeEngine(PropertyByRulesEngine[MapElement, SimplifierContext, IntervalR
         return None
 
     @property_rule
-    def _negative_range(self, element: MapElement, context: SimplifierContext) -> IntervalRange | None:
+    def _scalar_mult_range(self, element: MapElement, context: SimplifierContext) -> IntervalRange | None:
         """
-            x in [-1,10]     =>  -x in [-10,1]
+            x in I     =>  c * x    in    c * I
         """
-        if not isinstance(element, _Negative):
-            return None
+        c, operand = _as_scalar_mult(element)
+        if c == 1:
+            return None     # Avoid infinite loops
 
-        interval = self.compute(element.operand, context)
-        return -interval if interval is not None else None
+        interval = self.compute(operand, context)
+        return (c * interval) if interval is not None else None
 
     @property_rule
     def _multi_add_ranges(self, element: MapElement, context: SimplifierContext) -> IntervalRange | None:
@@ -391,6 +393,8 @@ class RangeEngine(PropertyByRulesEngine[MapElement, SimplifierContext, IntervalR
             final_interval = final_interval + interval
 
         return final_interval
+
+    # </editor-fold>
 
 in_range = RangeEngine()
 simplifier_context.register_engine(in_range)

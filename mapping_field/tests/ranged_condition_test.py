@@ -422,12 +422,6 @@ def test_simplify_on_ranged_promised_functions():
     assert condition is not result
 
 
-def test_range_of_constant():
-    c = MapElementConstant(5)
-
-    assert in_range.compute(c, simplifier_context) == IntervalRange.of_point(5)
-
-
 def test_sum_of_two_conditions():
     dummy = [DummyMap(value=i, output_properties={in_range: IntervalRange[0, 1]}) for i in (0, 1)]
 
@@ -436,26 +430,6 @@ def test_sum_of_two_conditions():
     cond2 = (dummy[0] << 1) & (dummy[1] << 1)
 
     assert cond1 == cond2
-
-
-def test_add_ranged_functions():
-    dummy1 = DummyMap(1, output_properties={in_range: IntervalRange[1, 4]})
-    dummy2 = DummyMap(2, output_properties={in_range: IntervalRange[3, 5]})
-
-    result = dummy1 + dummy2
-    f_range = in_range.compute(result, simplifier_context)
-    assert f_range is not None
-    assert f_range == IntervalRange[4, 9]
-
-
-def test_sub_ranged_functions():
-    dummy1 = DummyMap(1, output_properties={in_range: IntervalRange[1, 4]})
-    dummy2 = DummyMap(2, output_properties={in_range: IntervalRange[3, 5]})
-
-    result = dummy1 - dummy2
-    f_range = in_range.compute(result, simplifier_context)
-    assert f_range is not None
-    assert f_range == IntervalRange[-4, 1]
 
 
 def test_add_ranged_equality():
@@ -525,3 +499,44 @@ def test_in_range_promise():
     assert cond1.simplify() is TrueCondition
     assert cond2.simplify() is TrueCondition
     assert cond3.simplify() is TrueCondition
+
+
+#       ╭─────────────────────────────────────────────────╮
+#       │             in_range engine rules               │
+#       ╰─────────────────────────────────────────────────╯
+
+
+class TestInRange:
+
+    def test_constant_in_range(self):
+        c = MapElementConstant(5)
+
+        assert in_range.compute(c, simplifier_context) == IntervalRange.of_point(5)
+
+
+    def test_addition_in_range(self):
+        dummy1 = DummyMap(1, output_properties={in_range: IntervalRange[1, 4]})
+        dummy2 = DummyMap(2, output_properties={in_range: IntervalRange[3, 5]})
+        dummy3 = DummyMap(2, output_properties={in_range: IntervalRange[-7, 7]})
+
+        result = dummy1 + dummy2 + dummy3
+        f_range = in_range.compute(result, simplifier_context)
+        assert f_range is not None
+        assert f_range == IntervalRange[-3, 16]
+
+
+    def test_scalar_mult_in_range(self):
+        interval = IntervalRange[1,4]
+        dummy = DummyMap(1, output_properties={in_range: interval})
+
+        f_range = in_range.compute(3 * dummy, simplifier_context)
+        assert f_range is not None
+        assert f_range == 3 * interval
+
+        f_range = in_range.compute(-3 * dummy, simplifier_context)
+        assert f_range is not None
+        assert f_range == -3 * interval
+
+        f_range = in_range.compute(0 * dummy, simplifier_context)
+        assert f_range is not None
+        assert f_range == 0 * interval
