@@ -46,7 +46,7 @@ class LogViewer(App):
                 style="bold",
             )
 
-            lines_rich = "\n".join(self.collect_lines(0, self.tree_context, tab_count=0))
+            lines_rich = "\n".join(self.collect_lines(0, self.tree_context))
 
         header.append(lines_rich)
 
@@ -63,9 +63,17 @@ class LogViewer(App):
                 self.context_path.append(0)
             else:
                 return
+        elif event.key == "shift+left":
+            if self.position_jumps[-1] < len(self.context_path) - 1:
+                self.position_jumps.append(len(self.context_path) - 1)
+        elif event.key == "shift+right":
+            if len(self.position_jumps) > 1:
+                self.position_jumps.pop(-1)
         elif event.key == "left":
             if len(self.context_path) > 1:
                 self.current_context = self.current_context.parent
+                if self.position_jumps[-1] == len(self.context_path) - 1:
+                    self.position_jumps.pop(-1)
                 self.context_path.pop()
         elif event.key == "q":
             self.exit()
@@ -80,25 +88,34 @@ class LogViewer(App):
             self.tree_context = Serializable.load_element(self.latest_file)
             self.current_context = self.tree_context
             self.context_path = [0]
+            self.position_jumps = [0]
             self.line_index = 0
 
-    def collect_lines(self, path_position: int, context: TreeContext, tab_count: int):
+    def collect_lines(self, path_position: int, context: TreeContext, tab_count: int = 0):
         information = context.information
+        cur_context_pos = self.context_path[path_position]
+
+        if path_position < self.position_jumps[-1]:
+            lines = self.collect_lines(path_position + 1, information[cur_context_pos], tab_count)
+            lines = [f"| {line}" for line in lines]
+            return lines
+
         tabs = "    " * tab_count
         lines = [
-            f'{tabs}{"+" if isinstance(single, TreeContext) else ""}{single}'
-            for single in information[: self.context_path[path_position]]
+            f'{tabs}{"+" if isinstance(single, TreeContext) else ""}{single}' for single in information
         ]
-        if path_position < len(self.context_path) - 1:
-            lines += self.collect_lines(path_position + 1, information[self.context_path[path_position]], tab_count + 1)
-        else:
-            lines.append(tabs + " > " + str(information[self.context_path[path_position]]))
-        lines += [
-            f'{tabs}{"+" if isinstance(single, TreeContext) else ""}{single}'
-            for single in information[self.context_path[path_position] + 1 :]
-        ]
+
         if path_position == len(self.context_path) - 1:
+            # This is the most inner context
+            lines[cur_context_pos] = tabs + " > " + str(information[cur_context_pos])
             lines = [""] + lines + [""]
+        else:
+            lines = (
+                    lines[:cur_context_pos] +
+                    self.collect_lines(path_position + 1, information[cur_context_pos], tab_count + 1) +
+                    lines[cur_context_pos+1:]
+            )
+
         return lines
 
 
