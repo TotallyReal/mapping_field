@@ -21,71 +21,70 @@ simplify_logger = TreeLogger(__name__)
 #       │                Interval tests                   │
 #       ╰─────────────────────────────────────────────────╯
 
-def test_interval_generation():
-    points = [float("-inf"), -5, 5, float("inf")]
-    booleans = [True, False]
-    for low, high, contains_low, contains_high in product(points, points, booleans, booleans):
-        interval = IntervalRange(low, high, contains_low, contains_high)
-    for low, high in product(points, points):
-        interval = IntervalRange(low, high)
-        interval = IntervalRange[low, high]
+class TestInterval:
 
+    def test_interval_generation(self):
+        points = [float("-inf"), -5, 5, float("inf")]
+        booleans = [True, False]
+        for low, high, contains_low, contains_high in product(points, points, booleans, booleans):
+            interval = IntervalRange(low, high, contains_low, contains_high)
+        for low, high in product(points, points):
+            interval = IntervalRange(low, high)
+            interval = IntervalRange[low, high]
 
-def test_unique_interval_generation():
-    empty_interval = IntervalRange(1, 0, False, False)
-    assert empty_interval.is_empty
-    empty_interval = IntervalRange.empty()
-    assert empty_interval.is_empty
+    def test_unique_interval_generation(self):
+        empty_interval = IntervalRange(1, 0, False, False)
+        assert empty_interval.is_empty
+        empty_interval = IntervalRange.empty()
+        assert empty_interval.is_empty
 
-    all_interval = IntervalRange(float("-inf"), float("inf"), False, False)
-    assert all_interval.is_all
-    all_interval = IntervalRange.all()
-    assert all_interval.is_all
+        all_interval = IntervalRange(float("-inf"), float("inf"), False, False)
+        assert all_interval.is_all
+        all_interval = IntervalRange.all()
+        assert all_interval.is_all
 
-    point_interval = IntervalRange(5, 5, True, True)
-    assert point_interval.is_point == 5
-    point_interval = IntervalRange.of_point(5)
-    assert point_interval.is_point == 5
+        point_interval = IntervalRange(5, 5, True, True)
+        assert point_interval.is_point == 5
+        point_interval = IntervalRange.of_point(5)
+        assert point_interval.is_point == 5
 
+    def test_interval_equality(self):
+        # Half open intervals
+        interval1 = IntervalRange(5, 8, True, False)
+        interval2 = IntervalRange(5, 8, True, False)
+        assert interval1 == interval2
 
-def test_interval_equality():
-    # Half open intervals
-    interval1 = IntervalRange(5, 8, True, False)
-    interval2 = IntervalRange(5, 8, True, False)
-    assert interval1 == interval2
+        interval2 = IntervalRange(5, 8)
+        assert interval1 == interval2
 
-    interval2 = IntervalRange(5, 8)
-    assert interval1 == interval2
+        # Close intervals
+        interval1 = IntervalRange(5, 8, True, True)
+        interval2 = IntervalRange(5, 8, True, True)
+        assert interval1 == interval2
 
-    # Close intervals
-    interval1 = IntervalRange(5, 8, True, True)
-    interval2 = IntervalRange(5, 8, True, True)
-    assert interval1 == interval2
+        interval2 = IntervalRange[5, 8]
+        assert interval1 == interval2
+        assert interval1.is_closed()
 
-    interval2 = IntervalRange[5, 8]
-    assert interval1 == interval2
-    assert interval1.is_closed()
+        assert IntervalRange(5, 8, False, False).is_open()
 
-    assert IntervalRange(5, 8, False, False).is_open()
+        # Empty intervals
+        assert IntervalRange.empty() == IntervalRange(1, -1)
 
-    # Empty intervals
-    assert IntervalRange.empty() == IntervalRange(1, -1)
+        # Full intervals
+        assert IntervalRange.all() == IntervalRange(float("-inf"), float("inf"))
 
-    # Full intervals
-    assert IntervalRange.all() == IntervalRange(float("-inf"), float("inf"))
+        # Point interval
+        assert IntervalRange.of_point(5) == IntervalRange[5, 5]
 
-    # Point interval
-    assert IntervalRange.of_point(5) == IntervalRange[5, 5]
+    def test_interval_xx_construction(self):
+        assert (XX < 5)  == IntervalRange(float("-inf"), 5, False, False)
+        assert (XX <= 5) == IntervalRange(float("-inf"), 5, False, True)
+        assert (5 < XX)  == IntervalRange(5, float("inf"), False, False)
+        assert (5 <= XX) == IntervalRange(5, float("inf"), True, False)
 
-
-def test_interval_xx_construction():
-    assert (XX < 5)  == IntervalRange(float("-inf"), 5, False, False)
-    assert (XX <= 5) == IntervalRange(float("-inf"), 5, False, True)
-    assert (5 < XX)  == IntervalRange(5, float("inf"), False, False)
-    assert (5 <= XX) == IntervalRange(5, float("inf"), True, False)
-
-    assert (5 <= XX) & (XX < 10) == IntervalRange(5, 10, True, False)
-    assert (XX << 5) == IntervalRange.of_point(5)
+        assert (5 <= XX) & (XX < 10) == IntervalRange(5, 10, True, False)
+        assert (XX << 5) == IntervalRange.of_point(5)
 
 #       ╭─────────────────────────────────────────────────╮
 #       │               Ranged Condition                  │
