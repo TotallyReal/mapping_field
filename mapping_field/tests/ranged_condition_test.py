@@ -1,18 +1,17 @@
 import operator
 
-import pytest
+from itertools import product
 
 from mapping_field.bool_vars import BoolVar
-from mapping_field.conditional_function import ReLU
+from mapping_field.conditional_function import ConditionalFunction, ReLU, SingleRegion
 from mapping_field.conditions import (
     FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
 )
 from mapping_field.log_utils.tree_loggers import TreeLogger, blue
 from mapping_field.mapping_field import MapElementConstant, Var, simplifier_context
 from mapping_field.property_engines import is_integral
-from mapping_field.ranged_condition import IntervalRange, RangeCondition, in_range, XX
-from mapping_field.tests.utils import DummyMap, DummyCondition
-from itertools import product
+from mapping_field.ranged_condition import XX, IntervalRange, RangeCondition, in_range
+from mapping_field.tests.utils import DummyCondition, DummyConditionOn, DummyMap
 
 simplify_logger = TreeLogger(__name__)
 
@@ -542,7 +541,6 @@ class TestInRange:
 
         assert in_range.compute(c, simplifier_context) == IntervalRange.of_point(5)
 
-
     def test_addition_in_range(self):
         dummy1 = DummyMap(1, output_properties={in_range: IntervalRange[1, 4]})
         dummy2 = DummyMap(2, output_properties={in_range: IntervalRange[3, 5]})
@@ -552,7 +550,6 @@ class TestInRange:
         f_range = in_range.compute(result, simplifier_context)
         assert f_range is not None
         assert f_range == IntervalRange[-3, 16]
-
 
     def test_scalar_mult_in_range(self):
         interval = IntervalRange[1,4]
@@ -569,3 +566,26 @@ class TestInRange:
         f_range = in_range.compute(0 * dummy, simplifier_context)
         assert f_range is not None
         assert f_range == 0 * interval
+
+    def test_single_region_in_range(self):
+        interval = IntervalRange[1,4]
+        dummy = DummyMap(1, output_properties={in_range: interval})
+        dummy_cond = DummyCondition()
+
+        element = SingleRegion(dummy_cond, dummy)
+
+        f_range = in_range.compute(element, simplifier_context)
+        assert f_range is not None
+        assert f_range == interval
+
+    def test_conditional_function_in_range(self):
+        dummy_cond = [DummyConditionOn(set_size = 3, values={i}) for i in range(3)]
+        func = ConditionalFunction([
+            (dummy_cond[0], MapElementConstant.zero),
+            (dummy_cond[1], DummyMap(1, output_properties={in_range: IntervalRange[10, 40]}) ),
+            (dummy_cond[2], DummyMap(2, output_properties={in_range: IntervalRange[-20, 5]}) ),
+        ])
+
+        f_range = in_range.compute(func, simplifier_context)
+        assert f_range is not None
+        assert f_range == IntervalRange[-20,40]
