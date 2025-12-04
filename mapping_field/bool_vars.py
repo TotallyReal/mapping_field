@@ -1,10 +1,11 @@
 from mapping_field.arithmetics import _Mult
-from mapping_field.conditions import BinaryCondition, TrueCondition, FalseCondition, IntersectionCondition, \
-    UnionCondition
+from mapping_field.conditions import (
+    BinaryCondition, FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
+)
 from mapping_field.log_utils.tree_loggers import red
-from mapping_field.mapping_field import Var, MapElement, simplifier_context, SimplifierOutput
+from mapping_field.mapping_field import MapElement, SimplifierOutput, Var, simplifier_context
 from mapping_field.property_engines import is_condition, is_integral
-from mapping_field.ranged_condition import in_range, IntervalRange, simplify_logger, RangeCondition
+from mapping_field.ranged_condition import IntervalRange, RangeCondition, in_range, simplify_logger
 from mapping_field.utils.processors import ProcessFailureReason
 
 

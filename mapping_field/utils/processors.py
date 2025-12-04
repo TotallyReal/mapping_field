@@ -1,12 +1,12 @@
 import dataclasses
 import weakref
 
+from contextlib import contextmanager
 from typing import Callable, Generic, Iterator, TypeVar
 
 from colorama import Back, init
 
 from mapping_field.log_utils.tree_loggers import TreeAction, TreeLogger, cyan, green, magenta, red
-from contextlib import contextmanager
 
 init(autoreset=True)
 logger = TreeLogger(__name__)

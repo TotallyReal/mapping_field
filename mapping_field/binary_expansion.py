@@ -1,6 +1,7 @@
 from typing import Optional
 
 from mapping_field.arithmetics import BinaryCombination, _as_combination, as_neg
+from mapping_field.bool_vars import BoolVar, is_bool_var
 from mapping_field.conditions import (
     FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
 )
@@ -10,9 +11,7 @@ from mapping_field.mapping_field import (
     convert_to_map, simplifier_context,
 )
 from mapping_field.property_engines import is_condition, is_integral
-from mapping_field.ranged_condition import (
-    IntervalRange, RangeCondition, in_range, )
-from mapping_field.bool_vars import BoolVar, is_bool_var
+from mapping_field.ranged_condition import IntervalRange, RangeCondition, in_range
 from mapping_field.utils.processors import ProcessFailureReason, log_context
 from mapping_field.utils.serializable import DefaultSerializable
 

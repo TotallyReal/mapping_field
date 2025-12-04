@@ -4,8 +4,7 @@ from functools import cache
 from typing import Optional, Union
 
 from mapping_field.arithmetics import MultiAdd, _as_combination, _as_scalar_mult
-from mapping_field.conditions import (
-    FalseCondition, IntersectionCondition, TrueCondition, )
+from mapping_field.conditions import FalseCondition, IntersectionCondition, TrueCondition
 from mapping_field.log_utils.tree_loggers import TreeLogger, cyan, green, red
 from mapping_field.mapping_field import (
     CompositeElement, FuncDict, MapElement, MapElementConstant, MapElementProcessor,

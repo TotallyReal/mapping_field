@@ -1,7 +1,7 @@
 
 from mapping_field.binary_expansion import BinaryExpansion
-from mapping_field.mapping_field import Var
 from mapping_field.bool_vars import BoolVar
+from mapping_field.mapping_field import Var
 
 
 def test_simple_construction():

@@ -1,9 +1,7 @@
 
 from typing import Type
 
-from mapping_field.mapping_field import (
-    CompositeElement, MapElement, SimplifierContext,
-)
+from mapping_field.mapping_field import CompositeElement, MapElement, SimplifierContext
 from mapping_field.utils.generic_properties import PropertyByRulesEngine, property_rule
 
 
