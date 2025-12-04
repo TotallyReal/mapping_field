@@ -2,7 +2,8 @@ from collections import deque
 
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
 from mapping_field.mapping_field import (
-    CompositeElement, MapElement, OutputProperties, SimplifierOutput, Var, convert_to_map, simplifier_context,
+    CompositeElement, MapElement, OutputProperties, SimplifierOutput, Var, convert_to_map,
+    simplifier_context,
 )
 from mapping_field.utils.processors import ProcessFailureReason
 
@@ -106,15 +107,18 @@ class AssociativeListFunction(CompositeElement):
             operand = simplified_condition or operand
 
             if operand is cls.final_element:
+                simplify_logger.log(f"Contains final element {green(operand)}")
                 return cls.final_element
 
             if cls.is_trivial(operand):
+                simplify_logger.log(f"Removing trivial element {green(operand)}")
                 is_whole_simpler = True
                 continue
 
             if isinstance(operand, cls):
                 if len(simplifier_context.get_user_properties(operand)) == 0:
                     # unpack list operand of the same type
+                    simplify_logger.log(f"Unpacking {green(operand)}")
                     is_whole_simpler = True
                     queue.extendleft(reversed(operand.operands))
                     continue
