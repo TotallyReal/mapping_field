@@ -37,18 +37,20 @@ class ImprovedDummyMap(MapElement):
         return self._op(elem2)
 
 
-def test_arithmetic_premade_methods():
-    class DummyMapNeg(DummyMap):
+def test_arithmetic_dunder_construction():
+    dummy = [DummyMap(i) for i in range(3)]
 
-        def neg(self) -> MapElement | None:
-            return DummyMap(-self.value) if self.value != 0 else None
-
-    dummy = DummyMapNeg(0)
-    assert str(-dummy) == "(-DummyMap(0))"
-
-    dummy = DummyMapNeg(1)
-    assert str(-dummy) == "DummyMap(-1)"
-
+    # Note that Neg  == _Negative + simplify
+    #           Add  ==  MultiAdd (for 2) + simplify
+    #           Mult == _Mult + simplify
+    #           Div  == _Div + simplify
+    # The expressions on the left (and Sub) are not classes, but rather a single object of that class with
+    # variables which can be assigned.
+    assert -dummy[0] == Neg(dummy[0]) == _Negative(dummy[0]).simplify()
+    assert dummy[0] + dummy[1] == Add (dummy[0], dummy[1]) == MultiAdd([dummy[0], dummy[1]]).simplify()
+    assert dummy[0] - dummy[1] == Sub (dummy[0], dummy[1]) ==  Add (dummy[0], Neg(dummy[1]) )
+    assert dummy[0] * dummy[1] == Mult(dummy[0], dummy[1]) == _Mult([dummy[0], dummy[1]]).simplify()
+    assert dummy[0] / dummy[1] == Div (dummy[0], dummy[1]) == _Div ([dummy[0], dummy[1]]).simplify()
 
     assert dummy[0] + dummy[1] + dummy[2] == MultiAdd([dummy[0], dummy[1], dummy[2]]).simplify()
 
@@ -313,3 +315,15 @@ def test_associative_addition_creation():
     elem4 = MultiAdd([dummy1, dummy0])
 
     assert str(elem4) == "(DummyMap(1) + DummyMap(0))"
+
+def test_arithmetic_premade_methods():
+    class DummyMapNeg(DummyMap):
+
+        def neg(self) -> MapElement | None:
+            return DummyMap(-self.value) if self.value != 0 else None
+
+    dummy = DummyMapNeg(0)
+    assert str(-dummy) == "(-DummyMap(0))"
+
+    dummy = DummyMapNeg(1)
+    assert str(-dummy) == "DummyMap(-1)"
