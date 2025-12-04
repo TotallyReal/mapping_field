@@ -16,11 +16,7 @@ from mapping_field.utils.serializable import DefaultSerializable
 simplify_logger = TreeLogger(__name__)
 
 
-class Condition(MapElement):
-    pass
-
-
-class BinaryCondition(Condition, DefaultSerializable):
+class BinaryCondition(MapElement, DefaultSerializable):
     """
     An always True / False condition.
     """
@@ -44,7 +40,7 @@ class BinaryCondition(Condition, DefaultSerializable):
     def evaluate(self) -> ExtElement | None:
         return 1 if self is TrueCondition else 0
 
-    def invert(self) -> Condition | None:
+    def invert(self) -> 'BinaryCondition':
         return FalseCondition if (self is TrueCondition) else TrueCondition
 
     def and_(self, condition: MapElement):
