@@ -249,7 +249,20 @@ class ConditionalFunction(AssociativeListFunction):
 
     @class_simplifier
     @staticmethod
-    def _binary_conditional_function_simplifier(element: 'ConditionalFunction') -> SimplifierOutput:
+    def _single_condition_simplifier(element: 'ConditionalFunction') -> SimplifierOutput:
+        """
+            [( TrueCondition, f)]  => f
+        """
+        assert isinstance(element, ConditionalFunction)
+        if len(element.operands) != 1:
+            return ProcessFailureReason('Only applicable to single region', trivial=True)
+        region: SingleRegion = element.operands[0]
+        assert region.condition.simplify() is TrueCondition, f'single condition must be True, instead got {region.condition}'
+        return region.function
+
+    @class_simplifier
+    @staticmethod
+    def _combine_regions_simplifier(element: 'ConditionalFunction') -> SimplifierOutput:
         """
             ( cond, func ), (cond_, func(cond_) )   =>  ( cond | cond_ , func)
         """
@@ -280,43 +293,28 @@ class ConditionalFunction(AssociativeListFunction):
 
     @class_simplifier
     @staticmethod
-    def _single_condition_simplifier(element: 'ConditionalFunction') -> SimplifierOutput:
+    def _nested_simplifier(elem: MapElement) -> SimplifierOutput:
         """
-            [( TrueCondition, f)]  => f
+            ( c , [(c1, x1) , (c2, x2)] )   =>  (c & c1 , x1) , (c & c2 , x2)
         """
-        assert isinstance(element, ConditionalFunction)
-        if len(element.operands) != 1:
-            return ProcessFailureReason('Only applicable to single region', trivial=True)
-        region: SingleRegion = element.operands[0]
-        assert region.condition.simplify() is TrueCondition, f'single condition must be True, instead got {region.condition}'
-        return region.function
+        assert isinstance(elem, ConditionalFunction)
 
-    @staticmethod
-    def mult_condition_by_element(element: MapElement) -> MapElement | None:
-        assert isinstance(element, _Mult)
-        a, b = element.operands
-        a_is_cond = is_condition.compute(a, simplifier_context)
-        b_is_cond = is_condition.compute(b, simplifier_context)
-        if b_is_cond:
-            a, b = b, a
-        if not a_is_cond or b_is_cond:
-            return None
+        simpler = False
+        regions = []
+        for region in elem.regions:
+            function = region.function
+            condition = region.condition
 
-        if b_is_cond:
-            a, b = b, a
-        if isinstance(a, (Var, MapElementConstant)):
-            return None
-        return ConditionalFunction([(a, b), (~a, MapElementConstant.zero)])
+            if isinstance(function, ConditionalFunction):
+                simpler = True
+                for inner_region in function.regions:
+                    regions.append((inner_region.condition & condition, inner_region.function))
+            else:
+                regions.append(region)
 
-    @staticmethod
-    def new_assignment_simplify(ranged_cond: MapElement) -> MapElement | None:
-        assert isinstance(ranged_cond, RangeCondition)
-        cond_function = ranged_cond.function
-        if not isinstance(cond_function, ConditionalFunction):
-            return None
-
-        f_range = ranged_cond.range
-        return UnionCondition([condition & RangeCondition(func, f_range) for condition, func in cond_function.regions])
+        if simpler:
+            return ConditionalFunction(regions)
+        return None
 
     @class_simplifier
     @staticmethod
@@ -339,8 +337,8 @@ class ConditionalFunction(AssociativeListFunction):
         simplify_logger.log(f'Verify that the 2 regions combine to the whole space.')
         if (cond1 | cond2).simplify() is not TrueCondition:
             return ProcessFailureReason(
-                "Conditional Function on two regions should have complement conditions, "
-                "instead got {red(cond1)}, {red(cond2)}",
+                f"{red('Warning:')} Conditional Function on two regions should have complement conditions, "
+                f"instead got {red(cond1)}, {red(cond2)}",
                 trivial=False
             )
 
@@ -348,6 +346,34 @@ class ConditionalFunction(AssociativeListFunction):
             return value1 + (value2 - value1) * cond2
         return value2 + (value1 - value2) * cond1
 
+    @_Mult.register_class_simplifier
+    @staticmethod
+    def mult_condition_by_element(element: MapElement) -> MapElement | None:
+        assert isinstance(element, _Mult)
+        a, b = element.operands
+        a_is_cond = is_condition.compute(a, simplifier_context)
+        b_is_cond = is_condition.compute(b, simplifier_context)
+        if b_is_cond:
+            a, b = b, a
+        if not a_is_cond or b_is_cond:
+            return None
+
+        if b_is_cond:
+            a, b = b, a
+        if isinstance(a, (Var, MapElementConstant)):
+            return None
+        return ConditionalFunction([(a, b), (~a, MapElementConstant.zero)])
+
+    @RangeCondition.register_class_simplifier
+    @staticmethod
+    def new_assignment_simplify(ranged_cond: MapElement) -> MapElement | None:
+        assert isinstance(ranged_cond, RangeCondition)
+        cond_function = ranged_cond.function
+        if not isinstance(cond_function, ConditionalFunction):
+            return None
+
+        f_range = ranged_cond.range
+        return UnionCondition([condition & RangeCondition(func, f_range) for condition, func in cond_function.regions])
 
     @is_integral.register_rule
     @staticmethod
@@ -363,33 +389,7 @@ class ConditionalFunction(AssociativeListFunction):
             return False
         return None
 
-    @class_simplifier
-    @staticmethod
-    def _nested_simplifier(elem: MapElement) -> SimplifierOutput:
-        assert isinstance(elem, ConditionalFunction)
-
-        simpler = False
-        regions = []
-        for region in elem.regions:
-            function = region.function
-            condition = region.condition
-
-            if isinstance(function, ConditionalFunction):
-                simpler = True
-                for inner_region in function.regions:
-                    regions.append((inner_region.condition & condition, inner_region.function))
-            else:
-                regions.append(region)
-
-        if simpler:
-            return ConditionalFunction(regions)
-        return None
-
     # </editor-fold>
-
-
-_Mult.register_class_simplifier(ConditionalFunction.mult_condition_by_element)
-RangeCondition.register_class_simplifier(ConditionalFunction.new_assignment_simplify)
 
 
 def ReLU(map_elem: MapElement) -> MapElement:
