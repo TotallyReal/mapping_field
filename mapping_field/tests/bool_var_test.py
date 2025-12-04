@@ -140,7 +140,7 @@ def test_four_bools():
     simplify_logger.tree.set_active(True)
     cond = cond1 | cond2
     assert (
-        str(cond1) == "[[(x3 = 0) & [(x2 = 0) | (x1 = 1)] & (x4 = 1)] | [(x1 = 0) & [(x4 = 0) | (x3 = 1)] & (x2 = 1)]]"
+        str(cond1) == "[[(x1 = 0) & [(x3 = 1) | (x4 = 0)] & (x2 = 1)] | [(x3 = 0) & [(x1 = 1) | (x2 = 0)] & (x4 = 1)]]"
     )
-    assert str(cond2) == "[[(x4 = 0) | (x3 = 1)] & [(x2 = 0) | (x1 = 1)]]"
+    assert str(cond2) == "[[(x1 = 1) | (x2 = 0)] & [(x3 = 1) | (x4 = 0)]]"
     assert cond == result

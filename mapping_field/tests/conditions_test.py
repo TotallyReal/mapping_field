@@ -5,7 +5,7 @@ import pytest
 from mapping_field.bool_vars import BoolVar
 from mapping_field.conditions import (
     FalseCondition, IntersectionCondition, NotCondition, TrueCondition, UnionCondition,
-    _ListCondition,
+    _ListCondition, _NotCondition,
 )
 from mapping_field.tests.utils import DummyCondition
 
@@ -21,45 +21,45 @@ def test_binary_condition_invert():
     not_dummy = ~dummy
     not_not_dummy = ~not_dummy
 
-    assert dummy == not_not_dummy
+    assert dummy is not_not_dummy
 
 
 def test_binary_conditions_and():
     dummy = DummyCondition(0)
 
-    assert dummy & TrueCondition == dummy
-    assert TrueCondition & dummy == dummy
-    assert dummy & FalseCondition == FalseCondition
-    assert FalseCondition & dummy == FalseCondition
-    assert dummy & dummy == dummy
+    assert dummy & TrueCondition is dummy
+    assert TrueCondition & dummy is dummy
+    assert dummy & FalseCondition is FalseCondition
+    assert FalseCondition & dummy is FalseCondition
+    assert dummy & dummy is dummy
 
 
 def test_binary_conditions_or():
     dummy = DummyCondition(0)
 
-    assert dummy | TrueCondition == TrueCondition
-    assert TrueCondition | dummy == TrueCondition
-    assert dummy | FalseCondition == dummy
-    assert FalseCondition | dummy == dummy
-    assert dummy | dummy == dummy
+    assert dummy | TrueCondition is TrueCondition
+    assert TrueCondition | dummy is TrueCondition
+    assert dummy | FalseCondition is dummy
+    assert FalseCondition | dummy is dummy
+    assert dummy | dummy is dummy
 
 
 def test_binary_and_with_invert():
     dummy0 = DummyCondition(0)
     dummy1 = DummyCondition(1)
 
-    assert dummy0 & ~dummy0 == FalseCondition
-    assert ~dummy0 & dummy0 == FalseCondition
-    assert str((~dummy0) & (~dummy1)) == str(~(dummy0 | dummy1))
+    assert dummy0 & ~dummy0 is FalseCondition
+    assert ~dummy0 & dummy0 is FalseCondition
+    assert (~dummy0) & (~dummy1) == ~(dummy0 | dummy1)
 
 
 def test_binary_or_with_invert():
     dummy0 = DummyCondition(0)
     dummy1 = DummyCondition(1)
 
-    assert dummy0 | ~dummy0 == TrueCondition
-    assert ~dummy0 | dummy0 == TrueCondition
-    assert str((~dummy0) | (~dummy1)) == str(~(dummy0 & dummy1))
+    assert dummy0 | ~dummy0 is TrueCondition
+    assert ~dummy0 | dummy0 is TrueCondition
+    assert (~dummy0) | (~dummy1) == ~(dummy0 & dummy1)
 
 
 #       ╭─────────────────────────────────────────────────╮
@@ -92,29 +92,29 @@ def test_post_generation_independence_not():
 def test_post_generation_independence_and():
     x, y, z = BoolVar("x"), BoolVar("y"), BoolVar("z")
     func = x & y
-    assert str(func) == "[y & x]"
+    assert str(func) == "[x & y]"
 
     # Calling the function
     assigned_func = func({x: z})
 
     assert assigned_func != func
-    assert str(assigned_func) == "[y & z]"
+    assert str(assigned_func) == "[z & y]"
     # Some indication that func is frozen
-    assert str(func) == "[y & x]"
+    assert str(func) == "[x & y]"
 
 
 def test_post_generation_independence_or():
     x, y, z = BoolVar("x"), BoolVar("y"), BoolVar("z")
     func = x | y
-    assert str(func) == "[y | x]"
+    assert str(func) == "[x | y]"
 
     # Calling the function
     assigned_func = func({x: z})
 
     assert assigned_func != func
-    assert str(assigned_func) == "[y | z]"
+    assert str(assigned_func) == "[z | y]"
     # Some indication that func is frozen
-    assert str(func) == "[y | x]"
+    assert str(func) == "[x | y]"
 
 
 #       ╭─────────────────────────────────────────────────╮
@@ -415,3 +415,56 @@ def test_small_big_condition_switch():
     cond = ( ( cond1 & cond_big ) | cond_small )
 
     cond.simplify()
+
+
+class TestListConditionInversions:
+
+    # TODO: Maybe combine with (-1)
+
+    def test_invert_distributive(self, list_class):
+        # invert distribution laws:
+        #   - Both in and out of brackets is done if strictly decreases number of inversion signs.
+        #   - If number of inversion signs remains the same, distributes in, but not out.
+        #   - Doesn't distribute if number of inversion signs increases.
+        xx = [DummyCondition(i) for i in range(3)]
+
+        cls = list_class
+        rev_cls = list_class.rev_class()
+        op = cls.op_symbol
+        rev_op = rev_cls.op_symbol
+
+        mixed = [                                        # Distribute  out               In
+            cls([ xx[0],  xx[1],  xx[2]]).simplify(),    #             0 -> 4    No      1 -> 3      No
+            cls([ xx[0],  xx[1], ~xx[2]]).simplify(),    #             0 -> 4    No      1 -> 3      No
+            cls([ xx[0], ~xx[1], ~xx[2]]).simplify(),    #             0 -> 4    No      1 -> 3      No
+            cls([~xx[0], ~xx[1], ~xx[2]]).simplify(),    #             0 -> 4    No      1 -> 3      No
+        ]
+
+        # Distribution in:
+        assert all(isinstance(elem, cls) for elem in mixed[:3])
+        assert isinstance(mixed[3], _NotCondition) and isinstance(mixed[3].operand, rev_cls)
+        assert str(mixed[0]) == f'[DummyCond_0({{0}}) {op} DummyCond_1({{0}}) {op} DummyCond_2({{0}})]'
+        assert str(mixed[1]) == f'[DummyCond_0({{0}}) {op} DummyCond_1({{0}}) {op} ~(DummyCond_2({{0}}))]'
+        assert str(mixed[2]) == f'[DummyCond_0({{0}}) {op} ~(DummyCond_1({{0}})) {op} ~(DummyCond_2({{0}}))]'
+        assert str(mixed[3]) == f'~([DummyCond_0({{0}}) {rev_op} DummyCond_1({{0}}) {rev_op} DummyCond_2({{0}})])'
+
+        # Distribution out:
+        minus_mixed = [~elem for elem in mixed]
+        assert isinstance(minus_mixed[0], _NotCondition) and isinstance(minus_mixed[0].operand, cls)
+        assert all(isinstance(elem, rev_cls) for elem in minus_mixed[1:])
+        assert str(minus_mixed[0]) == f'~([DummyCond_0({{0}}) {op} DummyCond_1({{0}}) {op} DummyCond_2({{0}})])'
+        assert str(minus_mixed[1]) == f'[~(DummyCond_0({{0}})) {rev_op} ~(DummyCond_1({{0}})) {rev_op} DummyCond_2({{0}})]'
+        assert str(minus_mixed[2]) == f'[~(DummyCond_0({{0}})) {rev_op} DummyCond_1({{0}}) {rev_op} DummyCond_2({{0}})]'
+        assert str(minus_mixed[3]) == f'[DummyCond_0({{0}}) {rev_op} DummyCond_1({{0}}) {rev_op} DummyCond_2({{0}})]'
+
+    def test_invert_inside_list_class(self, list_class):
+        # Inversion on the dual list class inside a list class always distributes
+        xx = [DummyCondition(i) for i in range(5)]
+
+        rev_class = list_class.rev_class()
+        element = list_class([
+            xx[0], xx[1], xx[2],
+            ~rev_class([xx[3], xx[4]])
+        ])
+        element = element.simplify()
+        assert isinstance(element, list_class) and len(element.operands) == 5

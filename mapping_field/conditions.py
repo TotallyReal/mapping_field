@@ -4,13 +4,13 @@ from typing import Optional, cast
 
 from mapping_field.associative import AssociativeListFunction
 from mapping_field.field import ExtElement
-from mapping_field.log_utils.tree_loggers import TreeLogger, yellow, green, magenta
+from mapping_field.log_utils.tree_loggers import TreeLogger, green, magenta, yellow
 from mapping_field.mapping_field import (
-    CompositeElementFromFunction, MapElement, MapElementProcessor, OutputProperties, Var,
-    class_simplifier, simplifier_context,
+    CompositeElementFromFunction, MapElement, MapElementProcessor, OutputProperties,
+    SimplifierOutput, Var, class_simplifier, simplifier_context,
 )
 from mapping_field.property_engines import is_condition
-from mapping_field.utils.processors import log_context
+from mapping_field.utils.processors import ProcessFailureReason, log_context
 from mapping_field.utils.serializable import DefaultSerializable
 
 simplify_logger = TreeLogger(__name__)
@@ -103,6 +103,9 @@ class _NotCondition(CompositeElementFromFunction):
     @class_simplifier
     @staticmethod
     def _to_inversion_simplifier(inversion_func: MapElement) -> MapElement | None:
+        """
+            run elem.invert()
+        """
         assert isinstance(inversion_func, _NotCondition)
         return inversion_func.operand.invert()
 
@@ -153,12 +156,16 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
         setattr(cls, cls.method_names[1 - op_type], cls.rev_op)
 
     @classmethod
+    def rev_class(cls):
+        return cls.list_classes[1 - cls.type]
+
+    @classmethod
     def _unpack_list(cls, elements: list[MapElement]) -> list[MapElement]:
         elements = elements.copy()
         all_elements = []
 
         while len(elements)>0:
-            element = elements.pop()
+            element = elements.pop(0)
             if isinstance(element, cls):
                 elements.extend(element.operands)
                 continue
@@ -194,8 +201,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
 
     @classmethod
     def _rev_op_between(cls, condition1: MapElement, condition2: MapElement) -> MapElement | None:
-        rev_cls = cls.list_classes[1 - cls.type]
-        return rev_cls([condition1, condition2])
+        return cls.rev_class()([condition1, condition2])
 
     def op(self, condition: MapElement) -> MapElement | None:
         cls = self.__class__
@@ -212,7 +218,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
     def rev_op(self, condition: MapElement) -> MapElement | None:
 
         cls = self.__class__
-        rev_cls = cls.list_classes[1 - cls.type]
+        rev_cls = cls.rev_class()
 
         if isinstance(condition, BinaryCondition):
             # quick shortcut
@@ -309,7 +315,7 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
             f"rev_op( {cls.op_symbols[1 - cls.type]} ) the conditions vs 1: {yellow(conditions)} and {yellow(sp_condition)})"
         )
 
-        rev_cls = cls.list_classes[1 - cls.type]
+        rev_cls = cls.rev_class()
 
         # Use the fact that
         #   (A | B | C) & D = (A & D) | (B & D) | (C & D)
@@ -409,47 +415,100 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
             new_cls_condition = cls(prod_0_conditions)
             return rev_cls([new_cls_condition, sp_condition])
 
-is_condition.add_auto_class(_ListCondition)
-
-def _binary_simplify(elem: MapElement) -> MapElement | None:
-    assert isinstance(elem, _ListCondition)
-    if len(elem.conditions) != 2:
+    def invert(self) -> MapElement | None:
+        """
+                ~ (x & ~y) => ~x | y
+            Only works if this doesn't increase the total number of inversion signs.
+        """
+        # TODO: add tests
+        invert_counter = sum([isinstance(operand, _NotCondition) for operand in self.operands], 0)
+        if len(self.operands) - 1 <= 2 * invert_counter:
+            rev_cls = self.__class__.rev_class()
+            return rev_cls([~operand for operand in self.operands])
         return None
 
-    cls = elem.__class__
-    rev_cls = cls.list_classes[1 - cls.type]
+    @class_simplifier
+    @staticmethod
+    def _invert_extractor_simplifier(list_condition: MapElement) -> SimplifierOutput:
+        """
+                (x & ~y & ~z & ~w) => ~(~x | y | z | w)
+            Only works if this strictly reduces the total number of minus signs.
+        """
+        assert isinstance(list_condition, _ListCondition)
+        if _ListCondition.is_binary(list_condition):
+            return ProcessFailureReason('Not applicable to the binary version', trivial=True)
+        invert_counter = sum([isinstance(operand, _NotCondition) for operand in list_condition.operands], 0)
+        if len(list_condition.operands)+1 < 2*invert_counter:
+            rev_cls = list_condition.__class__.rev_class()
+            return NotCondition(rev_cls([~operand for operand in list_condition.operands]))
+        return ProcessFailureReason('Not enough inversions to extract', trivial = True)
 
-    cond1, cond2 = elem.conditions
+    @class_simplifier
+    @staticmethod
+    def _unpack_inversions_simplifier(list_condition: MapElement) -> SimplifierOutput:
+        """
+                x & ~(y | z)   =>      x & (~y) & (~z)
+            Unlike just inversion of _ListCondition, where we simplify only when the number of inversions decrease,
+            as a partial list we always open the brackets.
+        """
+        assert isinstance(list_condition, _ListCondition)
+        non_inversion_operands = []
+        inversion_operands = []
+        cls = list_condition.__class__
+        rev_cls = cls.rev_class()
+        for operand in list_condition.operands:
+            if isinstance(operand, _NotCondition) and isinstance(operand.operand, rev_cls):
+                for sub_operand in operand.operand.operands:
+                    inversion_operands.append(~sub_operand)
+            else:
+                non_inversion_operands.append(operand)
+        if len(inversion_operands) > 0:
+            return cls(non_inversion_operands + inversion_operands)
+        return ProcessFailureReason('No inversion signs', trivial = True)
 
-    if (cond1 is cond2) or (cond1 == cond2):
-        return cond1
+    @class_simplifier
+    @staticmethod
+    def _binary_simplify(elem: MapElement) -> MapElement | None:
+        assert isinstance(elem, _ListCondition)
+        if len(elem.conditions) != 2:
+            return None
 
-    invert1, cond1_ = _as_inversion(cond1)
-    invert2, cond2_ = _as_inversion(cond2)
+        cls = elem.__class__
+        rev_cls = cls.list_classes[1 - cls.type]
 
-    if invert1 == invert2 == True:
-        return ~rev_cls([cond1_, cond2_])
+        cond1, cond2 = elem.conditions
 
-    if invert1 != invert2 and ((cond1_ is cond2_) or (cond1_ == cond2_)):
-        return cls.zero_condition
+        if (cond1 is cond2) or (cond1 == cond2):
+            return cond1
 
-    method_name = cls.method_names[cls.type]
+        invert1, cond1_ = _as_inversion(cond1)
+        invert2, cond2_ = _as_inversion(cond2)
 
-    with log_context(simplify_logger, start_msg=f"Simplify '{method_name}' via 1st parameter") as log_result:
-        result = getattr(cond1, method_name)(cond2)
-        if result is not None:
-            log_result.set(green(result))
-            return result
-        log_result.set(magenta(' # # # '))
+        # if invert1 == invert2 == True:
+        #     return ~rev_cls([cond1_, cond2_])
 
-    with log_context(simplify_logger, start_msg=f"Simplify '{method_name}' via 2st parameter") as log_result:
-        result = getattr(cond2, method_name)(cond1)
-        if result is not None:
-            log_result.set(green(result))
-            return result
-        log_result.set(magenta(' # # # '))
+        if invert1 != invert2 and ((cond1_ is cond2_) or (cond1_ == cond2_)):
+            return cls.zero_condition
 
-    return None
+        method_name = cls.method_names[cls.type]
+
+        with log_context(simplify_logger, start_msg=f"Simplify '{method_name}' via 1st parameter") as log_result:
+            result = getattr(cond1, method_name)(cond2)
+            if result is not None:
+                log_result.set(green(result))
+                return result
+            log_result.set(magenta(' # # # '))
+
+        with log_context(simplify_logger, start_msg=f"Simplify '{method_name}' via 2st parameter") as log_result:
+            result = getattr(cond2, method_name)(cond1)
+            if result is not None:
+                log_result.set(green(result))
+                return result
+            log_result.set(magenta(' # # # '))
+
+        return None
+
+is_condition.add_auto_class(_ListCondition)
 
 
 class IntersectionCondition(_ListCondition, MapElementProcessor, op_type=_ListCondition.AND):
@@ -483,15 +542,11 @@ class IntersectionCondition(_ListCondition, MapElementProcessor, op_type=_ListCo
         return cond1_ & cond2_
 
 
-IntersectionCondition.register_class_simplifier(_binary_simplify)
-
 MapElement.intersection = lambda cond1, cond2: IntersectionCondition([cond1, cond2]).simplify()
 
 
 class UnionCondition(_ListCondition, op_type=_ListCondition.OR):
     pass
 
-
-UnionCondition.register_class_simplifier(_binary_simplify)
 
 MapElement.union = lambda cond1, cond2: UnionCondition([cond1, cond2]).simplify()
