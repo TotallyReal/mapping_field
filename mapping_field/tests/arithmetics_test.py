@@ -134,33 +134,52 @@ class TestFieldAxioms:
         assert x * 0 == 0
         assert 0 * x == 0
 
+    def test_minus_in_multiplication(self):
+        x, y, z = DummyMap(0), DummyMap(1), DummyMap(2)
+
+        assert (-1) * x == x * (-1) == -x
+        assert (x * (-y)) == -(x*y)
+        assert ((-x) * y) == -(x*y)
+        assert (-x) * (-y) == x*y
+
+    def test_neg_distributive(self):
+        # minus sign distribution laws:
+        #   - Both in and out of brackets is done if strictly decreases number of minus signs.
+        #   - If number of minus sign remains the same, distributes in, but not out.
+        #   - Doesn't distribute if number of minus signs increases.
+        xx = [DummyMap(i) for i in range(3)]
+
+        mixed = [                                    # Distribute  out               In
+            (  xx[0] + xx[1] + xx[2]).simplify(),    #             0 -> 4    No      1 -> 3      No
+            (  xx[0] + xx[1] - xx[2]).simplify(),    #             1 -> 3    No      2 -> 2      Yes
+            (  xx[0] - xx[1] - xx[2]).simplify(),    #             2 -> 2    No      3 -> 1      Yes
+            (- xx[0] - xx[1] - xx[2]).simplify(),    #             3 -> 1    Yes     4 -> 0      Yes
+        ]
+
+        # Distribution in:
+        assert all(not isinstance(elem, _Negative) for elem in mixed[:3])
+        assert isinstance(mixed[3], _Negative)
+        assert str(mixed[0]) == '(DummyMap(0) + DummyMap(1) + DummyMap(2))'
+        assert str(mixed[1]) == '(-DummyMap(2) + DummyMap(0) + DummyMap(1))'
+        assert str(mixed[2]) == '(-DummyMap(1) - DummyMap(2) + DummyMap(0))'
+        assert str(mixed[3]) == '(-(DummyMap(0) + DummyMap(1) + DummyMap(2)))'
+
+        # Distribution out:
+        minus_mixed = [-elem for elem in mixed]
+        assert isinstance(minus_mixed[0], _Negative)
+        assert all(not isinstance(elem, _Negative) for elem in minus_mixed[1:])
+        assert str(minus_mixed[0]) == '(-(DummyMap(0) + DummyMap(1) + DummyMap(2)))'
+        assert str(minus_mixed[1]) == '(-DummyMap(0) - DummyMap(1) + DummyMap(2))'
+        assert str(minus_mixed[2]) == '(-DummyMap(0) + DummyMap(1) + DummyMap(2))'
+        assert str(minus_mixed[3]) == '(DummyMap(0) + DummyMap(1) + DummyMap(2))'
+
+    def test_neg_inside_multi_add(self):
+        # Negation on a sum inside another sum always distributes
+        xx = [DummyMap(i) for i in range(5)]
+        element = xx[0] + xx[1] + xx[2] - (xx[3] + xx[4])
+        assert isinstance(element, MultiAdd) and len(element.operands) == 5
 
 
-
-# ----------------- General Addition Rules -----------------
-
-
-def test_neg_distributive():
-
-    x, y, z = DummyMap(0), DummyMap(1), DummyMap(2)
-    assert (-(-x)) == x
-    assert str(-(x - y)) == "(-DummyMap(0) + DummyMap(1))"
-
-
-def test_addition_rules():
-    x, y = DummyMap(0), DummyMap(1)
-    assert str(x + y) == "(DummyMap(0) + DummyMap(1))"
-    assert x + (-y) == x - y
-    assert (-x) + y == y - x
-    assert ((-x) + (-y)) == - (x+y)
-
-
-def test_subtraction_rules():
-    x, y = DummyMap(0), DummyMap(1)
-    assert str(x - y) == "(-DummyMap(1) + DummyMap(0))"
-    assert x - (-y) == x + y
-    assert (-x) - y == -(x+y)
-    assert (-x) - (-y) == y-x
 
 
 # ----------------- General Multiplication Rules -----------------
@@ -168,10 +187,6 @@ def test_subtraction_rules():
 
 def test_multiplication_rules():
     x, y, z = Var("x"), Var("y"), Var("z")
-
-    assert str(x * (-y)) == "(-(x*y))"
-    assert str((-x) * y) == "(-(x*y))"
-    assert str((-x) * (-y)) == "(x*y)"
 
     f = Func("f")(x, y)
     g = Func("g")(z)
