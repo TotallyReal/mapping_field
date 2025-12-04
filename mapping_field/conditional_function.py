@@ -161,7 +161,10 @@ class ConditionalFunction(AssociativeListFunction):
         if self is other:
             return True
         if isinstance(other, ConditionalFunction):
-            return self._op(other, operator.sub).simplify().is_zero()
+            with log_context(simplify_logger, start_msg=f"[{cyan(self.__class__.__name__)}].__eq__: {red(self)} ?= {red(other)}") as log_result:
+                result = self._op(other, operator.sub).simplify().is_zero()
+                log_result.set(str(result))
+                return result
 
         for cond, func in self.regions:
             if isinstance(cond, MapElementProcessor):
@@ -210,7 +213,9 @@ class ConditionalFunction(AssociativeListFunction):
                     simplify_logger.log(
                         f'Regions intersect - apply "{yellow(op_func.__name__)}" on the functions {red(elem1)}, {red(elem2)}.'
                     )
-                    regions.append((cond_prod, op_func(elem1, elem2)))
+                    function = op_func(elem1, elem2)
+                    simplify_logger.log(f"Adding region {green((cond_prod, function))}")
+                    regions.append((cond_prod, function))
         return ConditionalFunction(regions).simplify()
 
     def add(self, other: MapElement) -> "ConditionalFunction":
@@ -318,9 +323,9 @@ class ConditionalFunction(AssociativeListFunction):
 
     @class_simplifier
     @staticmethod
-    def _bool_var_simplifier(map_elem: MapElement) -> SimplifierOutput:
+    def _double_constant_to_single_region_simplifier(map_elem: MapElement) -> SimplifierOutput:
         """
-            ( c, x ) ; ( ~c, y )    =>    y + ( c, x-y )
+            ( c, x ) ; ( ~c, y )    =>    y + ( c, x-y ) ,  for x, y constant
         """
         assert isinstance(map_elem, ConditionalFunction)
 
@@ -349,6 +354,7 @@ class ConditionalFunction(AssociativeListFunction):
     @_Mult.register_class_simplifier
     @staticmethod
     def mult_condition_by_element(element: MapElement) -> MapElement | None:
+        # TODO: add tests
         assert isinstance(element, _Mult)
         a, b = element.operands
         a_is_cond = is_condition.compute(a, simplifier_context)
@@ -367,6 +373,7 @@ class ConditionalFunction(AssociativeListFunction):
     @RangeCondition.register_class_simplifier
     @staticmethod
     def new_assignment_simplify(ranged_cond: MapElement) -> MapElement | None:
+        # TODO: add tests
         assert isinstance(ranged_cond, RangeCondition)
         cond_function = ranged_cond.function
         if not isinstance(cond_function, ConditionalFunction):

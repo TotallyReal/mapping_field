@@ -1,13 +1,15 @@
 import logging
 
 from mapping_field.binary_expansion import BinaryExpansion
+from mapping_field.bool_vars import BoolVar
 from mapping_field.conditional_function import ConditionalFunction, ReLU
-from mapping_field.conditions import FalseCondition, IntersectionCondition, TrueCondition
-from mapping_field.log_utils.tree_loggers import TreeLogger
+from mapping_field.conditions import (
+    FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
+)
+from mapping_field.log_utils.tree_loggers import TreeLogger, blue
 from mapping_field.mapping_field import MapElementConstant, Var, simplifier_context
 from mapping_field.property_engines import is_integral
 from mapping_field.ranged_condition import IntervalRange, RangeCondition, in_range
-from mapping_field.bool_vars import BoolVar
 from mapping_field.tests.utils import DummyCondition, DummyConditionOn, DummyMap
 
 simplify_logger = TreeLogger(__name__)
@@ -131,19 +133,6 @@ def test_equality_to_conditional_function():
     ])
 
     assert cond_func1 == cond_func2
-
-
-def test_combining_regions():
-    x, y = BoolVar("x"), BoolVar("y")
-
-    func = ConditionalFunction([
-            ((x << 0) & (y << 0), MapElementConstant(0)),
-            ((x << 1) & (y << 0), MapElementConstant(1)),
-            ((y << 1), x),
-    ])
-
-    func = func.simplify()
-    assert func is x
 
 
 def test_equality_region_wise():
@@ -364,3 +353,69 @@ def test_sum_of_conditions():
     cond1 = elem.simplify()
     cond2 = IntersectionCondition([x[i]<<2*i for i in range(n)])
     assert cond1 == cond2
+
+class TestConditionalFunctionSimplifiers:
+
+    def test_single_simplifier(self):
+        cond = DummyCondition()
+        dummy = DummyMap()
+
+        element = ConditionalFunction([
+            (UnionCondition([cond, ~cond]), dummy)
+        ])
+
+        element = element.simplify()
+        assert element is dummy
+
+    def test_combining_regions(self):
+        # TODO: once removing MapProcessor, make better\more tests
+        x, y = BoolVar("x"), BoolVar("y")
+
+        func = ConditionalFunction([
+                ((x << 0) & (y << 0), MapElementConstant(0)),
+                ((x << 1) & (y << 0), MapElementConstant(1)),
+                ((y << 1), x),
+        ])
+
+        func = func.simplify()
+        assert func is x
+
+    def test_nested_simplifier(self):
+        cond_outer = DummyCondition(0)
+        cond_inner = DummyCondition(1)
+        dummy = [DummyMap(i) for i in range(3)]
+
+        func_inner = ConditionalFunction([
+                (cond_inner, dummy[0]),
+                (~cond_inner, dummy[1]),
+        ])
+
+        func_outer = ConditionalFunction([
+                (cond_outer, func_inner),
+                (~cond_outer, dummy[2]),
+        ])
+
+        result = ConditionalFunction([
+                (  cond_inner  & cond_outer, dummy[0]),
+                ((~cond_inner) & cond_outer, dummy[1]),
+                (~cond_outer, dummy[2]),
+        ])
+
+        simplify_logger.log(blue("simplifying"))
+        func_outer = func_outer.simplify()
+
+        simplify_logger.log(blue("Equating"))
+        assert func_outer == result
+
+    def test_double_constant_to_single_region_simplifier(self):
+        cond = DummyCondition()
+        func = ConditionalFunction([
+            (cond, MapElementConstant(5)),
+            (~cond, MapElementConstant(8)),
+        ])
+        func = func.simplify()
+
+        version1 = 5 + (~cond) *MapElementConstant(3)
+        version2 = 8 + cond * MapElementConstant(-3)
+
+        assert func == version1 or func == version2
