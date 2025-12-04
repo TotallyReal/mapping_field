@@ -64,18 +64,6 @@ def test_equality():
     assert dummy1 / dummy2 == dummy1 / dummy2
 
 
-def test_simple_arithmetics():
-    x, y, z = Var("x"), Var("y"), Var("z")
-
-    f = (x + y) * z + 5 - (2 * x * x)
-    f.set_var_order([x, y, z])
-    assert f(0, 0, 0) == 5
-    assert f(1, 0, 0) == 3
-    assert f(1, 2, 0) == 3
-    assert f(1, 2, 3) == 12
-    assert f(0, 2, 3) == 11
-    assert f(0, 0, 3) == 5
-
 class TestFieldAxioms:
 
     def test_associative(self):
@@ -182,12 +170,23 @@ class TestFieldAxioms:
         assert isinstance(element, MultiAdd) and len(element.operands) == 5
 
 
-
-
 # ----------------- General Multiplication Rules -----------------
 
 
-def test_multiplication_rules():
+def test_simple_arithmetics():
+    x, y, z = Var("x"), Var("y"), Var("z")
+
+    f = (x + y) * z + 5 - (2 * x * x)
+    f.set_var_order([x, y, z])
+    assert f(0, 0, 0) == 5
+    assert f(1, 0, 0) == 3
+    assert f(1, 2, 0) == 3
+    assert f(1, 2, 3) == 12
+    assert f(0, 2, 3) == 11
+    assert f(0, 0, 3) == 5
+
+
+def test_complex_cross_division_rules():
     x, y, z = Var("x"), Var("y"), Var("z")
 
     f = Func("f")(x, y)
@@ -293,37 +292,70 @@ def test_associative_addition_creation():
     dummy0, dummy1 = DummyMap(0), DummyMap(1)
 
     elem1 = MultiAdd([1, 2, 3, 4, 5])
-
     assert str(elem1) == "(1 + 2 + 3 + 4 + 5)"
 
     elem2 = MultiAdd([1, 2, 3, 4, MultiAdd([1, 2, 3, 4, 5])])
-
     assert str(elem2) == "(1 + 2 + 3 + 4 + 1 + 2 + 3 + 4 + 5)"
-
     elem2 = elem2.simplify()
-
     assert elem2 == 25
 
     elem3 = MultiAdd([dummy0, dummy1, -dummy0])
-
     assert str(elem3) == "(DummyMap(0) + DummyMap(1) - DummyMap(0))"
-
     elem3 = elem3.simplify()
-
     assert elem3 is dummy1
 
     elem4 = MultiAdd([dummy1, dummy0])
-
     assert str(elem4) == "(DummyMap(1) + DummyMap(0))"
 
 def test_arithmetic_premade_methods():
-    class DummyMapNeg(DummyMap):
+    class DummyArithmetic(MapElement):
+        def __init__(self):
+            super().__init__(variables=[])
 
-        def neg(self) -> MapElement | None:
-            return DummyMap(-self.value) if self.value != 0 else None
+        def neg(self) -> MapElement:
+            dummy_result = DummyMap()
+            dummy_result._arithmetic_flag = 'neg'
+            return dummy_result
 
-    dummy = DummyMapNeg(0)
-    assert str(-dummy) == "(-DummyMap(0))"
+        def add(self, other) -> MapElement:
+            dummy_result = DummyMap()
+            dummy_result._arithmetic_flag = 'add'
+            return dummy_result
 
-    dummy = DummyMapNeg(1)
-    assert str(-dummy) == "DummyMap(-1)"
+        def sub(self, other) -> MapElement:
+            # TODO: Sub no longer exists. Should we still call it?
+            dummy_result = DummyMap()
+            dummy_result._arithmetic_flag = 'sub'
+            return dummy_result
+
+        def mul(self, other) -> MapElement:
+            dummy_result = DummyMap()
+            dummy_result._arithmetic_flag = 'mul'
+            return dummy_result
+
+        def div(self, other) -> MapElement:
+            dummy_result = DummyMap()
+            dummy_result._arithmetic_flag = 'div'
+            return dummy_result
+
+        def rdiv(self, other) -> MapElement:
+            dummy_result = DummyMap()
+            dummy_result._arithmetic_flag = 'rdiv'
+            return dummy_result
+
+    dummy = DummyArithmetic()
+
+    result = -dummy
+    assert getattr(result, '_arithmetic_flag') == 'neg'
+
+    result = dummy + 3
+    assert getattr(result, '_arithmetic_flag') == 'add'
+
+    result = dummy * 3
+    assert getattr(result, '_arithmetic_flag') == 'mul'
+
+    result = dummy / 3
+    assert getattr(result, '_arithmetic_flag') == 'div'
+
+    result = 3 / dummy
+    assert getattr(result, '_arithmetic_flag') == 'rdiv'
