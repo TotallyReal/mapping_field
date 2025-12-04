@@ -1,7 +1,9 @@
 
 import pytest
 
-from mapping_field.arithmetics import MultiAdd, _as_combination, _as_scalar_mult
+from mapping_field.arithmetics import (
+    Add, Div, Mult, MultiAdd, Neg, Sub, _as_combination, _as_scalar_mult, _Div, _Mult, _Negative,
+)
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.mapping_field import Func, MapElement, MapElementConstant, Var
 from mapping_field.tests.utils import DummyMap
@@ -48,25 +50,16 @@ def test_arithmetic_premade_methods():
     assert str(-dummy) == "DummyMap(-1)"
 
 
-def test_addition_commutative_choice():
-    elem1 = DummyMap(0)
-    elem2 = ImprovedDummyMap((1,))
+    assert dummy[0] + dummy[1] + dummy[2] == MultiAdd([dummy[0], dummy[1], dummy[2]]).simplify()
 
-    addition1 = elem1 + elem2
-    addition2 = elem2 + elem1
-    assert addition1 == addition2
+def test_equality():
+    dummy1, dummy2 = DummyMap(1), DummyMap(2)
 
-
-def test_multiplication_commutative_choice():
-    elem1 = DummyMap(0)
-    elem2 = ImprovedDummyMap((1,))
-
-    multiplication1 = elem1 * elem2
-    multiplication2 = elem2 * elem1
-    assert multiplication1 == multiplication2
-
-
-# ----------------- test simple arithmetics -----------------
+    assert -dummy1 == -dummy1
+    assert dummy1 + dummy2 == dummy1 + dummy2
+    assert dummy1 - dummy2 == dummy1 - dummy2
+    assert dummy1 * dummy2 == dummy1 * dummy2
+    assert dummy1 / dummy2 == dummy1 / dummy2
 
 
 def test_simple_arithmetics():
@@ -81,54 +74,67 @@ def test_simple_arithmetics():
     assert f(0, 2, 3) == 11
     assert f(0, 0, 3) == 5
 
+class TestFieldAxioms:
 
-# ----------------- 0 / 1 rules -----------------
+    def test_associative(self):
+        dummy0, dummy1, dummy2 = DummyMap(0), DummyMap(1), DummyMap(2)
 
-# TODO: create TestMapElement
-# TODO: not the best way to test with str(.), but it will do until I can compare functions
+        assert (dummy0 + dummy1) + dummy2 == dummy0 + (dummy1 + dummy2) == dummy0 + dummy1 + dummy2
+        # Right now the multiplication is not defined to be associative in the simplification rules
+
+    def test_commutative(self):
+        dummy0, dummy1 = DummyMap(0), DummyMap(1)
+
+        assert dummy0 + dummy1 == dummy1 + dummy0
+        assert dummy0 - dummy1 != dummy1 - dummy0
+        assert dummy0 * dummy1 == dummy1 * dummy0
+        assert dummy0 / dummy1 != dummy1 / dummy0
+
+    def test_zero_addition(self):
+        x = DummyMap(0)
+        assert x + 0 == x
+        assert 0 + x == x
+
+    def test_addition_inverse(self):
+        x, y = DummyMap(0), DummyMap(1)
+        assert (-(-x)) == x
+        assert x - y == x + (-y)
+        assert x - x == 0
+
+    def test_one_multiplication(self):
+        x = DummyMap(0)
+        assert x * 1 == x
+        assert 1 * x == x
+
+    def test_one_division(self):
+        x = DummyMap(0)
+        assert x / 1 == x
+        assert x / x == 1
+
+    def test_division_cross_rule(self):
+        a,b,c,d = [DummyMap(i) for i in range(4)]
+
+        assert (a/b) * (c/d) == (a*c) / (b*d)
+        assert a * (c/d) == (a*c) / d
+        assert (a/b) / (c/d) == (a*d) / (b*c)
+        assert a / (c/d) == (a*d) / c
+        assert (a/b) / c == a / (b*c)
+
+    def test_zero_division(self):
+        x = DummyMap(0)
+        assert 0 / x == 0
+        with pytest.raises(Exception):
+            y = x / 0
+
+    # The Distribution Law is not hard codes because in general it is not clear which side of the law is "simpler"
+    # However some consequences of this law are coded in:
+
+    def test_zero_multiplication(self):
+        x = DummyMap(0)
+        assert x * 0 == 0
+        assert 0 * x == 0
 
 
-def test_zero_addition():
-    x = DummyMap(0)
-    assert x + 0 == x
-    assert 0 + x == x
-
-
-def test_zero_subtraction():
-    x = DummyMap(0)
-    assert x - 0 == x
-    assert str(0 - x) == "(-DummyMap(0))"
-
-
-def test_addition_inverse():
-    x = DummyMap(0)
-    assert x - x == 0
-    assert x + (-x) == 0
-    assert (-x) + x == 0
-
-
-def test_zero_multiplication():
-    x = DummyMap(0)
-    assert x * 0 == 0
-    assert 0 * x == 0
-
-
-def test_one_multiplication():
-    x = DummyMap(0)
-    assert x * 1 == x
-    assert 1 * x == x
-
-
-def test_zero_division():
-    x = DummyMap(0)
-    assert 0 / x == 0
-    with pytest.raises(Exception):
-        y = x / 0
-
-
-def test_one_division():
-    x = DummyMap(0)
-    assert x / 1 == x
 
 
 # ----------------- General Addition Rules -----------------

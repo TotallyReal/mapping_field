@@ -2,8 +2,8 @@
 from mapping_field.associative import AssociativeListFunction, _sorted_commutative_simplifier
 from mapping_field.log_utils.tree_loggers import TreeLogger
 from mapping_field.mapping_field import (
-    CompositeElement, CompositeElementFromFunction, MapElement,
-    MapElementConstant, OutputProperties, SimplifierOutput, Var, class_simplifier,
+    CompositeElement, CompositeElementFromFunction, MapElement, MapElementConstant,
+    OutputProperties, SimplifierOutput, Var, class_simplifier,
 )
 from mapping_field.property_engines import is_integral
 from mapping_field.utils.processors import ProcessFailureReason
@@ -34,6 +34,9 @@ When simplifying map with arithmetics I use the following rules:
 
 # --------------------- MapElements for arithmetic operator ---------------------
 
+# Note that creating an arithmetic function from their constructors doesn't call automatic simplify.
+# Creating one such function with variables, and then calling it instead, does simplify automatically
+# unless stating that simplify=False as a parameter.
 
 # <editor-fold desc=" ------------------- Negation ------------------- ">
 
@@ -109,9 +112,8 @@ class _Add(CompositeElement):
 
         sign0, map0 = as_neg(operands[0])
         sign1, map1 = as_neg(operands[1])
-        if sign0 != sign1:
-            if map0 == map1:
-                return MapElementConstant.zero
+        if sign0 != sign1 and map0 == map1:
+            return MapElementConstant.zero
 
         return ProcessFailureReason('Elements did not cancel each other', trivial = True)
 
@@ -309,6 +311,9 @@ class _Div(CompositeElementFromFunction):
 
         if operands[0] == 0:
             return operands[0]
+
+        if operands[0] == operands[1]:
+            return MapElementConstant.one
 
         sign0, numerator0, denominator0 = _as_rational(operands[0])
         sign1, numerator1, denominator1 = _as_rational(operands[1])
