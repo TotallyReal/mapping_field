@@ -3,11 +3,11 @@ import math
 from functools import cache
 from typing import Optional, Union
 
-from mapping_field.arithmetics import MultiAdd, _as_combination, _as_scalar_mult
+from mapping_field.arithmetics import MultiAdd, _as_scalar_mult, _extract_additive_scalar
 from mapping_field.conditions import FalseCondition, IntersectionCondition, TrueCondition
 from mapping_field.log_utils.tree_loggers import TreeLogger, cyan, green, red, log_context
 from mapping_field.mapping_field import (
-    CompositeElement, FuncDict, MapElement, MapElementConstant, MapElementProcessor,
+    CompositeElement, FuncDict, MapElement, MapElementProcessor,
     SimplifierContext, SimplifierOutput, Var, VarDict, class_simplifier, simplifier_context,
 )
 from mapping_field.property_engines import (
@@ -531,25 +531,31 @@ class RangeCondition(CompositeElement, MapElementProcessor):
         """
             c*x + d < r     =>      x < (r-d)/c     (for c>0)
         """
+        # TODO: add tests
         assert isinstance(element, RangeCondition)
-        c1, elem1, c2, elem2 = _as_combination(element.function)
+        f_range = element.range
+        is_simpler = False
 
-        if c1 == 1 and c2 == 0:
+        element, scalar_add = _extract_additive_scalar(element.function)
+        if scalar_add != 0:
+            is_simpler = True
+
+        coef, element = _as_scalar_mult(element)
+        if coef != 1:
+            is_simpler = True
+
+        if not is_simpler:
             return ProcessFailureReason("Trivial combination", trivial=True)
-
-        if (c2 != 0) and (elem2 is not MapElementConstant.one):
-            # Too complicated combination
-            return None
 
         # combination is c1*elem + c2.
 
-        if c1 == 0:
+        if coef == 0:
             # Should have been caught in the _evaluated_simplifier, but just in case:
-            return TrueCondition if element.range.contains(c2) else FalseCondition
+            return TrueCondition if f_range.contains(scalar_add) else FalseCondition
 
-        f_range = (element.range - c2) / c1
+        f_range = (f_range - scalar_add) / coef
 
-        return RangeCondition(elem1, f_range)
+        return RangeCondition(element, f_range)
 
 
     @class_simplifier
@@ -564,7 +570,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
             if f_range != range_cond.range:
                 return RangeCondition(range_cond.function, f_range)
 
-        return ProcessFailureReason("Function is not Integral", trivial=False)
+        return ProcessFailureReason("Function is not Integral", trivial=True)
 
     @class_simplifier
     @staticmethod

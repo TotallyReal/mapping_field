@@ -392,6 +392,25 @@ def _as_scalar_mult(map_elem: MapElement) -> tuple[int, MapElement]:
     return 1, map_elem
 
 
+def _extract_additive_scalar(map_elem: MapElement) -> tuple[MapElement, int]:
+
+    if isinstance(map_elem, MultiAdd):
+        result = map_elem.extract_scalar()
+        if result is not None:
+            return result[0], result[1].evaluate()
+
+
+    coefficient, operand = _as_scalar_mult(map_elem)
+    if coefficient != 1:
+        elem, scalar_add = _extract_additive_scalar(operand)
+        if scalar_add == 0:
+            return map_elem, 0
+
+        return coefficient * elem,  coefficient * scalar_add
+
+    return map_elem, 0
+
+
 # TODO: consider creating a LinearCombination class?
 #       also, make this function recursive.
 def _as_combination(map_elem: MapElement) -> tuple[int, MapElement, int, MapElement]:
