@@ -209,23 +209,25 @@ class MultiAdd(AssociativeListFunction, binary_class=_Add):
 
     @class_simplifier
     @staticmethod
-    def _unpack_minus_summand(multi_add: MapElement) -> SimplifierOutput:
+    def _unpack_scalar_mult_summands(multi_add: MapElement) -> SimplifierOutput:
         """
-                x - (y+z)   =>      x + (-y) + (-z)
+                x + c*(y+z)   =>      x + c*y + c*z     for scalar c
             Unlike just negation of MultiAdd, where we simplify only when the number of minus signs decrease,
             as a partial sum we always open the brackets.
         """
+        # TODO: improve test from minus signs to scalars
         assert isinstance(multi_add, MultiAdd)
-        non_minus_summands = []
-        minus_summands = []
+        non_scalar_summands = []
+        scalar_summands = []
         for summand in multi_add.operands:
-            if isinstance(summand, _Negative) and isinstance(summand.operand, MultiAdd):
-                for sub_summand in summand.operand.operands:
-                    minus_summands.append(-sub_summand)
+            c, inner_summand = _as_scalar_mult(summand)
+            if isinstance(inner_summand, MultiAdd):
+                for sub_summand in inner_summand.operands:
+                    scalar_summands.append(c * sub_summand)
             else:
-                non_minus_summands.append(summand)
-        if len(minus_summands) > 0:
-            return MultiAdd(non_minus_summands + minus_summands)
+                non_scalar_summands.append(summand)
+        if len(scalar_summands) > 0:
+            return MultiAdd(non_scalar_summands + scalar_summands)
         return ProcessFailureReason('No minus signs', trivial = True)
 
 Add = MultiAdd([Var(f"X_Add_1"), Var(f"X_Add_2")])
