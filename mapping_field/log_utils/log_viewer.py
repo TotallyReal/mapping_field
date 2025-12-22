@@ -36,21 +36,29 @@ class LogViewer(App):
         self.update_view()
 
     def update_view(self):
+        if self.loading_error is not None:
+            self.query_one("#view", Static).update(str(self.loading_error))
+            return
         if self.latest_file is None:
             header = Text(f"Could not find a {LOG_FILE_EXTENSION} file in {LOG_DIR} ")
-            lines_rich = ""
+            lines_str = ""
+            cur_line_index = -1
         else:
             filename = file_path_to_module(self.latest_file)
+            lines = self.collect_lines(0, self.tree_context)
+            cur_line_index = next((i for i, line in enumerate(lines) if line.startswith(">>>")), None)
+            lines[cur_line_index] = lines[cur_line_index][3:]
+            lines_str = "\n".join(lines)
+            logs_before = self.logs_before(0, self.tree_context)
             header = Text(
-                f"{filename} | [depth = {len(self.context_path)}, log_count={self.tree_context.information_count}]\n",
+                f"{filename} | [depth = {len(self.context_path)}, log_count={self.tree_context.information_count}], line={cur_line_index}, logs_before={logs_before}\n",
                 style="bold",
             )
 
-            lines_rich = "\n".join(self.collect_lines(0, self.tree_context))
-
-        header.append(lines_rich)
-
-        self.query_one("#view", Static).update(header)
+        self.query_one("#view", Static).update(header + lines_str)
+        # view = self.query_one("#view", Static)
+        # scroll = view.parent  # usually a ScrollView
+        # scroll.scroll_to(y=cur_line_index + 1)
 
     def on_key(self, event: events.Key):
         if event.key == "up":
@@ -84,12 +92,29 @@ class LogViewer(App):
 
     def load_latest_log(self):
         self.latest_file = get_latest_log_file()
+        self.loading_error = None
         if self.latest_file is not None:
-            self.tree_context = Serializable.load_element(self.latest_file)
+            try:
+                self.tree_context = Serializable.load_element(self.latest_file)
+            except Exception as e:
+                self.loading_error = e
+                raise e
             self.current_context = self.tree_context
             self.context_path = [0]
             self.position_jumps = [0]
             self.line_index = 0
+
+    def logs_before(self, path_position: int, context: TreeContext) -> int:
+        information = context.information
+        cur_context_pos = self.context_path[path_position]
+        count = sum(single.information_count if isinstance(single, TreeContext) else 1
+                    for single in information[:cur_context_pos])
+        if path_position < len(self.context_path) - 1:
+            count += self.logs_before(path_position + 1, information[cur_context_pos])
+        else:
+            single = information[cur_context_pos]
+            count += single.information_count if isinstance(single, TreeContext) else 1
+        return count
 
     def collect_lines(self, path_position: int, context: TreeContext, tab_count: int = 0):
         information = context.information
@@ -107,7 +132,7 @@ class LogViewer(App):
 
         if path_position == len(self.context_path) - 1:
             # This is the most inner context
-            lines[cur_context_pos] = tabs + " > " + str(information[cur_context_pos])
+            lines[cur_context_pos] = ">>>" + tabs + " > " + str(information[cur_context_pos])
             lines = [""] + lines + [""]
         else:
             lines = (
