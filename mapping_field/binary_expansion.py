@@ -1,11 +1,11 @@
 from typing import Optional
 
-from mapping_field.arithmetics import _as_combination, as_neg, _Add
+from mapping_field.arithmetics import _Add, _as_combination, as_neg
 from mapping_field.bool_vars import BoolVar, is_bool_var
 from mapping_field.conditions import (
     FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
 )
-from mapping_field.log_utils.tree_loggers import TreeLogger, green, magenta, red, log_context
+from mapping_field.log_utils.tree_loggers import TreeLogger, green, log_context, magenta, red
 from mapping_field.mapping_field import (
     CompositeElement, ExtElement, MapElement, MapElementConstant, SimplifierOutput, Var,
     convert_to_map, simplifier_context,

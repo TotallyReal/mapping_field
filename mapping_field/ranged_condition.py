@@ -5,10 +5,10 @@ from typing import Optional, Union
 
 from mapping_field.arithmetics import MultiAdd, _as_scalar_mult, _extract_additive_scalar
 from mapping_field.conditions import FalseCondition, IntersectionCondition, TrueCondition
-from mapping_field.log_utils.tree_loggers import TreeLogger, cyan, green, red, log_context
+from mapping_field.log_utils.tree_loggers import TreeLogger, cyan, green, log_context, red
 from mapping_field.mapping_field import (
-    CompositeElement, FuncDict, MapElement, MapElementProcessor,
-    SimplifierContext, SimplifierOutput, Var, VarDict, class_simplifier, simplifier_context,
+    CompositeElement, FuncDict, MapElement, MapElementProcessor, SimplifierContext,
+    SimplifierOutput, Var, VarDict, class_simplifier, simplifier_context,
 )
 from mapping_field.property_engines import (
     PropertyByRulesEngine, is_condition, is_integral, property_rule,
