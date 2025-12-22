@@ -103,7 +103,7 @@ class SingleRegion(CompositeElement):
         condition = single_region.condition
         if isinstance(function, SingleRegion):
             return SingleRegion(condition & function.condition, function.function)
-        return None
+        return ProcessFailureReason("No nested single condition", trivial=True)
 
 
 class ConditionalFunction(AssociativeListFunction):

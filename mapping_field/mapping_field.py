@@ -787,7 +787,7 @@ class CompositeElement(MapElement):
         assert isinstance(elem, CompositeElement)
         simplified_entries = [entry._simplify() for entry in elem.operands]
         if all(entry is None for entry in simplified_entries):
-            return None
+            return ProcessFailureReason('All the entries are already simplified', trivial=True)
         simplified_entries = [simp_entry or entry for simp_entry, entry in zip(simplified_entries, elem.operands)]
         return elem.copy_with_operands(operands=simplified_entries)
 
