@@ -94,26 +94,35 @@ class _Add(CompositeElement):
         assert len(operands) == 2
         super().__init__(operands=operands, name="_Add", output_properties = output_properties)
 
+        self.c0, self.elem0 = _as_scalar_mult(operands[0])
+        self.c1, self.elem1 = _as_scalar_mult(operands[1])
+
+    def as_linear_combination(self):
+        return self.c0, self.elem0, self.c1, self.elem1
+
     @class_simplifier
     @staticmethod
     def _additive_negation_simplifier(add_func: MapElement) -> SimplifierOutput:
         """
                 elem +    0     =>  elem
                 elem + (-elem)  =>  0
+                a*elem + b*elem => (a+b)*elem
         """
         # Can also implement via _Negative.add(...)
         assert isinstance(add_func, _Add)
         operands = add_func.operands
 
-        if operands[0].evaluate() == 0:
+        c0, elem0, c1, elem1 = add_func.as_linear_combination()
+
+        if c0 == 0:
             return operands[1]
-        if operands[1].evaluate() == 0:
+        if c1 == 0:
             return operands[0]
 
-        sign0, map0 = as_neg(operands[0])
-        sign1, map1 = as_neg(operands[1])
-        if sign0 != sign1 and map0 == map1:
-            return MapElementConstant.zero
+        if elem0 == elem1:
+            if c0 + c1 == 0:
+                return MapElementConstant.zero
+            return (c0 + c1) * elem0
 
         return ProcessFailureReason('Elements did not cancel each other', trivial = True)
 
@@ -466,52 +475,5 @@ def _as_rational(map_elem: MapElement) -> (int, MapElement, MapElement):
 
     return sign, map_elem, MapElementConstant.one
 
-
-class BinaryCombination(MapElement):
-    # TODO: Right now this is ONLY used for the simplification process inside Linear. Don't generate it for other
-    #       reasons.
-    #       Later, I should just make a LinearCombination element for expressions of the form sum c_i f_i
-
-    def __init__(self, c1: int, elem1: MapElement, c2: int, elem2: MapElement):
-        super().__init__(list(set(elem1.vars + elem2.vars)))
-        self.c1 = c1
-        self.elem1 = elem1
-        self.c2 = c2
-        self.elem2 = elem2
-
-    def to_string(self, vars_to_str: dict[Var, str]):
-        return f"Comb[{self.c1}*{self.elem1.to_string(vars_to_str)}+{self.c2}*{self.elem2.to_string(vars_to_str)}]"
-
-    def _simplify_with_var_values(self) -> MapElement | None:
-        if self.c1 == 0:
-            return self.c2 * self.elem2
-        if self.c2 == 0:
-            return self.c1 * self.elem1
-
-        elem1 = self.elem1._simplify()
-        elem2 = self.elem2._simplify()
-        if elem1 is not None or elem2 is not None:
-            elem1 = elem1 or self.elem1
-            elem2 = elem2 or self.elem2
-            return BinaryCombination(self.c1, elem1, self.c2, elem2)
-        return None
-
-
-# TODO: add tests
-def _binary_combination_simplifier(function: MapElement) -> SimplifierOutput:
-    """
-        convert to (c1 * elem1 + c2 * elem2) for simplification.
-    """
-    assert isinstance(function, _Add)
-    c1, elem1, c2, elem2 = _as_combination(function)
-    if c2 == 0:
-        return None
-    result = BinaryCombination(c1, elem1, c2, elem2)._simplify()
-    if result is None or isinstance(result, BinaryCombination):
-        return None
-    return result
-
-# TODO: should class simplifiers be inherited?
-_Add.register_class_simplifier(_binary_combination_simplifier)
 
 _Mult.register_class_simplifier(_sorted_commutative_simplifier)

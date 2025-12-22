@@ -1,11 +1,11 @@
 from typing import Optional
 
-from mapping_field.arithmetics import BinaryCombination, _as_combination, as_neg
+from mapping_field.arithmetics import _as_combination, as_neg, _Add
 from mapping_field.bool_vars import BoolVar, is_bool_var
 from mapping_field.conditions import (
     FalseCondition, IntersectionCondition, TrueCondition, UnionCondition,
 )
-from mapping_field.log_utils.tree_loggers import TreeAction, TreeLogger, green, magenta, red, log_context
+from mapping_field.log_utils.tree_loggers import TreeLogger, green, magenta, red, log_context
 from mapping_field.mapping_field import (
     CompositeElement, ExtElement, MapElement, MapElementConstant, SimplifierOutput, Var,
     convert_to_map, simplifier_context,
@@ -14,8 +14,6 @@ from mapping_field.property_engines import is_condition, is_integral
 from mapping_field.ranged_condition import IntervalRange, RangeCondition, in_range
 from mapping_field.utils.processors import ProcessFailureReason
 from mapping_field.utils.serializable import DefaultSerializable
-
-# from mapping_field.new_code.linear import LinearTransformer, Linear
 
 simplify_logger = TreeLogger(__name__)
 
@@ -824,6 +822,7 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
     # TODO: there are now two simplifiers to combination to expansion
     #       After the big refactorzation, delete one of them.
 
+    @_Add.register_class_simplifier
     @staticmethod
     def _binary_combination_to_expansion_simplifier(bin_comb: MapElement) -> SimplifierOutput:
         """
@@ -831,22 +830,23 @@ class BinaryExpansion(CompositeElement, DefaultSerializable):
             Doesn't combine constants into the expansion - it is not consider simpler.
             To combine constants, use BinaryExpansion.of(...).
         """
-        assert isinstance(bin_comb, BinaryCombination)
+        assert isinstance(bin_comb, _Add)
 
-        value1 = bin_comb.elem1.evaluate()
-        value2 = bin_comb.elem2.evaluate()
+        c1, elem1, c2, elem2 = bin_comb.as_linear_combination()
+        value1 = elem1.evaluate()
+        value2 = elem2.evaluate()
         if value1 is not None or value2 is not None:
             return None
 
-        elem1 = BinaryExpansion.of(bin_comb.elem1)
+        elem1 = BinaryExpansion.of(elem1)
         if elem1 is None:
             return ProcessFailureReason("1st element cannot become a binary expansion")
 
-        elem2 = BinaryExpansion.of(bin_comb.elem2)
+        elem2 = BinaryExpansion.of(elem2)
         if elem2 is None:
             return ProcessFailureReason("2nd element cannot become a binary expansion")
 
-        result = BinaryExpansion.linear_combination(bin_comb.c1, elem1, bin_comb.c2, elem2)
+        result = BinaryExpansion.linear_combination(c1, elem1, c2, elem2)
         if result is not None:
             coef, elem = result
             return coef * elem
@@ -859,4 +859,3 @@ is_integral.add_auto_class(BinaryExpansion)
 
 RangeCondition.register_class_simplifier(BinaryExpansion.transform_range)
 UnionCondition.register_class_simplifier(BinaryExpansion._union_with_range_over_binary_expansion)
-BinaryCombination.register_class_simplifier(BinaryExpansion._binary_combination_to_expansion_simplifier)
