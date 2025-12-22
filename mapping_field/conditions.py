@@ -545,8 +545,18 @@ class IntersectionCondition(_ListCondition, MapElementProcessor, op_type=_ListCo
 MapElement.intersection = lambda cond1, cond2: IntersectionCondition([cond1, cond2]).simplify()
 
 
-class UnionCondition(_ListCondition, op_type=_ListCondition.OR):
-    pass
+class UnionCondition(_ListCondition, MapElementProcessor, op_type=_ListCondition.OR):
+
+    def process_function(self, func: MapElement, simplify: bool = True) -> MapElement | None:
+        # TODO: add tests
+        if not all(isinstance(condition, MapElementProcessor) for condition in self.conditions):
+            return func
+        functions = [condition.process_function(func, simplify=simplify) for condition in self.conditions]
+        # TODO: improve and test this rule
+        for processed_function in functions[1:]:
+            if processed_function != functions[0]:
+                return func
+        return functions[0]
 
 
 MapElement.union = lambda cond1, cond2: UnionCondition([cond1, cond2]).simplify()
