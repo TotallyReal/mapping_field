@@ -126,7 +126,7 @@ class ProcessorCollection(Generic[Elem]):
         """
 
         for processor in (
-            self.processors + self.class_processors.get(type(elem), [])
+             self.class_processors.get(type(elem), []) + self.processors
         ):
 
             with log_context(logger, start_msg=f"Step: {processor.__qualname__} ( {red(elem)} )") as log_result:
