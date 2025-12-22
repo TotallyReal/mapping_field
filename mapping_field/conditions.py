@@ -488,21 +488,25 @@ class _ListCondition(AssociativeListFunction, DefaultSerializable):
 
         method_name = cls.method_names[cls.type]
 
+        trivial = True
+
         with log_context(simplify_logger, start_msg=f"Simplify '{method_name}' via 1st parameter") as log_result:
-            result = getattr(cond1, method_name)(cond2)
-            if result is not None:
+            result = getattr(cond1, method_name)(cond2) or ProcessFailureReason("", False)
+            if not isinstance(result, ProcessFailureReason):
                 log_result.set(green(result))
                 return result
-            log_result.set(magenta(' # # # '))
+            log_result.set(magenta(' # # # '), delete_context=result.trivial)
+            trivial &= result.trivial
 
         with log_context(simplify_logger, start_msg=f"Simplify '{method_name}' via 2st parameter") as log_result:
-            result = getattr(cond2, method_name)(cond1)
-            if result is not None:
+            result = getattr(cond2, method_name)(cond1) or ProcessFailureReason("", False)
+            if not isinstance(result, ProcessFailureReason):
                 log_result.set(green(result))
                 return result
-            log_result.set(magenta(' # # # '))
+            log_result.set(magenta(' # # # '), delete_context=result.trivial)
+            trivial &= result.trivial
 
-        return None
+        return ProcessFailureReason("No binary simplification", trivial=trivial)
 
 is_condition.add_auto_class(_ListCondition)
 

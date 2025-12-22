@@ -1,6 +1,6 @@
 
 from mapping_field.associative import AssociativeListFunction, _sorted_commutative_simplifier
-from mapping_field.log_utils.tree_loggers import TreeLogger
+from mapping_field.log_utils.tree_loggers import TreeLogger, green, log_context, magenta
 from mapping_field.mapping_field import (
     CompositeElement, CompositeElementFromFunction, MapElement, MapElementConstant,
     OutputProperties, SimplifierOutput, Var, class_simplifier,
@@ -133,11 +133,29 @@ class _Add(CompositeElement):
     @staticmethod
     def _to_add_simplifier(add_func: MapElement) -> SimplifierOutput:
         """
-                x + y   =>  x.add(y)
+                x + y   =>  x.add(y), y.add(x)
         """
         assert isinstance(add_func, _Add)
-        return (add_func.operands[0].add(add_func.operands[1]) or
-                add_func.operands[1].add(add_func.operands[0]))
+
+        trivial = True
+
+        with log_context(simplify_logger, start_msg=f"Simplify addition via 1st parameter") as log_result:
+            result = add_func.operands[0].add(add_func.operands[1]) or ProcessFailureReason("", False)
+            if not isinstance(result, ProcessFailureReason):
+                log_result.set(green(result))
+                return result
+            log_result.set(magenta(' # # # '), delete_context=result.trivial)
+            trivial &= result.trivial
+
+        with log_context(simplify_logger, start_msg=f"Simplify addition via 2st parameter") as log_result:
+            result = add_func.operands[1].add(add_func.operands[0]) or ProcessFailureReason("", False)
+            if not isinstance(result, ProcessFailureReason):
+                log_result.set(green(result))
+                return result
+            log_result.set(magenta(' # # # '), delete_context=result.trivial)
+            trivial &= result.trivial
+
+        return ProcessFailureReason("No binary simplification", trivial=trivial)
 
 
 class MultiAdd(AssociativeListFunction, binary_class=_Add):
