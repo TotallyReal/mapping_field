@@ -164,7 +164,7 @@ def rev_bin_op(dual_case):
     return dual_case[4]
 
 
-def test_intersection_with_delim():
+def test_construct_intersection_with_delim():
     dummies = [DummyCondition(type=i) for i in range(4)]
 
     cond1 = IntersectionCondition([dummies[0], dummies[1], dummies[2], dummies[3]])
@@ -172,7 +172,7 @@ def test_intersection_with_delim():
     assert cond1 == cond2
 
 
-def test_union_with_delim():
+def test_construct_union_with_delim():
     dummies = [DummyCondition(type=i) for i in range(4)]
 
     cond1 = UnionCondition([dummies[0], dummies[1], dummies[2], dummies[3]])
@@ -419,7 +419,7 @@ def test_small_big_condition_switch():
 
 class TestListConditionInversions:
 
-    # TODO: Maybe combine with (-1)
+    # TODO: Maybe combine with (-1) tests
 
     def test_invert_distributive(self, list_class):
         # invert distribution laws:
@@ -435,9 +435,9 @@ class TestListConditionInversions:
 
         mixed = [                                        # Distribute  out               In
             cls([ xx[0],  xx[1],  xx[2]]).simplify(),    #             0 -> 4    No      1 -> 3      No
-            cls([ xx[0],  xx[1], ~xx[2]]).simplify(),    #             0 -> 4    No      1 -> 3      No
-            cls([ xx[0], ~xx[1], ~xx[2]]).simplify(),    #             0 -> 4    No      1 -> 3      No
-            cls([~xx[0], ~xx[1], ~xx[2]]).simplify(),    #             0 -> 4    No      1 -> 3      No
+            cls([ xx[0],  xx[1], ~xx[2]]).simplify(),    #             1 -> 3    No      2 -> 2      Yes
+            cls([ xx[0], ~xx[1], ~xx[2]]).simplify(),    #             2 -> 2    No      3 -> 1      Yes
+            cls([~xx[0], ~xx[1], ~xx[2]]).simplify(),    #             3 -> 1    Yes     4 -> 0      Yes
         ]
 
         # Distribution in:
