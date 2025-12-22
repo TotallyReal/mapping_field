@@ -13,7 +13,7 @@ from mapping_field.mapping_field import (
     params_to_maps, simplifier_context,
 )
 from mapping_field.property_engines import is_condition, is_integral
-from mapping_field.ranged_condition import IntervalRange, RangeCondition, in_range
+from mapping_field.ranged_condition import IntervalRange, RangeCondition, in_range, XX
 from mapping_field.utils.processors import ProcessFailureReason
 
 simplify_logger = TreeLogger(__name__)
@@ -68,6 +68,18 @@ class SingleRegion(CompositeElement):
         yield self.condition
         yield self.function
 
+    def neg(self) -> Optional[MapElement]:
+        if self.function == 0:
+            return self
+        return SingleRegion(self.condition, -self.function)
+
+    # def mul(self, other: MapElement) -> Optional[MapElement]:
+    #     if isinstance(other, SingleRegion):
+    #         return SingleRegion(self.condition * other.condition, self.function * other.function)
+    #     if is_condition.compute(other, simplifier_context):
+    #         return SingleRegion(self.condition * other, self.function)
+    #     return SingleRegion(self.condition, self.function * other)
+
     @in_range.register_rule
     @staticmethod
     def single_region_range(element: MapElement, context: SimplifierContext) -> IntervalRange | None:
@@ -90,11 +102,6 @@ class SingleRegion(CompositeElement):
 
         return SingleRegion(self.condition, function)
 
-    def neg(self) -> Optional["MapElement"]:
-        if self.function == 0:
-            return self
-        return SingleRegion(self.condition, -self.function)
-
     @class_simplifier
     @staticmethod
     def _nested_condition_simplifier(single_region: MapElement) -> SimplifierOutput:
@@ -104,6 +111,59 @@ class SingleRegion(CompositeElement):
         if isinstance(function, SingleRegion):
             return SingleRegion(condition & function.condition, function.function)
         return ProcessFailureReason("No nested single condition", trivial=True)
+
+    # @class_simplifier
+    # @staticmethod
+    # def _intersection_condition_simplifier(single_region: MapElement) -> SimplifierOutput:
+    #     assert isinstance(single_region, SingleRegion)
+    #     condition = single_region.condition
+    #     if not isinstance(condition, IntersectionCondition):
+    #         return ProcessFailureReason("Only applicable for intersection condition", trivial=True)
+    #
+    #     function = single_region.function
+    #     is_simpler = False
+    #     for sub_cond in condition.conditions:
+    #         simplify_logger.log(f"Using {blue(sub_cond)} to simplify {red(function)}")
+    #         element = SingleRegion(sub_cond, function)._simplify()
+    #         if element is None:
+    #             continue
+    #         if isinstance(element, SingleRegion) and element.condition is sub_cond:
+    #             function = element.function
+    #             is_simpler = True
+    #
+    #     if is_simpler:
+    #         return SingleRegion(condition, function)
+    #
+    #     return None
+    #
+    # @class_simplifier
+    # @staticmethod
+    # def _ranged_condition_simplifier(single_region: MapElement) -> SimplifierOutput:
+    #     assert isinstance(single_region, SingleRegion)
+    #     condition = single_region.condition
+    #     if not isinstance(condition, RangeCondition):
+    #         return ProcessFailureReason("Only applicable for RangeCondition", trivial=True)
+    #
+    #     v = condition.function
+    #     f_range = condition.range
+    #     value = f_range.is_point
+    #     if (value is not None) and isinstance(v, Var) and (v in single_region.function.vars):
+    #         function = single_region.function({v: value})
+    #         return SingleRegion(condition, function)
+    #
+    #     return None
+    #
+    # @class_simplifier
+    # @staticmethod
+    # def _condition_in_function_simplifier(single_region: 'SingleRegion') -> SimplifierOutput:
+    #     assert isinstance(single_region, SingleRegion)
+    #     # TODO: later fix it for general condition. Need to check compatibility with Conditional Function
+    #     #       Also, probably change the second to just return zero
+    #     if single_region.function is TrueCondition:
+    #         return SingleRegion(single_region.condition, MapElementConstant.one)
+    #     if single_region.function is False:
+    #         return SingleRegion(single_region.condition, MapElementConstant.zero)
+    #     return ProcessFailureReason("Not applicable", trivial=True)
 
 
 class ConditionalFunction(AssociativeListFunction):
@@ -416,8 +476,8 @@ def ReLU(map_elem: MapElement) -> MapElement:
                 regions.append((condition & (func > 0), func))
                 regions.append((condition & (func <= 0), zero))
         regions = [(cond, func) for cond, func in regions if FalseCondition != cond]
-        return ConditionalFunction(regions)
+        return ConditionalFunction(regions, output_properties={in_range: 0 <= XX})
     return ConditionalFunction([
         ((map_elem > 0), map_elem),
         ((map_elem <= 0), zero)
-    ])
+    ], output_properties={in_range: 0 <= XX})
