@@ -5,7 +5,7 @@ from typing import Optional, Union
 
 from mapping_field.arithmetics import MultiAdd, _as_combination, _as_scalar_mult
 from mapping_field.conditions import FalseCondition, IntersectionCondition, TrueCondition
-from mapping_field.log_utils.tree_loggers import TreeLogger, cyan, green, red
+from mapping_field.log_utils.tree_loggers import TreeLogger, cyan, green, red, log_context
 from mapping_field.mapping_field import (
     CompositeElement, FuncDict, MapElement, MapElementConstant, MapElementProcessor,
     SimplifierContext, SimplifierOutput, Var, VarDict, class_simplifier, simplifier_context,
@@ -454,10 +454,12 @@ class RangeCondition(CompositeElement, MapElementProcessor):
             f_range = self.range.intersection(condition.range)
             return FalseCondition if (f_range is None) else RangeCondition(condition.function, f_range)
 
-        return None
+        return ProcessFailureReason("Not applicable", trivial=True)
+
 
     def or_(self, condition: MapElement) -> MapElement | None:
         simplify_logger.log(f"Computing 'or' of {red(self)} with {red(condition)} [{cyan(self.__class__.__name__)}]")
+
         if isinstance(condition, RangeCondition) and condition.function == self.function:
             if is_integral.compute(condition.function, simplifier_context):
                 # Union works better for the integral version of ranges
@@ -468,16 +470,20 @@ class RangeCondition(CompositeElement, MapElementProcessor):
                 f_range = self.range.union(condition.range)
             return None if (f_range is None) else RangeCondition(condition.function, f_range)
 
-        if isinstance(condition, MapElementProcessor):
-            processed_function = condition.process_function(self.function)
+        if isinstance(condition, MapElementProcessor) and set(condition.vars).issubset(set(self.function.vars)):
+            simplify_logger.log(f"Check if {red(condition)} = ({red(self.function)} << p)")
+            with log_context(simplify_logger, f"function(condition)") as log_result:
+                processed_function = condition.process_function(self.function)
+                log_result.set(str(processed_function))
+
             value = processed_function.evaluate()
             if value is None:
                 return None
-            simplify_logger.log(f'Condition {red(condition)} implies {green(self.function)}={green(value)}')
+            simplify_logger.log(f'Possible p={green(value)}')
             if self.range.contains(value):
                 return self
 
-            # See if it extends the range to an interval.
+            # Prepare the interval union, in case it exists
             interval = IntervalRange.of_point(value)
             if is_integral.compute(self.function, simplifier_context):
                 interval = self.range.integral_union(interval)
@@ -511,7 +517,7 @@ class RangeCondition(CompositeElement, MapElementProcessor):
         if self.range.contains(cur_range):
             return TrueCondition
         if cur_range.contains(self.range):
-            return ProcessFailureReason('New range is smaller than existing range', trivial=False)
+            return ProcessFailureReason('New range is smaller than existing range', trivial=True)
 
         f_range = cur_range.intersection(self.range)
         if f_range.is_empty:
