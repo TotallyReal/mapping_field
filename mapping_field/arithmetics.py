@@ -180,7 +180,7 @@ class MultiAdd(AssociativeListFunction, binary_class=_Add):
             return MultiAdd([-operand for operand in self.operands])
         return None
 
-    def extract_scalar(self) -> tuple[MapElementConstant, 'MultiAdd'] | None:
+    def extract_scalar(self) -> tuple['MultiAdd', MapElementConstant] | None:
         summands = []
         scalar = 0
         for summand in self.operands:
@@ -190,7 +190,7 @@ class MultiAdd(AssociativeListFunction, binary_class=_Add):
             else:
                 scalar += value
         if len(summands) < len(self.operands):
-            return MapElementConstant(scalar), MultiAdd(summands)
+            return MultiAdd(summands), MapElementConstant(scalar)
         else:
             return None
 
@@ -416,7 +416,7 @@ def _as_combination(map_elem: MapElement) -> tuple[int, MapElement, int, MapElem
             return c0, elem0, c1, elem1
         result = map_elem.extract_scalar()
         if result is not None:
-            scalar, rest = result
+            rest, scalar = result
             c0, elem0 = _as_scalar_mult(rest)
             return c0, elem0, scalar.evaluate(), MapElementConstant.one
 
