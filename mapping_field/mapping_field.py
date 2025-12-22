@@ -226,6 +226,15 @@ class MapElement:
             processor.__name__ = f"{cls.__name__}_simplify_with_var_values"
             MapElement._simplifier.register_class_processor(cls, processor)
 
+        # TODO: This collection process is not good, since it assumes all the simplifiers of a given class
+        #       already exists at creation time. This means that if we have the following order:
+        #  ;
+        #           1. Define class A
+        #           2. Define class B(A)
+        #           3. Add simplifier to A
+        #  ;
+        #       Now B will not see the simplifier attached to A in (3).
+
         # Start with all parent rules
         cls._class_simplifiers = collections.OrderedDict()
 
@@ -407,12 +416,10 @@ class MapElement:
 
     def evaluate(self) -> ExtElement | None:
         """
-        Returns the constant this map defines. If it is not constant, raises an error.
+        Returns the constant this map defines. If it is not constant, return None.
         """
-        # TODO: This call to simplify can be a problem, if when simplifying we call evaluate.
-        #       Think of a way to avoid this.
-        map_elem = self.simplify()
-        return map_elem.evaluate() if isinstance(map_elem, MapElementConstant) else None
+        # Avoid calling self.simplify() here, as it can cause a loop.
+        return None
 
     def is_zero(self) -> bool:
         return self.evaluate() == 0
@@ -526,6 +533,8 @@ class MapElement:
         # Very quick simplifiers:
         if other == 0:
             return self
+        if self == 0:
+            return other
         return MapElement.addition(self, other)
 
     @params_to_maps
@@ -533,6 +542,8 @@ class MapElement:
         # Very quick simplifiers:
         if other == 0:
             return self
+        if self == 0:
+            return other
         return MapElement.addition(other, self)
 
     def add(self, other: "MapElement") -> Optional["MapElement"]:
@@ -551,10 +562,20 @@ class MapElement:
 
     @params_to_maps
     def __sub__(self, other) -> "MapElement":
+        # Very quick simplifiers:
+        if other == 0:
+            return self
+        if self == 0:
+            return MapElement.negation(other)
         return MapElement.subtraction(self, other)
 
     @params_to_maps
     def __rsub__(self, other) -> "MapElement":
+        # Very quick simplifiers:
+        if self == 0:
+            return other
+        if other == 0:
+            return MapElement.negation(self)
         return MapElement.subtraction(other, self)
 
     def sub(self, other: "MapElement") -> Optional["MapElement"]:
@@ -580,20 +601,27 @@ class MapElement:
     @params_to_maps
     def __mul__(self, other) -> "MapElement":
         # Very quick simplifiers:
-        if other == 1:
+        value = other.evaluate()
+        if value == 1:
             return self
-        if other == 0:
+        if value == 0:
             return MapElementConstant.zero
+        if value == -1:
+            return MapElementConstant.negation(self)
+
+        value = self.evaluate()
+        if value == 1:
+            return other
+        if value == 0:
+            return MapElementConstant.zero
+        if value == -1:
+            return MapElementConstant.negation(other)
+
         return MapElement.multiplication(self, other)
 
     @params_to_maps
     def __rmul__(self, other) -> "MapElement":
-        # Very quick simplifiers:
-        if other == 1:
-            return self
-        if other == 0:
-            return MapElementConstant.zero
-        return MapElement.multiplication(other, self)
+        return self.__mul__(other)
 
     def mul(self, other: "MapElement") -> Optional["MapElement"]:
         return None
@@ -660,8 +688,8 @@ class MapElement:
     def __and__(self, condition: "MapElement") -> "MapElement":
         return MapElement.intersection(self, condition)
 
-    def and_(self, condition: "MapElement") -> Optional["MapElement"]:
-        return None
+    def and_(self, condition: "MapElement") -> SimplifierOutput:
+        return ProcessFailureReason("and_ is not implemented", trivial=True)
 
     # </editor-fold>
 
@@ -674,8 +702,8 @@ class MapElement:
     def __or__(self, condition: "MapElement") -> "MapElement":
         return MapElement.union(self, condition)
 
-    def or_(self, condition: "MapElement") -> Optional["MapElement"]:
-        return None
+    def or_(self, condition: "MapElement") -> SimplifierOutput:
+        return ProcessFailureReason("or_ is not implemented", trivial=True)
 
     # </editor-fold>
 
