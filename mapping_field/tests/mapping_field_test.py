@@ -4,6 +4,7 @@ import pytest
 from mapping_field.mapping_field import (
     CompositeElement, CompositeElementFromFunction, ConflictingVariables, Func,
     InvalidVariableOrder, MapElement, MapElementConstant, NamedFunc, SimplifierOutput, Var,
+    class_simplifier,
 )
 from mapping_field.tests.utils import DummyMap
 
@@ -13,14 +14,18 @@ from mapping_field.tests.utils import DummyMap
 def test_var_double_generation():
     x1 = Var("x")
     x2 = Var("x")
+    # TODO: I think these should be different
     assert x1 == x2
 
 
 def test_same_name_variables():
+
     x1 = Var("x")
+    with pytest.raises(ConflictingVariables):
+        MapElement(variables=[x1, x1])
+
     x2 = Var("x")
     assert id(x1) != id(x2)
-
     with pytest.raises(ConflictingVariables):
         MapElement(variables=[x1, x2])
 
@@ -130,7 +135,7 @@ def test_named_function_generation():
 # ----------------- simplify test -----------------
 
 
-def test_simplify():
+def test_simplify_flag():
     addition = CompositeElementFromFunction(name="Add", function=lambda a, b: a + b)
     assert str(addition(2, 3)) == "5"
     assert str(addition(2, 3, simplify=False)) == "Add(2,3)"
@@ -151,14 +156,13 @@ class DummyMapWithVar(CompositeElement):
     def _simplify_with_var_values(self) -> SimplifierOutput:
         return MapElementConstant.zero if (self.operands[0] == 0) else None
 
+    @class_simplifier
     @staticmethod
     def _dummy_operand_simplifier(self) -> SimplifierOutput:
         operand = self.operands[0]
         if hasattr(operand, "_dummy_operand_op"):
             return operand._dummy_operand_op(self)
         return None
-
-DummyMapWithVar.register_class_simplifier(DummyMapWithVar._dummy_operand_simplifier)
 
 
 class SpecialDummyVar(MapElement):
@@ -172,7 +176,7 @@ class SpecialDummyVar(MapElement):
         return None
 
 
-def test_simplify():
+def test_simplify2():
     dummy = DummyMapWithVar()
     assert str(dummy) == "DummyMap_0(x)"
 
@@ -292,6 +296,13 @@ def test_double_simplification():
 
 def test_double_simplification_assignment():
 
+    # The simplification process here is :
+    #   dummy   ->  simplified,
+    # and then :
+    #   1 * dummy   ->   dummy  ->   simplified
+    # Since dummy was encountered in the middle, in previous versions it caused it to be simplified again.
+    # Adding this test here to make sure it doesn't happen.
+
     class SimplifiedDummyMap(DummyMap):
         def __init__(self):
             super().__init__()
@@ -312,8 +323,4 @@ def test_double_simplification_assignment():
     function = MapElement.multiplication(MapElementConstant.one, dummy, simplify = False)
     function.simplify()
 
-    # The simplification process here is :
-    #   1 * dummy   ->   dummy  ->   simplified
-    # Since dummy was encountered in the middle, in previous versions in caused it to be simplified again.
-    # Adding this test here to make sure it doesn't happen again
     assert dummy.simplified_counter == 1
