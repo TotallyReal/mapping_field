@@ -299,9 +299,9 @@ class TestRangedConditionSimplifiers:
         assert cond1 == cond2
 
     def test_simplify_extreme_sum_of_ranged_functions(self):
-        dummy1 = DummyMap(0, output_properties={in_range: IntervalRange[1,2]})
-        dummy2 = DummyMap(0, output_properties={in_range: IntervalRange[2,3]})
-        dummy3 = DummyMap(0, output_properties={in_range: IntervalRange[3,5]})
+        dummy1 = DummyMap(1, output_properties={in_range: IntervalRange[1,2]})
+        dummy2 = DummyMap(2, output_properties={in_range: IntervalRange[2,3]})
+        dummy3 = DummyMap(3, output_properties={in_range: IntervalRange[3,5]})
 
         dummy = dummy1 + dummy2 + dummy3
 
@@ -544,7 +544,7 @@ class TestInRange:
     def test_addition_in_range(self):
         dummy1 = DummyMap(1, output_properties={in_range: IntervalRange[1, 4]})
         dummy2 = DummyMap(2, output_properties={in_range: IntervalRange[3, 5]})
-        dummy3 = DummyMap(2, output_properties={in_range: IntervalRange[-7, 7]})
+        dummy3 = DummyMap(3, output_properties={in_range: IntervalRange[-7, 7]})
 
         result = dummy1 + dummy2 + dummy3
         f_range = in_range.compute(result, simplifier_context)
