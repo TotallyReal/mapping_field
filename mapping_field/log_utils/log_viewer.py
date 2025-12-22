@@ -121,4 +121,8 @@ class LogViewer(App):
 
 # -------- MAIN --------
 if __name__ == "__main__":
+    import sys
+    if len(sys.argv) == 2:
+        LOG_DIR = Path(sys.argv[1])
+        assert LOG_DIR.is_dir()
     LogViewer().run()

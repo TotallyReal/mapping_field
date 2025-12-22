@@ -16,6 +16,10 @@ def ensure_real_terminal():
     module_name = file_path_to_module(script_path)
 
     command = f'cd "{PROJECT_ROOT}" && "{PYTHON_EXEC}" -m "{module_name}"'
+    if len(sys.argv) > 1:
+        args_str = ''.join(sys.argv[1:])
+        command += f' "{args_str}"'
+
     command = command.replace('"', '\\"')  # escape any double quotes
 
     if sys.platform == "darwin":  # macOS
