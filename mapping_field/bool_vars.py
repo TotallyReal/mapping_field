@@ -40,7 +40,7 @@ def two_bool_vars_simplifier(elem: MapElement) -> SimplifierOutput:
         v = elem.vars[0]
         simplify_logger.log(f"Looking for simpler condition on {red(v)}")
         if elem in (v, (v << 0), (v << 1)):
-            return None
+            return ProcessFailureReason("Already in simplified form", trivial=True)
         # TODO: The following two calls are problematics. They can generate composition function with 'elem'
         #       as the top function, so when we call simplify on it, it tries to simplify the top function
         #       by itself, which can loop back here.
@@ -58,6 +58,12 @@ def two_bool_vars_simplifier(elem: MapElement) -> SimplifierOutput:
     if len(elem.vars) == 2:
         x, y = elem.vars
         simplify_logger.log(f"Looking for simpler condition on {red(x)}, {red(y)}")
+        if isinstance(elem, (IntersectionCondition, UnionCondition)) and len(elem.conditions) == 2 and len(elem.conditions[0].vars) == 1:
+            v0 = elem.conditions[0].vars[0]
+            v1 = elem.conditions[1].vars[0]
+            if elem.conditions[0] in (v0, (v0 << 0), (v0 << 1)) and elem.conditions[1] in (v1, (v1 << 0), (v1 << 1)):
+                return ProcessFailureReason("Already in simplified form", trivial=True)
+
         assignments = [(0, 0), (0, 1), (1, 0), (1, 1)]
         values = [[elem({x: x0, y: y0}).simplify() for y0 in (0, 1)] for x0 in (0, 1)]
         if not all(isinstance(value, BinaryCondition) for value in values[0] + values[1]):
