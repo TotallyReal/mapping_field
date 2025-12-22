@@ -1,12 +1,11 @@
 import dataclasses
 import weakref
 
-from contextlib import contextmanager
 from typing import Callable, Generic, Iterator, TypeVar
 
-from colorama import Back, init
+from colorama import init
 
-from mapping_field.log_utils.tree_loggers import TreeAction, TreeLogger, cyan, green, magenta, red
+from mapping_field.log_utils.tree_loggers import TreeLogger, cyan, green, log_context, magenta, red
 
 init(autoreset=True)
 logger = TreeLogger(__name__)
@@ -64,25 +63,6 @@ class WeakContextDictionary(Generic[K, V]):
     def __repr__(self) -> str:
         return f"WeakContextDictionary({self._data})"
 
-@dataclasses.dataclass
-class LogResult:
-    message: str = ''
-    delete_context: bool = False
-
-    def set(self, message: str, delete_context: bool | None = None) -> None:
-        self.message = message
-        if delete_context is not None:
-            self.delete_context = delete_context
-
-@contextmanager
-def log_context(tree_logger: TreeLogger, start_msg: str):
-    tree_logger.log(message=start_msg, action=TreeAction.GO_DOWN, back=Back.LIGHTBLACK_EX)
-    result = LogResult()
-    try:
-        yield result
-    finally:
-        tree_logger.set_context_title(f"{start_msg} => {result.message}")
-        tree_logger.log(result.message, action=TreeAction.GO_UP)
 
 Elem = TypeVar("Elem")
 

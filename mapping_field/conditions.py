@@ -4,13 +4,13 @@ from typing import Optional, cast
 
 from mapping_field.associative import AssociativeListFunction
 from mapping_field.field import ExtElement
-from mapping_field.log_utils.tree_loggers import TreeLogger, green, magenta, yellow
+from mapping_field.log_utils.tree_loggers import TreeLogger, green, log_context, magenta, yellow
 from mapping_field.mapping_field import (
     CompositeElementFromFunction, MapElement, MapElementProcessor, OutputProperties,
     SimplifierOutput, Var, class_simplifier, simplifier_context,
 )
 from mapping_field.property_engines import is_condition
-from mapping_field.utils.processors import ProcessFailureReason, log_context
+from mapping_field.utils.processors import ProcessFailureReason
 from mapping_field.utils.serializable import DefaultSerializable
 
 simplify_logger = TreeLogger(__name__)

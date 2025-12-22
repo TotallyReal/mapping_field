@@ -1,12 +1,14 @@
+import dataclasses
 import logging
 import sys
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
 from typing import Optional, Union
 
-from colorama import Fore, Style
+from colorama import Back, Fore, Style
 
 from mapping_field.utils.serializable import DefaultSerializable
 
@@ -147,6 +149,9 @@ class LogOrigin:
         return LogOrigin(module, filename, lineno, func_name)
 
 
+class TreeLoggerException(Exception):
+    pass
+
 class TreeLogger:
 
     def reset(self):
@@ -157,21 +162,24 @@ class TreeLogger:
         self.logger = logging.getLogger(name)
         self.logger.setLevel(logging.INFO)
 
-    def log(self, message, action=TreeAction.NEUTRAL, fore: str = '', back: str = '', delete_context: bool = False):
+    def log(self, message, action: TreeAction=TreeAction.NEUTRAL, fore: str = '', back: str = '', delete_context: bool = False):
         if self.tree.paused:
             return
         # log_origin = LogOrigin.from_caller()
-        if self.tree.log_count >= self.tree.max_log_count > 0:
-            raise Exception("Too many logs")
+        if message!='' and self.tree.log_count >= self.tree.max_log_count > 0:
+            self.tree.add_information(red("Too Many Logs!"))
+            raise TreeLoggerException("Too many logs")
         tab_symbols = ["|"] * self.tree.depth
         if action == TreeAction.GO_DOWN:
             self.tree.open_context()
-            self.tree.add_information(message)
+            if message != '':
+                self.tree.add_information(message)
             self.tree.tab_styles.append(f"{fore}{back}")
             tab_symbols.append("┌>")
         elif action == TreeAction.GO_UP:
             tab_symbols[-1] = "└>"
-            self.tree.add_information(message)
+            if message != '':
+                self.tree.add_information(message)
             self.tree.close_context(delete=delete_context)
         else:
             self.tree.add_information(message)
@@ -180,9 +188,34 @@ class TreeLogger:
         if self.tree.print_logs:
             self.logger.info(f"{initial}{message}")
         if self.tree.depth > self.tree.max_depth:
-            raise Exception("Too many recursive logs")
+            raise TreeLoggerException("Too many recursive logs")
         if action == TreeAction.GO_UP:
             self.tree.tab_styles.pop(-1)
 
     def set_context_title(self, title: str):
         self.tree.context.set_title(title)
+
+
+@dataclasses.dataclass
+class LogResult:
+    message: str = ''
+    delete_context: bool = False
+
+    def set(self, message: str, delete_context: bool | None = None) -> None:
+        self.message = message
+        if delete_context is not None:
+            self.delete_context = delete_context
+
+
+@contextmanager
+def log_context(tree_logger: TreeLogger, start_msg: str):
+    tree_logger.log(message=start_msg, action=TreeAction.GO_DOWN, back=Back.LIGHTBLACK_EX)
+    result = LogResult()
+    try:
+        yield result
+    except Exception as ex:
+        tree_logger.set_context_title(f"{start_msg} => {magenta(ex.__class__.__name__)}")
+        tree_logger.log('', action=TreeAction.GO_UP)
+        raise ex
+    tree_logger.set_context_title(f"{start_msg} => {result.message}")
+    tree_logger.log(result.message, action=TreeAction.GO_UP, delete_context=result.delete_context)
