@@ -2,8 +2,8 @@ from collections import deque
 
 from mapping_field.log_utils.tree_loggers import TreeLogger, green, red
 from mapping_field.mapping_field import (
-    CompositeElement, MapElement, OutputProperties, SimplifierOutput, Var, convert_to_map,
-    simplifier_context,
+    CompositeElement, MapElement, OutputProperties, SimplifierOutput, Var, class_simplifier,
+    convert_to_map, simplifier_context,
 )
 from mapping_field.utils.processors import ProcessFailureReason
 
@@ -86,7 +86,9 @@ class AssociativeListFunction(CompositeElement):
         operands_str = op_symbol.join(operand.to_string(vars_to_str) for operand in self.operands)
         return f"{cls.left_bracket}{operands_str}{cls.right_bracket}"
 
-    def _simplify_with_var_values(self) -> MapElement | None:
+    @class_simplifier
+    @staticmethod
+    def _combine_pairs(self) -> MapElement | None:
         if self.__class__.is_binary(self):
             simplify_logger.log("is binary special - avoid simplifying here.")
             return None
@@ -159,6 +161,7 @@ class AssociativeListFunction(CompositeElement):
             return cls.trivial_element
 
         if cls.unpack_single and len(final_operands) == 1:
+            simplify_logger.log("Only single operand. Extract it from the associative function.")
             return final_operands[0]
 
         if is_whole_simpler:
@@ -173,7 +176,6 @@ def sort_key(element: MapElement):
     #   2. If have the same number of variables, compare by their names (sorted)
     #   3. If have the exact same variables, just compare by the string representation of the functions.
     return (element.num_vars, sorted([v.name for v in element.vars]), str(element))
-
 
 
 def _sorted_commutative_simplifier(element: MapElement) -> SimplifierOutput:
